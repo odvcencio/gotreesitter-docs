@@ -5,8 +5,6 @@ nav_group: Internals
 order: 2
 ---
 
-# Performance
-
 The frame for this page is deliberate: **here is how we measure, here are the
 numbers, here are the caveats.** Every figure below is either a measurement from a
 committed harness or a value clearly labeled as a target or projection. Where
@@ -153,7 +151,7 @@ above something you can trust across releases rather than a one-time screenshot.
 These are real, and stating them is the point:
 
 - **Peak memory per node is higher than C** — roughly **152 bytes per node versus
-  C's ~16–64 bytes**. This is a genuine structural gap, not a tuning oversight: the
+  C's \~16–64 bytes**. This is a genuine structural gap, not a tuning oversight: the
   Go node representation carries more per node than C's packed subtree. Arena work
   has narrowed peak usage, but the per-node gap remains the main memory story.
 - **Some very large files still exceed the default memory budget.** The default cap
@@ -172,6 +170,7 @@ them are hidden — they live in the same committed harness that produces the
 favorable numbers. That is the trade the project makes deliberately: publish the
 measurement machinery, and every asterisk comes with it.
 
-For the correctness side of the same discipline — and how several of these
-performance cliffs turned out to be correctness bugs in disguise — see [Recovery and
-Correctness](/docs/recovery-and-correctness).
+> [!IMPORTANT] Read together with Recovery and Correctness
+> For the correctness side of the same discipline — and how several of these
+> performance cliffs turned out to be correctness bugs in disguise — see [Recovery and
+> Correctness](/docs/recovery-and-correctness).

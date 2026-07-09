@@ -169,7 +169,7 @@ fmt.Println(lang.CRecoveryCostCompetitionEnabledByDefault) // true: rust is elec
 
 Querying this across every registered language (`entry.Language().CRecoveryCostCompetitionEnabledByDefault`
 for each of the 206) is how this page's own catalog numbers below were checked: **124 of 206**
-languages are certified today, matching the project's public "~124 elected" figure exactly. The
+languages are certified today, matching the project's public "\~124 elected" figure exactly. The
 other 82 use the resync recovery path described on the Recovery and Correctness page — safe and
 non-hanging, just not certified byte-identical to C on damaged input.
 
@@ -187,7 +187,7 @@ so it stays honest as the set grows. The scan behind it:
 | Entries with a hand-written `TokenSourceFactory` | 5 |
 | Elected into C-faithful recovery (measured, see above) | 124 |
 
-```text
+```langlist
 ada                csv                forth              json               pem                starlark
 agda               cuda               fortran            json5              perl               svelte
 angular            cue                fsharp             jsonnet            php                swift

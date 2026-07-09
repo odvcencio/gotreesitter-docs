@@ -180,5 +180,6 @@ rather than just a small one: the hot path has nothing left to allocate.
 | C-table extraction | `cmd/ts2go/` |
 | Grammar data, loading, registry | `grammars/` (`embedded_loader.go`, `registry.go`) |
 
-Changing GLR or recovery behavior? Read [Contributing](/docs/contributing) next — this codebase
-gates those changes against a real C tree-sitter build, not just its own test suite.
+> [!WARNING] Before you touch GLR or recovery
+> Changing GLR or recovery behavior? Read [Contributing](/docs/contributing) next — this codebase
+> gates those changes against a real C tree-sitter build, not just its own test suite.

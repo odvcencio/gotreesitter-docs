@@ -48,7 +48,7 @@ for any target Go supports.
 - **A single static binary.** `go build` is the whole pipeline; there's no C toolchain to
   provision in CI or on a teammate's machine.
 - **Byte-exact syntax trees**, verified against the C runtime where checked.
-- **C-faithful error recovery** for the ~124 grammars elected into the oracle campaign so far — the
+- **C-faithful error recovery** for the \~124 grammars elected into the oracle campaign so far — the
   parser's recovery decisions match C tree-sitter's, not an approximation of them. The rest use a
   resync-based recovery path today and are staged for election.
 - **Incremental parsing that is orders of magnitude faster than a full parse.** Reparsing after a
@@ -56,8 +56,8 @@ for any target Go supports.
   nanoseconds; a real edit still reuses almost the whole tree and finishes in a small fraction of a
   full parse.
 - **Full-parse performance at or near C** for the coding languages that matter most, with a
-  scaling curve that favors Go as files grow — a measured scaling exponent of ~1.20 versus C's
-  ~1.29 on tested languages.
+  scaling curve that favors Go as files grow — a measured scaling exponent of \~1.20 versus C's
+  \~1.29 on tested languages.
 
 ## The honest asterisks
 
@@ -78,7 +78,7 @@ with printf instrumentation, replay the Go parser's decisions against it one at 
 every divergence until the trees are byte-exact. That process keeps turning up "performance
 cliffs" that were actually correctness bugs wearing a performance costume. A bash file that took
 46.4 seconds and produced a whole-file error tree turned out to be the parser silently evicting
-the correct parse lineage; fixed, the same file parses in ~8 ms, byte-exact. The same pattern —
+the correct parse lineage; fixed, the same file parses in \~8 ms, byte-exact. The same pattern —
 slow because wrong, not slow because hard — has repeated in PHP, Rust, and Kotlin. A profiler
 tells you where time goes; only an oracle comparison tells you the work being timed shouldn't have
 happened at all.
@@ -92,7 +92,7 @@ incremental reparsing doesn't matter but 206 ready-to-use grammars and a single 
 
 ## A quick look
 
-```go
+```go title=main.go
 package main
 
 import (
@@ -124,4 +124,5 @@ func main() {
 (source_file (package_clause (package_identifier)) (function_declaration (identifier) (parameter_list) (block (statement_list (expression_statement (call_expression (identifier) (argument_list (interpreted_string_literal (interpreted_string_literal_content)))))))))
 ```
 
-Ready to write your own parser? Continue to [Getting Started](/docs/getting-started).
+> [!TIP] Next
+> Ready to write your own parser? Continue to [Getting Started](/docs/getting-started).

@@ -20,7 +20,7 @@ this fits into.
 
 ## Part 1 — the decision
 
-### You do NOT need a scanner for
+### ✗ You do NOT need a scanner for
 
 - **Keyword vs. identifier.** Declare a `word` token (`"word": "identifier"` in grammar.json,
   `g.SetWord("identifier")` in the DSL) and write keywords as plain strings. Keyword extraction
@@ -40,7 +40,7 @@ this fits into.
 If your grammar is in one of these buckets, stop here: every scanner you don't write is corpus
 parity you don't have to re-verify.
 
-### You DO need a scanner for
+### ✓ You DO need a scanner for
 
 Context-sensitive or unbounded-lookahead lexing — when what the next token *is* depends on
 arbitrary distance or on state the LR automaton cannot carry:

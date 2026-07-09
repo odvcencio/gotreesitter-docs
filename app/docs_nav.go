@@ -4,6 +4,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"m31labs.dev/gosx/content"
 )
 
 // docsNavGroupOrder fixes the sidebar section order and is the grouping key
@@ -69,6 +71,48 @@ type docsNavLink struct {
 	Label string
 	Order int
 	Color string
+}
+
+// docsPageEyebrowBySlug gives a handful of content/docs/*.md pages the
+// exact `.eyebrow` text design/GoTreeSitter-Docs.html uses for their direct
+// analog page (getting-started -> "Getting Started", languages -> "Explore",
+// matching the design's isStart/isLang sections). Pages without a direct
+// mockup analog fall back to docsPageEyebrowByGroup below.
+var docsPageEyebrowBySlug = map[string]string{
+	"getting-started": "Getting Started",
+	"languages":       "Explore",
+	"playground":      "Playground",
+}
+
+// docsPageEyebrowByGroup maps a doc's nav_group to the `.eyebrow` design
+// uses for that kind of page (Guide/Reference/Grammar authoring/Project),
+// distinct from docsNavGroupLabels' sidebar section headings ("Guides" vs.
+// "Guide", etc. — the eyebrow reads as a singular tag on the page itself).
+var docsPageEyebrowByGroup = map[string]string{
+	"Introduction":     "Introduction",
+	"Using the Parser": "Guide",
+	"Languages":        "Grammar authoring",
+	"Internals":        "Reference",
+	"Project":          "Project",
+}
+
+// docsPageEyebrow resolves a document's `.eyebrow` tag: an explicit
+// per-slug override, else its nav_group's tag, else the group's sidebar
+// label, else a plain "Docs" fallback so a new content/docs/*.md page never
+// renders an empty eyebrow.
+func docsPageEyebrow(doc content.Document) string {
+	slug := strings.Trim(strings.TrimSpace(doc.Slug), "/")
+	if tag, ok := docsPageEyebrowBySlug[slug]; ok {
+		return tag
+	}
+	group := strings.TrimSpace(doc.Frontmatter["nav_group"])
+	if tag, ok := docsPageEyebrowByGroup[group]; ok {
+		return tag
+	}
+	if label := docsNavGroupLabel(group); label != "" {
+		return label
+	}
+	return "Docs"
 }
 
 // buildDocsNavGroups reads the loaded docs collection's frontmatter and

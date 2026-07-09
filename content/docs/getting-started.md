@@ -3,6 +3,7 @@ title: Getting Started
 description: Install gotreesitter, parse your first file, and learn to read the syntax tree it gives back.
 nav_group: Introduction
 order: 2
+layout: steps
 ---
 
 This page gets you from zero to a parsed syntax tree, then through the handful of `Node` and
@@ -24,7 +25,7 @@ grammars subpackage.
 
 A complete program: parse a small Go file and print its syntax tree as an S-expression.
 
-```go
+```go title=main.go
 package main
 
 import (
@@ -171,9 +172,10 @@ if entry == nil {
 lang := entry.Language()
 ```
 
-`DetectLanguage` matches exact filenames first (`Dockerfile`, `.bashrc`), then file extensions —
-longest suffix first, so `.blade.php` resolves before `.php` — and returns `nil` when nothing
-matches.
+> [!NOTE] How resolution works
+> `DetectLanguage` matches exact filenames first (`Dockerfile`, `.bashrc`), then file extensions —
+> longest suffix first, so `.blade.php` resolves before `.php` — and returns `nil` when nothing
+> matches.
 
 ## Next steps
 

@@ -33,7 +33,7 @@ func init() {
 					return nil, route.NotFound("no docs page for " + slug)
 				}
 
-				node, err := doc.Render(nil)
+				node, err := doc.Render(docsapp.RenderDesignDoc)
 				if err != nil {
 					return nil, err
 				}

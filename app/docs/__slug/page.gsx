@@ -1,7 +1,7 @@
 package docs
 
 func Page() Node {
-	return <article class="prose">
+	return <section class="page">
 		{data.content}
-	</article>
+	</section>
 }

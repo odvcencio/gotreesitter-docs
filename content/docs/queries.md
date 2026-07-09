@@ -41,7 +41,8 @@ for {
 }
 ```
 
-`gts.NewQuery(source string, lang *gts.Language) (*gts.Query, error)` compiles a query against a specific language, resolving every node type and field name up front — a query written for the wrong grammar fails at compile time (`query: unknown node type "foo"`), not silently at match time. A compiled `*Query` is safe to reuse and to share across goroutines.
+> [!TIP] Compile-time safety
+> `gts.NewQuery(source string, lang *gts.Language) (*gts.Query, error)` compiles a query against a specific language, resolving every node type and field name up front — a query written for the wrong grammar fails at compile time (`query: unknown node type "foo"`), not silently at match time. A compiled `*Query` is safe to reuse and to share across goroutines.
 
 ## The pattern language
 
@@ -164,7 +165,7 @@ Each `QueryMatch` carries `PatternIndex` (which top-level pattern in the source 
 
 The following compiles and runs against `github.com/odvcencio/gotreesitter/grammars`:
 
-```go
+```go title=main.go
 package main
 
 import (

@@ -230,6 +230,26 @@ ul.list li:before{content:"▪";position:absolute;left:4px;top:4px;color:var(--p
 .navitem .nav-anchor{display:flex;align-items:center;gap:10px;width:100%;color:inherit;text-decoration:none;font:inherit}
 .navitem .nav-anchor:hover{color:inherit}
 
+/* Phase B's markdown-driven "Next steps" -> .grid3/.feat cards
+   (app/render_blocks.go renderFeatureCards) wrap each .feat box directly in
+   a real <a href> for full-card click-through, unlike design's own preview
+   (a non-link <div onClick>) — same base-link-color neutralization as the
+   .navitem/.brand rules above. */
+a.feat,
+a.feat:hover{color:inherit;text-decoration:none}
+
+/* Inline code spans from markdown backtick text (app/render_inline.go's
+   `code.mono` — design's own .mono usage is always on a <span> with
+   short, curated text, e.g. the hero's ".scm"). Real prose backtick-quotes
+   full package import paths and long identifiers
+   (`github.com/odvcencio/gotreesitter/grammars`,
+   `CRecoveryCostCompetitionEnabledByDefault`) with no natural break point;
+   unlike .codebody's block-level `<pre>`, an inline `<code>` sitting in
+   normal text flow has no scrollbar to fall back on, so without this it
+   forces page-level horizontal scroll at narrow viewports (confirmed via a
+   390px scrollWidth sweep across all 14 content/docs pages). */
+code.mono{overflow-wrap:anywhere}
+
 .skip-link{position:fixed;top:10px;left:10px;z-index:90;padding:8px 14px;background:var(--yellow);color:var(--ink);border:2px solid var(--ink);border-radius:2px;font:700 12px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.5px;text-decoration:none;transform:translateY(-140%);transition:transform .15s ease}
 .skip-link:focus-visible{transform:translateY(0);outline:none}
 

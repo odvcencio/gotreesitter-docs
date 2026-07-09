@@ -5,8 +5,6 @@ nav_group: Internals
 order: 1
 ---
 
-# Recovery and Correctness
-
 gotreesitter is a pure-Go reimplementation of tree-sitter, not a binding. Nothing
 here calls into C at runtime. That raises an obvious question: how do you know a
 from-scratch parser produces the *same* tree the C runtime would?
@@ -193,8 +191,8 @@ legitimate. A parser burning cycles might be correctly parsing a hard file, or i
 might be thrashing because it already made a wrong decision and cannot recover.
 **Only oracle discipline distinguishes the two.** Every one of these was found by
 comparing to C, not by reading a flame graph. Related wins from the same campaign —
-php going from 8/8 timeouts to 8/8 clean parses at ~1.66× C, rust from ~71.7 s to
-~2.4 s, java from ~5.19 s to ~521 ms on the worst sampled files — trace back to the
+php going from 8/8 timeouts to 8/8 clean parses at \~1.66× C, rust from \~71.7 s to
+\~2.4 s, java from \~5.19 s to \~521 ms on the worst sampled files — trace back to the
 same habit of treating a divergence as a bug until proven otherwise.
 
 ## Honest scope
@@ -210,5 +208,6 @@ identical to C." It is "where a language is elected and on the corpus we test, t
 tree matches C byte-for-byte, including recovery — and the gates make it expensive to
 quietly lose that."
 
-For how the same discipline shows up on the speed axis — and where the honest
-performance asterisks are — see [Performance](/docs/performance).
+> [!CAUTION] Don't read parity and speed as one signal
+> For how the same discipline shows up on the speed axis — and where the honest
+> performance asterisks are — see [Performance](/docs/performance).

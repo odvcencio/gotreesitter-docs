@@ -4,7 +4,11 @@ go 1.26
 
 toolchain go1.26.0
 
-require m31labs.dev/gosx v0.29.3
+require (
+	github.com/odvcencio/gotreesitter v0.20.4
+	github.com/odvcencio/mdpp v0.2.5
+	m31labs.dev/gosx v0.29.3
+)
 
 require (
 	github.com/chromedp/cdproto v0.0.0-20260321001828-e3e3800016bc // indirect
@@ -17,8 +21,6 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/odvcencio/corkscrewdb v0.2.0 // indirect
-	github.com/odvcencio/gotreesitter v0.20.4 // indirect
-	github.com/odvcencio/mdpp v0.2.5 // indirect
 	github.com/odvcencio/turboquant v0.1.3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	golang.org/x/image v0.38.0 // indirect

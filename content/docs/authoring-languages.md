@@ -390,7 +390,7 @@ For the core flow — compile, load, register, parse, forest opt-in, external sc
 Verified against `grammargen/lr.go` and `grammargen/assemble.go`:
 
 - **Runtime state IDs are `uint32`.** `StateID` was widened from `uint16` specifically for large
-  grammars (COBOL generates ~67k states). The only hard cap on state count is `uint32` max
+  grammars (COBOL generates \~67k states). The only hard cap on state count is `uint32` max
   (`lr.go`, "Cap at uint32 max").
 - **The precise external-scanner LR(1) builder has a 20,000-state budget**
   (`preciseStateBudget`, override with `GOT_LR_PRECISE_EXTERNAL_STATE_BUDGET`). Exceeding it — or
