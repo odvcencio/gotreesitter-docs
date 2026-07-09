@@ -4,9 +4,37 @@ import (
 	"strings"
 
 	docsapp "github.com/odvcencio/gotreesitter-docs/app"
+	"m31labs.dev/gosx"
+	"m31labs.dev/gosx/content"
 	"m31labs.dev/gosx/route"
 	"m31labs.dev/gosx/server"
 )
+
+// docsRenderer picks the renderer for one docs/{slug} page. Two slugs carry
+// Phase B2's real client islands (design/PHASE-B-NOTES.md) instead of plain
+// markdown-to-HTML:
+//   - "languages" — Island 2, the 206-language search filter, spliced in
+//     place of the ```langlist block that used to render a static grid.
+//   - "playground" — Island 1, the playground, replacing the "coming soon"
+//     prose entirely.
+//
+// Every other slug renders exactly as before (docsapp.RenderDesignDoc,
+// unchanged). ctx.Runtime() is the per-request server.PageRuntime shared
+// with router.renderPage's automatic head injection (route/route.go), so
+// registering an island here is enough for its bootstrap/manifest scripts
+// to show up in the response with no other wiring.
+func docsRenderer(slug string, ctx *route.RouteContext) content.RendererFunc {
+	switch slug {
+	case "languages":
+		return docsapp.RenderDesignDocWithLangIsland(func(names []string) gosx.Node {
+			return docsapp.BuildLangGridIsland(ctx.Runtime(), names)
+		})
+	case "playground":
+		return docsapp.RenderDesignDocIntroPlus(docsapp.BuildPlaygroundIsland(ctx.Runtime()))
+	default:
+		return docsapp.RenderDesignDoc
+	}
+}
 
 // This directory uses the double-underscore catch-all convention
 // (__slug -> {slug...}) instead of the legacy [...slug] bracket syntax. The
@@ -33,7 +61,7 @@ func init() {
 					return nil, route.NotFound("no docs page for " + slug)
 				}
 
-				node, err := doc.Render(docsapp.RenderDesignDoc)
+				node, err := doc.Render(docsRenderer(slug, ctx))
 				if err != nil {
 					return nil, err
 				}

@@ -27,9 +27,29 @@ import (
 // app/docs/__slug/page.server.go (`doc.Render(docsapp.RenderDesignDoc)`,
 // called from that file via its existing `docsapp` import alias for this
 // package).
-var RenderDesignDoc = content.RendererFunc(renderDesignDoc)
+var RenderDesignDoc = content.RendererFunc(func(doc content.Document) (gosx.Node, error) {
+	return renderDesignDoc(doc, nil)
+})
 
-func renderDesignDoc(doc content.Document) (gosx.Node, error) {
+// RenderDesignDocWithLangIsland is RenderDesignDoc for content/docs/languages.md
+// specifically: it renders exactly like RenderDesignDoc, except the
+// ```langlist fenced block (previously always renderLangGrid's static
+// output) is replaced in place by island(names) — the live 206-language
+// search filter (Island 2, design/PHASE-B-NOTES.md). Everything else in the
+// document — prose before and after the block, headings, tables — renders
+// through the same unchanged renderBlocks pipeline every other doc uses.
+//
+// page.server.go passes docsapp.BuildLangGridIsland (closed over the
+// current request's ctx.Runtime()) as island, so the returned node is
+// already a real, hydration-wired GoSX island — not a second copy of the
+// static grid.
+func RenderDesignDocWithLangIsland(island func(names []string) gosx.Node) content.RendererFunc {
+	return content.RendererFunc(func(doc content.Document) (gosx.Node, error) {
+		return renderDesignDoc(doc, island)
+	})
+}
+
+func renderDesignDoc(doc content.Document, langIsland func(names []string) gosx.Node) (gosx.Node, error) {
 	var children []*mdpp.Node
 	var src []byte
 	if doc.Parsed != nil && doc.Parsed.Root != nil {
@@ -40,19 +60,83 @@ func renderDesignDoc(doc content.Document) (gosx.Node, error) {
 	children = normalizeBlocks(children)
 
 	nodes := make([]gosx.Node, 0, len(children)+4)
+	nodes = append(nodes, renderDocIntro(doc)...)
+
+	switch {
+	case strings.TrimSpace(doc.Frontmatter["layout"]) == "steps":
+		nodes = append(nodes, renderStepsLayout(children, src)...)
+	case langIsland != nil:
+		nodes = append(nodes, renderBlocksWithLangIsland(children, src, langIsland)...)
+	default:
+		nodes = append(nodes, renderBlocks(children, src)...)
+	}
+
+	return gosx.Fragment(nodes...), nil
+}
+
+// RenderDesignDocIntroPlus renders a content/docs/*.md page's standard
+// eyebrow + `.h1` + `.lead` intro (straight from frontmatter, same as
+// RenderDesignDoc) followed by extra in place of the document's markdown
+// body. content/docs/playground.md's body is the pre-Island-1 "coming
+// soon" prose; page.server.go uses this to keep the frontmatter-driven
+// title/eyebrow/lead while replacing that prose with the real playground
+// island.
+func RenderDesignDocIntroPlus(extra gosx.Node) content.RendererFunc {
+	return content.RendererFunc(func(doc content.Document) (gosx.Node, error) {
+		nodes := renderDocIntro(doc)
+		nodes = append(nodes, extra)
+		return gosx.Fragment(nodes...), nil
+	})
+}
+
+// renderDocIntro renders the eyebrow + `.h1` + optional `.lead` every
+// content/docs/*.md page opens with, straight from frontmatter. Shared by
+// renderDesignDoc and the playground page's custom body (page.server.go),
+// which needs the same intro but replaces the prose body with Island 1.
+func renderDocIntro(doc content.Document) []gosx.Node {
+	nodes := make([]gosx.Node, 0, 3)
 	nodes = append(nodes, renderEyebrow(doc))
 	nodes = append(nodes, elWith("h1", gosx.Attrs(gosx.Attr("class", "h1")), gosx.Text(pageTitle(doc))))
 	if lead := pageLead(doc); lead != "" {
 		nodes = append(nodes, elWith("p", gosx.Attrs(gosx.Attr("class", "lead")), gosx.Text(lead)))
 	}
+	return nodes
+}
 
-	if strings.TrimSpace(doc.Frontmatter["layout"]) == "steps" {
-		nodes = append(nodes, renderStepsLayout(children, src)...)
-	} else {
-		nodes = append(nodes, renderBlocks(children, src)...)
+// renderBlocksWithLangIsland is renderBlocks, except the first top-level
+// ```langlist code block (languages.md carries exactly one, not nested in
+// any list/admonition/step — dropLeadingH1/normalizeBlocks never move it)
+// is replaced by langIsland(names) instead of going through
+// renderCodeBlock/renderLangGrid. Blocks before and after it render
+// normally through the ordinary (unmodified) renderBlocks/renderBlock/
+// renderCodeBlock chain, so every other content/docs/*.md page — and the
+// no-hook RenderDesignDoc path — is byte-for-byte unaffected by this
+// function existing.
+func renderBlocksWithLangIsland(children []*mdpp.Node, src []byte, langIsland func(names []string) gosx.Node) []gosx.Node {
+	idx, names, ok := findLangListBlock(children)
+	if !ok {
+		return renderBlocks(children, src)
 	}
+	out := renderBlocks(children[:idx], src)
+	out = append(out, langIsland(names))
+	out = append(out, renderBlocks(children[idx+1:], src)...)
+	return out
+}
 
-	return gosx.Fragment(nodes...), nil
+// findLangListBlock locates the top-level ```langlist fenced code block (see
+// render_blocks.go's renderCodeBlock) and returns its index plus the
+// whitespace-split language names it carries.
+func findLangListBlock(children []*mdpp.Node) (int, []string, bool) {
+	for i, n := range children {
+		if n == nil || n.Type != mdpp.NodeCodeBlock {
+			continue
+		}
+		if strings.ToLower(strings.TrimSpace(n.Attrs["language"])) != "langlist" {
+			continue
+		}
+		return i, strings.Fields(strings.TrimSuffix(n.Literal, "\n")), true
+	}
+	return 0, nil, false
 }
 
 // dropLeadingH1 skips a redundant top-of-body `# Title` heading (two

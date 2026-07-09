@@ -101,6 +101,8 @@ a{color:var(--blue);text-decoration:none;font-weight:600}a:hover{color:var(--vio
 .langgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px;margin:16px 0}
 .langtile{display:flex;align-items:center;gap:9px;background:var(--card);border:2.5px solid var(--ink);border-radius:2px;padding:9px 11px;box-shadow:var(--shs);transition:transform .07s}
 .langtile:hover{transform:translate(-2px,-2px);box-shadow:var(--sh2)}
+.langtile.hidden{display:none}
+.lang-island{display:block}
 .ldot{width:15px;height:15px;flex:none;border:2px solid var(--ink);border-radius:3px}
 .lname{font:600 13.5px 'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lts{margin-left:auto;font:700 9px 'JetBrains Mono',monospace;background:var(--ink);color:var(--paper);padding:2px 5px;border-radius:2px}
