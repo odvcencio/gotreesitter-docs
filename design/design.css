@@ -41,7 +41,7 @@ a{color:var(--blue);text-decoration:none;font-weight:600}a:hover{color:var(--vio
 .mut{color:var(--mut)}
 .underbar{height:6px;width:70px;background:var(--pink);margin:0 0 26px;border:2px solid var(--ink)}
 /* hero */
-.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:36px;align-items:center;margin:6px 0 20px}
+.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:36px;align-items:center;margin:6px 0 20px}
 .heromark{font-size:clamp(40px,6vw,72px);font-weight:700;letter-spacing:-1.6px;line-height:.94;margin:0 0 16px}
 .heromark .s1{color:var(--blue)}.heromark .s2{color:var(--green)}.heromark .s3{color:var(--violet)}
 .herotag{font-size:clamp(16px,1.9vw,20px);max-width:46ch;color:#2a2620;margin:0 0 22px;line-height:1.45}
@@ -206,53 +206,4 @@ ul.list li:before{content:"▪";position:absolute;left:4px;top:4px;color:var(--p
 .archc h4{margin:0 0 5px;font-size:17px;font-weight:700}
 .archc p{margin:0;font-size:13.5px;color:#2a2620;line-height:1.45}
 @media(max-width:1140px){.sidebar{width:210px;padding:18px 11px 40px}.main{padding:30px 28px 80px}.hero{gap:26px}}
-@media(max-width:840px){.hero{grid-template-columns:minmax(0,1fr)}.playgrid{grid-template-columns:1fr}.grid3{grid-template-columns:1fr 1fr}.winrow,.multrow,.arch,.grid2{grid-template-columns:1fr}.sidebar{display:none}.main{padding:22px 18px 60px;max-width:100%}.langgrid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}}
-
-/* =========================================================================
-   GoSX site reconciliation — everything below this line is NOT part of the
-   ported design system above (design/design.css, kept verbatim above this
-   comment). These rules only (a) adapt two design list-item patterns
-   (`.navitem`, `.brand`) to real `<a href>` navigation instead of the
-   design preview's onClick-driven `<li>`/`<div>`, and (b) give the handful
-   of pre-existing GoSX-site pages that Phase A intentionally does not
-   redesign (app/not-found.gsx, app/error.gsx, app/docs/not-found.gsx, and
-   the /labs/* demo routes in main.go) a baseline that stays on the same
-   ink/paper/card/shadow/mono tokens instead of rendering unstyled. Phase B
-   covers the 14 content/docs/*.md pages themselves.
-   ========================================================================= */
-
-/* Sidebar nav items and the topbar brand are real links now (design's
-   preview used onClick on non-link elements); neutralize the base
-   `a{color:var(--blue)}` / `a:hover{color:var(--violet)}` rules so the
-   `.navitem`/`.brand` look from design.css still applies unmodified. */
-.topbar .brand,
-.topbar .brand:hover{color:inherit;text-decoration:none}
-.navitem .nav-anchor{display:flex;align-items:center;gap:10px;width:100%;color:inherit;text-decoration:none;font:inherit}
-.navitem .nav-anchor:hover{color:inherit}
-
-.skip-link{position:fixed;top:10px;left:10px;z-index:90;padding:8px 14px;background:var(--yellow);color:var(--ink);border:2px solid var(--ink);border-radius:2px;font:700 12px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.5px;text-decoration:none;transform:translateY(-140%);transition:transform .15s ease}
-.skip-link:focus-visible{transform:translateY(0);outline:none}
-
-.prose{display:flex;flex-direction:column;gap:18px;max-width:70ch}
-.prose h1{font-size:clamp(33px,4.6vw,56px);line-height:1.05;font-weight:700;letter-spacing:-1.3px;margin:0 0 6px}
-.prose p{font-size:16.5px;margin:0;color:#2a2620}
-.page-topper{display:flex;flex-direction:column;gap:10px;max-width:60ch;margin-bottom:8px}
-.lede{font-size:clamp(17px,1.9vw,21px);max-width:60ch;line-height:1.5;margin:0}
-.inline-code{font-family:'JetBrains Mono',monospace;font-size:.92em;background:var(--card);border:2px solid var(--ink);border-radius:2px;padding:1px 6px}
-.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
-.cta-link{display:inline-flex;align-items:center;font:700 13px 'JetBrains Mono',monospace;padding:10px 16px;background:var(--card);color:var(--ink);border:3px solid var(--ink);border-radius:2px;box-shadow:var(--shs);text-transform:uppercase;letter-spacing:.5px}
-.cta-link:hover{box-shadow:var(--sh2);transform:translate(-1px,-1px);color:var(--ink)}
-.cta-link.primary{background:var(--yellow)}
-.card{border:3px solid var(--ink);border-radius:3px;background:var(--card);padding:16px 18px;box-shadow:var(--shs)}
-.feature-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:20px 0}
-.code-block{background:#17140f;color:#e3ddce;border:3px solid var(--ink);box-shadow:var(--sh);border-radius:3px;padding:16px 18px;margin:18px 0;font:400 13.5px/1.7 'JetBrains Mono',monospace;overflow-x:auto;white-space:pre}
-@media(max-width:840px){.feature-grid{grid-template-columns:1fr}}
-
-/* design.css's .topbar is a nowrap flex row (brand + version badge + status
-   pill + GitHub link) with no narrow-phone treatment of its own — its
-   narrowest explicit breakpoint is 840px, and only for .sidebar/.main/.hero.
-   Below ~640px the four items' combined min-content width exceeds the
-   viewport and forces page-level horizontal scroll. Letting the row wrap
-   is the minimal fix: it doesn't change anything at 840px+ (already
-   verified against the design 1:1) and doesn't hide or restyle content. */
-@media(max-width:640px){.topbar{flex-wrap:wrap;row-gap:8px}}
+@media(max-width:840px){.hero{grid-template-columns:1fr}.playgrid{grid-template-columns:1fr}.grid3{grid-template-columns:1fr 1fr}.winrow,.multrow,.arch,.grid2{grid-template-columns:1fr}.sidebar{display:none}.main{padding:22px 18px 60px;max-width:100%}.langgrid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}}

@@ -1,20 +1,11 @@
 package docs
 
+// Layout is the nested /docs/* layout. The persistent shell (topbar +
+// sidebar + main) lives once in the root app/layout.gsx so it wraps every
+// route, landing page included — design/GoTreeSitter-Docs.html has a single
+// shell for the whole site, not a docs-only one. This nested layout is a
+// pass-through on top of that; /docs/* pages render straight into the
+// root's `.main`.
 func Layout() Node {
-	return <section class="docs-section">
-		<div class="docs-section-head">
-			<span class="eyebrow">Docs Path</span>
-			<div class="docs-section-copy">
-				<h2>
-					Reference pages live inside a nested filesystem layout.
-				</h2>
-				<p class="lede">
-					The
-					<span class="inline-code">/docs</span>
-					subtree now has its own layout and scoped not-found boundary on top of the site shell.
-				</p>
-			</div>
-		</div>
-		<Slot />
-	</section>
+	return <Slot />
 }

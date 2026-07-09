@@ -1,106 +1,82 @@
 package docs
 
+// Layout is the site-wide root layout: it renders the design's persistent
+// shell (design/GoTreeSitter-Docs.html's `.shell` > `.topbar` + `.body`
+// > `.sidebar` + `.main`) around every route, including the landing page
+// ("/") — the design has one shell for the whole site, not a docs-only one,
+// and curl-ing "/" needs to show the topbar and sidebar alongside the hero.
+// app/docs/layout.gsx (the nested /docs/* layout) is a pass-through on top
+// of this.
 func Layout() Node {
-	return <div class="docs-shell">
+	return <div class="shell">
 		<a href="#docs-main" class="skip-link">Skip to content</a>
-		<header class="mobile-bar">
-			<div class="mobile-bar-head">
-				<div class="mobile-branding">
-					<span class="mobile-kicker">GoTreeSitter Docs</span>
-					<a href="/" data-gosx-link class="brand">GoTreeSitter</a>
-				</div>
-				<details class="route-drawer">
-					<summary class="route-drawer-summary">
-						<span class="route-drawer-backdrop" aria-hidden="true"></span>
-						<span class="route-drawer-toggle">
-							<span class="route-drawer-toggle-kicker">Routes</span>
-							<span class="route-drawer-toggle-copy route-drawer-toggle-copy-open">Browse sections</span>
-							<span class="route-drawer-toggle-copy route-drawer-toggle-copy-close">Close</span>
-						</span>
-					</summary>
-					<div class="route-drawer-panel">
-						<div class="brand-lockup route-drawer-lockup">
-							<span class="eyebrow">GoTreeSitter Docs</span>
-							<a href="/" data-gosx-link class="brand">GoTreeSitter</a>
-							<p class="brand-copy">
-								A pure-Go, byte-exact reimplementation of tree-sitter: incremental parsing, queries, and 206 grammars, with no CGo.
-							</p>
-						</div>
-						<nav class="doc-nav">
-							<DocsNavigation></DocsNavigation>
-						</nav>
-						<DocsShortcuts></DocsShortcuts>
-					</div>
-				</details>
-			</div>
+		<header class="topbar">
+			<a href="/" data-gosx-link class="brand">
+				<span class="blk"><i></i><i></i><i></i><i></i></span>
+				gotreesitter
+			</a>
+			<span class="ver mono">v0.22.0</span>
+			<span class="tspacer"></span>
+			<span class="status"><i></i>v0.22.0 · C-faithful recovery</span>
+			<a class="ghlink" href="https://github.com/odvcencio/gotreesitter" target="_blank">GitHub ↗</a>
 		</header>
-		<aside class="sidebar">
-			<div class="sidebar-frame">
-				<div class="brand-lockup">
-					<span class="eyebrow">GoTreeSitter Docs</span>
-					<a href="/" data-gosx-link class="brand">GoTreeSitter</a>
-					<p class="brand-copy">
-						A pure-Go, byte-exact reimplementation of tree-sitter: incremental parsing, queries, and 206 grammars, with no CGo.
-					</p>
-				</div>
-				<nav class="doc-nav">
-					<DocsNavigation></DocsNavigation>
-				</nav>
-				<DocsShortcuts></DocsShortcuts>
-			</div>
-		</aside>
-		<main class="main" id="docs-main">
-			<Slot />
-			<footer class="page-footer">
-				GoTreeSitter docs: parsing, incremental re-parse, queries, language grammars, and the internals that keep output byte-exact with C tree-sitter.
-			</footer>
-		</main>
+		<div class="body">
+			<aside class="sidebar">
+				<DocsNavigation></DocsNavigation>
+			</aside>
+			<main class="main" id="docs-main">
+				<Slot />
+			</main>
+		</div>
 	</div>
 }
 
+// DocsNavLink renders one sidebar `<li class="navitem">` entry, matching
+// design.css's `.navitem`/`.ndot` look but with a real `<a href>` (the
+// design's preview used a non-link `<li onClick=...>`, since it's a
+// single-file SPA-style component preview; this site is file-routed).
 func DocsNavLink(props any) Node {
 	return <>
 		<If when={props.Active}>
-			<a href={props.Href} data-gosx-link class="nav-link active">{props.Label}</a>
+			<li class="navitem on">
+				<a href={props.Href} data-gosx-link class="nav-anchor">
+					<span class={"ndot " + props.Color}></span>
+					{props.Label}
+				</a>
+			</li>
 		</If>
 		<If when={props.Active == false}>
-			<a href={props.Href} data-gosx-link class="nav-link">{props.Label}</a>
+			<li class="navitem">
+				<a href={props.Href} data-gosx-link class="nav-anchor">
+					<span class={"ndot " + props.Color}></span>
+					{props.Label}
+				</a>
+			</li>
 		</If>
 	</>
 }
 
-// DocsNavigation renders the grouped sidebar nav from navGroups, which is
-// bound into the render environment per-request by the app/layout.gsx file
-// module (see app/layout.server.go). navGroups is built from the loaded
-// content/docs collection's frontmatter (nav_group, order) — it is not
-// hand-maintained here, so a new content/docs/*.md file appears
-// automatically once it carries a recognized nav_group.
+// DocsNavigation renders the 5 grouped sidebar sections (`.navsec` +
+// `.navlist`) from navGroups, which is bound into the render environment
+// per-request by the app/layout.gsx file module (see app/layout.server.go).
+// navGroups is built from the loaded content/docs collection's frontmatter
+// (nav_group, order) in app/docs_nav.go — it is not hand-maintained here,
+// so a new content/docs/*.md file appears automatically once it carries a
+// recognized nav_group.
 func DocsNavigation() Node {
 	return <>
 		<Each as="group" of={navGroups}>
-			<div class="nav-group">
-				<span class="nav-group-title">{group.name}</span>
-				<div class="nav-group-links">
-					<Each as="item" of={group.items}>
-						<DocsNavLink
-							href={"/docs/" + item.slug}
-							label={item.label}
-							active={request.path == "/docs/" + item.slug}
-						></DocsNavLink>
-					</Each>
-				</div>
-			</div>
+			<div class="navsec">{group.name}</div>
+			<ul class="navlist">
+				<Each as="item" of={group.items}>
+					<DocsNavLink
+						href={"/docs/" + item.slug}
+						label={item.label}
+						color={item.color}
+						active={request.path == "/docs/" + item.slug}
+					></DocsNavLink>
+				</Each>
+			</ul>
 		</Each>
 	</>
-}
-
-func DocsShortcuts() Node {
-	return <div class="sidebar-foot">
-		<span class="foot-label">Start here</span>
-		<div class="shortcut-grid">
-			<a href="/docs/introduction" data-gosx-link class="chip">Introduction</a>
-			<a href="/docs/getting-started" data-gosx-link class="chip">Getting started</a>
-			<a href="/docs/queries" data-gosx-link class="chip">Queries</a>
-		</div>
-	</div>
 }

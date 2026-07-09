@@ -66,6 +66,15 @@ func main() {
 
 	router := route.NewRouter()
 	router.SetLayout(func(ctx *route.RouteContext, body gosx.Node) gosx.Node {
+		// Space Grotesk + JetBrains Mono, per design/GoTreeSitter-Docs.html's
+		// <helmet> — the neo-brutalist system's two typefaces. This is the
+		// site's actual head (app/layout.gsx only renders the body shell), so
+		// the fonts are wired in here rather than in the .gsx layout.
+		ctx.AddHead(
+			gosx.El("link", gosx.Attrs(gosx.Attr("rel", "preconnect"), gosx.Attr("href", "https://fonts.googleapis.com"))),
+			gosx.El("link", gosx.Attrs(gosx.Attr("rel", "preconnect"), gosx.Attr("href", "https://fonts.gstatic.com"), gosx.BoolAttr("crossorigin"))),
+			server.Stylesheet("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap"),
+		)
 		ctx.AddHead(server.Stylesheet(docsapp.PublicAssetURL("docs.css")))
 		ctx.AddHead(server.NavigationScript())
 		return server.HTMLDocument(ctx.Title("GoTreeSitter Docs"), ctx.Head(), body)
