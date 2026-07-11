@@ -15,9 +15,9 @@ func Layout() Node {
 				<span class="blk"><i></i><i></i><i></i><i></i></span>
 				gotreesitter
 			</a>
-			<span class="ver mono">v0.22.0</span>
+			<span class="ver mono">v0.23.1</span>
 			<span class="tspacer"></span>
-			<span class="status"><i></i>v0.22.0 · C-faithful recovery</span>
+			<span class="status"><i></i>v0.23.1 · 206/206 structural parity</span>
 			<a class="ghlink" href="https://github.com/odvcencio/gotreesitter" target="_blank">GitHub ↗</a>
 		</header>
 		<div class="body">

@@ -45,6 +45,8 @@ for any target Go supports.
 
 - **206 embedded grammars** — no separate install step, no fetching `.so` or `.wasm` files at
   runtime.
+- **206/206 curated structural parity** against the pinned C oracle, with no
+  known-degraded structural skips as of v0.23.0.
 - **A single static binary.** `go build` is the whole pipeline; there's no C toolchain to
   provision in CI or on a teammate's machine.
 - **Byte-exact syntax trees**, verified against the C runtime where checked.
@@ -69,9 +71,11 @@ production.
   and it's tracked rather than hidden.
 - **A handful of very large, generated files** — the asm.js-class extreme of a JS/TS corpus, for
   instance — can still hit the default memory budget.
-- **The ≤2× C-full-parse-median target is verified for the highest-value coding languages** after
-  a dedicated performance campaign. Extending that guarantee across the full 206-grammar set is in
-  progress, not finished.
+- **The full-parse ratchet covers 203/206 grammars**, but coverage is not the same
+  as near-C speed: several measured rows remain over the ≤2× target, while D and F#
+  remain explicit held-outs and Groovy uses a named scoped basis.
+- **The JavaScript Poppler-scale memory cliff remains open.** It is recorded in the
+  Wave 3 ledger rather than being presented as a green performance measurement.
 
 The discipline behind these claims is the same one that finds them: compile C tree-sitter v0.25.0
 with printf instrumentation, replay the Go parser's decisions against it one at a time, and fix

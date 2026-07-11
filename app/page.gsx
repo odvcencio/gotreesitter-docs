@@ -82,7 +82,7 @@ fmt.<span class="tk-fn">Println</span>(tree.<span class="tk-fn">RootNode</span>(
 				<p>
 					Useful results even with syntax errors. The generalized GLR core reproduces
 					C's recovery <i>decision-for-decision</i>, verified against a v0.25.0 oracle for
-					123 grammars.
+					about 124 elected grammars.
 				</p>
 				<span class="pillref">tree-sitter → "robust enough to provide useful results with errors"</span>
 			</div>
@@ -146,8 +146,8 @@ fmt.<span class="tk-fn">Println</span>(tree.<span class="tk-fn">RootNode</span>(
 		<h2 class="h2">206 grammars, embedded</h2>
 		<div class="underbar"></div>
 		<p class="p">
-			All 206 produce error-free parse trees on smoke samples. 116 have hand-written Go
-			external scanners; 7 use hand-written Go token sources.
+			All 206 pass the curated C-oracle structural matrix, with no known-degraded
+			skips. 116 have hand-written Go external scanners; 7 use hand-written Go token sources.
 			<a href="/docs/languages" data-gosx-link>Browse the full registry →</a>
 		</p>
 		<div class="langteaser">
@@ -158,7 +158,7 @@ fmt.<span class="tk-fn">Println</span>(tree.<span class="tk-fn">RootNode</span>(
 
 		<div class="foot">
 			<span>gotreesitter · pure-Go tree-sitter runtime · MIT</span>
-			<span>v0.22.0 — 2026-07-08</span>
+			<span>v0.23.1 — 2026-07-10</span>
 		</div>
 	</section>
 }

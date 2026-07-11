@@ -150,10 +150,11 @@ Parity is not a one-time achievement; it is a ratchet. The cgo parity suites
 (`TestParityFreshParse`, `TestParityIncrementalParse`, `TestParityHasNoErrors`, the
 GLR canary and cap-pressure suites) run the node-exact comparison against the C
 oracle in CI. A coverage-ratchet test locks the gate so it can only tighten: the
-curated structural set must stay at **206 languages**, the known-degraded structural
-list may not grow past **14**, highlight coverage stays at 200 with its own
-degraded ceiling, and the count of tolerated parity skips is pinned at **zero**.
-Loosening any of those numbers requires editing the ratchet on purpose, in the open.
+curated structural set must stay at **206 languages**, all **206 must pass**, the
+known-degraded structural list is pinned at **zero**, highlight coverage stays at
+200 with its own degraded ceiling, and the count of tolerated parity skips is pinned
+at **zero**. Loosening any of those numbers requires editing the ratchet on purpose,
+in the open.
 
 A separate tier model scores every grammar on real-corpus files, with a hard rule
 stated in the tooling: **parity versus the C oracle is the gate; performance is only

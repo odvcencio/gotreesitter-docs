@@ -29,7 +29,7 @@ var landingFeatures = []map[string]any{
 	{"tok": "206", "ttl": "206 grammars in the box", "body": "Extracted from upstream parser.c by ts2go, compressed to blobs, lazy-loaded with an LRU cache.", "color": "c-violet"},
 	{"tok": "1.5", "ttl": "Beats C on full parse", "body": "1.54 ms vs native C's 1.76 ms on the 500-function Go workload — ~1.15× faster.", "color": "c-green"},
 	{"tok": "ns", "ttl": "Nanosecond incrementals", "body": "No-edit reparse is a pointer check: ~2.43 ns, 0 allocations. Single-byte edits ~649 ns.", "color": "c-orange"},
-	{"tok": "GLR", "ttl": "C-faithful GLR recovery", "body": "Generalized GLR core reproduces C tree-sitter's recovery decisions for 123 elected grammars.", "color": "c-red"},
+	{"tok": "GLR", "ttl": "C-faithful GLR recovery", "body": "Generalized GLR core reproduces C tree-sitter's recovery decisions for about 124 elected grammars.", "color": "c-red"},
 	{"tok": "U16", "ttl": "Native UTF-16 for editors", "body": "Parse UTF-16 code units or endian byte buffers; nodes, edits & queries map back to UTF-16 offsets.", "color": "c-pink"},
 	{"tok": "gen", "ttl": "Typed query codegen", "body": "tsquery turns .scm files into type-safe Go structs — one per pattern, fully typed captures.", "color": "c-yellow"},
 	{"tok": "{ }", "ttl": "Injection parsing", "body": "Parse HTML+JS+CSS, Markdown fences, Vue/Svelte templates. Static & dynamic, recursive, incremental.", "color": "c-violet"},
