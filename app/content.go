@@ -2,6 +2,7 @@ package docs
 
 import (
 	"log"
+	"path/filepath"
 	"runtime"
 
 	"m31labs.dev/gosx/content"
@@ -16,7 +17,10 @@ var docsLibrary = mustLoadDocsLibrary()
 
 func mustLoadDocsLibrary() content.Library {
 	_, thisFile, _, _ := runtime.Caller(0)
-	root := server.ResolveAppRoot(thisFile)
+	// This package lives one directory below the application root. Give
+	// ResolveAppRoot a synthetic root-level caller so package tests do not
+	// resolve `app/` itself as the fallback root before main initializes.
+	root := server.ResolveAppRoot(filepath.Join(filepath.Dir(thisFile), "..", "main.go"))
 
 	library, err := content.LoadWithOptions(root, content.LoadOptions{
 		RenderOptions: content.MDPPOptions{

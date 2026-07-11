@@ -5,9 +5,9 @@ go 1.26
 toolchain go1.26.0
 
 require (
-	github.com/odvcencio/gotreesitter v0.20.4
+	github.com/odvcencio/gotreesitter v0.23.0
 	github.com/odvcencio/mdpp v0.2.5
-	m31labs.dev/gosx v0.29.3
+	m31labs.dev/gosx v0.29.4
 )
 
 require (
@@ -38,5 +38,3 @@ require (
 	m31labs.dev/selena v0.3.2 // indirect
 	m31labs.dev/turboquant v0.2.0 // indirect
 )
-
-replace m31labs.dev/gosx => /home/draco/go/pkg/mod/m31labs.dev/gosx@v0.29.3
