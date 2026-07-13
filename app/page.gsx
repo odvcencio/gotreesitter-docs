@@ -158,7 +158,7 @@ fmt.<span class="tk-fn">Println</span>(tree.<span class="tk-fn">RootNode</span>(
 
 		<div class="foot">
 			<span>gotreesitter · pure-Go tree-sitter runtime · MIT</span>
-			<span>v0.23.1 — 2026-07-10</span>
+			<span>{gtsVersion}</span>
 		</div>
 	</section>
 }

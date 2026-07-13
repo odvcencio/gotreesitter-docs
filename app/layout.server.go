@@ -15,7 +15,8 @@ func init() {
 		Bindings: func(ctx *route.RouteContext, page route.FilePage, data any) route.FileTemplateBindings {
 			return route.FileTemplateBindings{
 				Values: map[string]any{
-					"navGroups": buildDocsNavGroups(),
+					"navGroups":  buildDocsNavGroups(),
+					"gtsVersion": PlaygroundGTSVersion(),
 				},
 			}
 		},

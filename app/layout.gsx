@@ -15,9 +15,10 @@ func Layout() Node {
 				<span class="blk"><i></i><i></i><i></i><i></i></span>
 				gotreesitter
 			</a>
-			<span class="ver mono">v0.23.1</span>
+			<span class="ver mono">{gtsVersion}</span>
 			<span class="tspacer"></span>
-			<span class="status"><i></i>v0.23.1 · 206/206 structural parity</span>
+			<span class="status"><i></i>{gtsVersion} · 206/206 structural parity</span>
+			<a class="ghlink" href="/playground">Playground</a>
 			<a class="ghlink" href="https://github.com/odvcencio/gotreesitter" target="_blank">GitHub ↗</a>
 		</header>
 		<div class="body">

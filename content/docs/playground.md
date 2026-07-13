@@ -1,13 +1,13 @@
 ---
 title: Playground
-description: A live, in-browser syntax-tree explorer running gotreesitter's actual production parser via WASM — coming soon.
+description: A live, in-browser syntax-tree explorer running gotreesitter's actual production parser via WASM — with automatic language detection.
 nav_group: Project
 order: 1
 ---
 
-The playground will be a live, in-browser syntax-tree explorer: pick a language, type or paste
-code, and watch the tree gotreesitter builds update as you type. No install, and — in the target
-design — no server round trip for the parse itself.
+[The playground](/playground) is a live, in-browser syntax-tree explorer: pick a language — or
+just start typing and let it detect one — and watch the tree gotreesitter builds update as you
+type. No install, and no server round trip for the parse itself.
 
 That last part is the distinctive bit. gotreesitter is pure Go: no CGo, no C toolchain, nothing to
 cross-compile separately per target. The same `go build` that produces a native binary already
@@ -20,21 +20,20 @@ playground, which compiles the C runtime and each grammar's C parser to WASM via
 separate, heavier build step that produces one `.wasm` artifact per grammar. gotreesitter's parser
 and its 206 grammars are just Go code and data, so one build targets all of them at once.
 
-## What already exists
+## How it works
 
-This isn't just a plan — the groundwork is in the repository today. `wasm/runtime/main.go` is a
-`GOOS=js GOARCH=wasm` build that exposes `parse`, `highlight`, and `loadBlob` as JavaScript globals
-via `syscall/js`, and `wasm/loader.js` is a small loader that fetches and instantiates the compiled
-module in a browser tab. A second entry point, `wasm/grammargen/main.go`, does the same for
-importing a `grammar.json` and generating a parser on the fly, entirely client-side. Together
-they're a working proof that the approach compiles and runs — what's missing is the actual site
-around it: an editor pane, a language picker across the 206 embedded grammars, and a tree view wired
-up to that bridge.
+The page ships the engine-only runtime — the parser, the GLR core, recovery, the query engine,
+and the highlighter, built with `GOOS=js GOARCH=wasm` — as a single WASM module (about 3.6 MB
+compressed). Grammars are not baked in: picking a language fetches that language's compiled
+grammar blob on demand (2 KB for JSON, ~40 KB for JavaScript, ~120 KB for TypeScript) and hands
+it to the runtime's `loadBlob`. After that, every keystroke parses locally in your tab; the
+status readout shows the real parse time.
 
-## Coming soon
+Language auto-detection is the parser doing double duty. Obvious signals (a shebang,
+`package main`, `#include`) switch instantly, client-side. For everything else, a debounced
+request races your snippet against a shortlist of grammars server-side — all 206 live in one
+process, so the race is just parse-and-count-error-nodes — and the cleanest tree wins. Picking
+a language manually always overrides detection.
 
-The interactive playground itself — the page you'd click into and start typing — isn't built yet.
-This page will turn into that experience in a later pass. Until then, the fastest way to see a real
-syntax tree is still the Go side: [Getting Started](/docs/getting-started) has a short program that
-parses a file and prints its tree, and [Introduction](/docs/introduction) covers what gotreesitter
-checks that tree against.
+[Open the playground](/playground), or read [Architecture](/docs/architecture) for what that
+engine is actually doing under your keystrokes.

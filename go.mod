@@ -5,7 +5,7 @@ go 1.26
 toolchain go1.26.0
 
 require (
-	github.com/odvcencio/gotreesitter v0.23.1
+	github.com/odvcencio/gotreesitter v0.30.0
 	github.com/odvcencio/mdpp v0.2.5
 	m31labs.dev/gosx v0.29.4
 )

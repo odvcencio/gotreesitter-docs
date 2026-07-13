@@ -4,4 +4,5 @@ package modules
 import (
 	_ "github.com/odvcencio/gotreesitter-docs/app"
 	_ "github.com/odvcencio/gotreesitter-docs/app/docs/__slug"
+	_ "github.com/odvcencio/gotreesitter-docs/app/playground"
 )

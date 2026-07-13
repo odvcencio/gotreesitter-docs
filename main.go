@@ -31,6 +31,7 @@ type navItem struct {
 
 var navItems = []navItem{
 	{href: "/", label: "Overview"},
+	{href: "/playground", label: "Playground"},
 	{href: "/docs/introduction", label: "Introduction"},
 	{href: "/docs/getting-started", label: "Getting Started"},
 	{href: "/labs/stream", label: "Streaming"},
@@ -164,7 +165,20 @@ func main() {
 	app.EnableNavigation()
 	app.Use(sessions.Middleware)
 	app.Use(authn.Middleware)
-	app.Use(sessions.Protect)
+	// CSRF-protect everything except POST /playground/detect: that endpoint
+	// is a stateless, side-effect-free compute call (a bounded parse-race
+	// over the request body, app/playground_api.go) — there is no session
+	// state to ride, and it is meant to be plain-curl-able.
+	app.Use(func(next http.Handler) http.Handler {
+		protected := sessions.Protect(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodPost && r.URL.Path == "/playground/detect" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			protected.ServeHTTP(w, r)
+		})
+	})
 	app.SetPublicDir(filepath.Join(root, "public"))
 	// A `gosx build` run stages the real WASM runtime + bootstrap JS the
 	// islands need to hydrate into dist/ (build.json + assets/runtime/*);
@@ -179,6 +193,14 @@ func main() {
 	mountIslandProgram(app, docsapp.LangSearchProgramPath, docsapp.LangSearchProgram())
 	mountIslandProgram(app, docsapp.PlaygroundProgramPath, docsapp.PlaygroundProgram())
 	app.Redirect("GET /docs", "/docs/introduction", http.StatusTemporaryRedirect)
+	// Live playground data plane (app/playground_api.go). The page itself is
+	// file-routed (app/playground/page.gsx); its WASM runtime + client assets
+	// are static files under public/playground/, staged by
+	// scripts/build-playground-wasm.sh. The {name} wildcard carries the .json
+	// suffix ("go.json") because ServeMux wildcards must span a full segment.
+	app.API("GET /playground/langs.json", docsapp.PlaygroundLangsHandler)
+	app.API("GET /playground/lang/{name}", docsapp.PlaygroundLangHandler)
+	app.API("POST /playground/detect", docsapp.PlaygroundDetectHandler)
 	app.API("GET /api/meta", func(ctx *server.Context) (any, error) {
 		ctx.Cache(server.CachePolicy{
 			Public:               true,
