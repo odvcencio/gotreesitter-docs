@@ -69,6 +69,7 @@
 		showAnon: false,
 		queryOpen: true,
 		visibleRows: [], // node objects, index-aligned with rendered rows
+		treeFocusIndex: 0,
 		activeRowEl: null,
 		lastElapsed: null,
 		lastDot: "ok",
@@ -187,7 +188,9 @@
 
 	async function boot() {
 		setLoading("fetching language index…");
-		const langsPromise = fetch("/playground/langs.json").then((r) => {
+		const langsPromise = fetch(
+			"/playground/langs.json?v=" + encodeURIComponent(state.version)
+		).then((r) => {
 			if (!r.ok) throw new Error("langs.json failed: HTTP " + r.status);
 			return r.json();
 		});
@@ -399,6 +402,10 @@
 						row.dataset.i = String(state.visibleRows.length);
 						row.dataset.s16 = String(n.start16);
 						row.dataset.e16 = String(n.end16);
+						row.setAttribute("role", "treeitem");
+						row.setAttribute("aria-level", String(depth + 1));
+						row.setAttribute("aria-selected", "false");
+						row.tabIndex = -1;
 						if (n.field) {
 							const field = document.createElement("span");
 							field.className = "tfield";
@@ -435,6 +442,12 @@
 				note.textContent = "⚠ tree truncated at 20,000 nodes";
 				frag.appendChild(note);
 			}
+		}
+		if (state.visibleRows.length) {
+			state.treeFocusIndex = Math.min(state.treeFocusIndex, state.visibleRows.length - 1);
+			state.visibleRows[state.treeFocusIndex]._el.tabIndex = 0;
+		} else {
+			state.treeFocusIndex = 0;
 		}
 		const scrollTop = ui.tree.scrollTop;
 		ui.tree.replaceChildren(frag);
@@ -475,20 +488,37 @@
 		return best;
 	}
 
+	function scrollTreeRowIntoView(row) {
+		const cr = ui.tree.getBoundingClientRect();
+		const rr = row.getBoundingClientRect();
+		if (rr.top < cr.top) ui.tree.scrollTop += rr.top - cr.top - 36;
+		else if (rr.bottom > cr.bottom) ui.tree.scrollTop += rr.bottom - cr.bottom + 36;
+	}
+
+	function setTreeFocusIndex(index, focus) {
+		if (!state.visibleRows.length) return;
+		const next = Math.max(0, Math.min(index, state.visibleRows.length - 1));
+		const current = ui.tree.querySelector('.pg-tline[tabindex="0"]');
+		if (current) current.tabIndex = -1;
+		state.treeFocusIndex = next;
+		const row = state.visibleRows[next]._el;
+		if (!row) return;
+		row.tabIndex = 0;
+		if (focus) row.focus({ preventScroll: true });
+		scrollTreeRowIntoView(row);
+	}
+
 	function highlightTreeNode(node) {
 		if (state.activeRowEl) {
 			state.activeRowEl.classList.remove("pg-active");
+			state.activeRowEl.setAttribute("aria-selected", "false");
 			state.activeRowEl = null;
 		}
 		if (!node || !node._el) return;
 		node._el.classList.add("pg-active");
+		node._el.setAttribute("aria-selected", "true");
 		state.activeRowEl = node._el;
-		// Scroll the row into view inside the tree pane only (scrollIntoView
-		// could also yank the page).
-		const cr = ui.tree.getBoundingClientRect();
-		const rr = node._el.getBoundingClientRect();
-		if (rr.top < cr.top) ui.tree.scrollTop += rr.top - cr.top - 36;
-		else if (rr.bottom > cr.bottom) ui.tree.scrollTop += rr.bottom - cr.bottom + 36;
+		scrollTreeRowIntoView(node._el);
 	}
 
 	// selectNodeInEditor: tree row click → textarea selection (UTF-16 span),
@@ -507,6 +537,13 @@
 		ui.src.scrollLeft = Math.max(0, col * 8.1 - ui.src.clientWidth * 0.3);
 		syncScroll();
 		flashSpan(node.start, node.end);
+	}
+
+	function activateTreeRow(index) {
+		const node = state.visibleRows[index];
+		if (!node) return;
+		selectNodeInEditor(node);
+		highlightTreeNode(node);
 	}
 
 	// ---- query pane -------------------------------------------------------
@@ -863,10 +900,44 @@
 	ui.tree.addEventListener("click", (e) => {
 		const row = e.target.closest(".pg-tline[data-i]");
 		if (!row) return;
-		const node = state.visibleRows[parseInt(row.dataset.i, 10)];
-		if (!node) return;
-		selectNodeInEditor(node);
-		highlightTreeNode(node);
+		const index = parseInt(row.dataset.i, 10);
+		setTreeFocusIndex(index, true);
+		activateTreeRow(index);
+	});
+
+	ui.tree.addEventListener("focusin", (e) => {
+		const row = e.target.closest(".pg-tline[data-i]");
+		if (!row) return;
+		setTreeFocusIndex(parseInt(row.dataset.i, 10), false);
+	});
+
+	ui.tree.addEventListener("keydown", (e) => {
+		const row = e.target.closest(".pg-tline[data-i]");
+		if (!row) return;
+		const index = parseInt(row.dataset.i, 10);
+		switch (e.key) {
+			case "ArrowDown":
+				e.preventDefault();
+				setTreeFocusIndex(index + 1, true);
+				break;
+			case "ArrowUp":
+				e.preventDefault();
+				setTreeFocusIndex(index - 1, true);
+				break;
+			case "Home":
+				e.preventDefault();
+				setTreeFocusIndex(0, true);
+				break;
+			case "End":
+				e.preventDefault();
+				setTreeFocusIndex(state.visibleRows.length - 1, true);
+				break;
+			case "Enter":
+			case " ":
+				e.preventDefault();
+				activateTreeRow(index);
+				break;
+		}
 	});
 
 	ui.anon.addEventListener("change", () => {

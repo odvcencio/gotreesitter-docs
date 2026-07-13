@@ -1,7 +1,7 @@
 package docs
 
-// Layout is the site-wide root layout: it renders the design's persistent
-// shell (design/GoTreeSitter-Docs.html's `.shell` > `.topbar` + `.body`
+// Layout is the site-wide root layout: it renders the persistent
+// `.shell` > `.topbar` + `.body`
 // > `.sidebar` + `.main`) around every route, including the landing page
 // ("/") — the design has one shell for the whole site, not a docs-only one,
 // and curl-ing "/" needs to show the topbar and sidebar alongside the hero.
@@ -11,36 +11,52 @@ func Layout() Node {
 	return <div class="shell">
 		<a href="#docs-main" class="skip-link">Skip to content</a>
 		<header class="topbar">
-			<a href="/" data-gosx-link class="brand">
-				<span class="blk"><i></i><i></i><i></i><i></i></span>
+			<a href="/" class="brand">
+				<span class="blk">
+					<i></i>
+					<i></i>
+					<i></i>
+					<i></i>
+				</span>
 				gotreesitter
 			</a>
 			<span class="ver mono">{gtsVersion}</span>
 			<span class="tspacer"></span>
-			<span class="status"><i></i>{gtsVersion} · 206/206 structural parity</span>
+			<span class="status">
+				<i></i>
+				{gtsVersion}
+				· 206/206 curated parity
+			</span>
 			<a class="ghlink" href="/playground">Playground</a>
-			<a class="ghlink" href="https://github.com/odvcencio/gotreesitter" target="_blank">GitHub ↗</a>
+			<a
+				class="ghlink"
+				href="https://github.com/odvcencio/gotreesitter"
+				target="_blank"
+				rel="noopener noreferrer"
+			>GitHub ↗</a>
 		</header>
 		<div class="body">
 			<aside class="sidebar">
 				<DocsNavigation></DocsNavigation>
 			</aside>
 			<main class="main" id="docs-main">
+				<details class="mobile-nav">
+					<summary>Browse documentation</summary>
+					<DocsNavigation></DocsNavigation>
+				</details>
 				<Slot />
 			</main>
 		</div>
 	</div>
 }
 
-// DocsNavLink renders one sidebar `<li class="navitem">` entry, matching
-// design.css's `.navitem`/`.ndot` look but with a real `<a href>` (the
-// design's preview used a non-link `<li onClick=...>`, since it's a
-// single-file SPA-style component preview; this site is file-routed).
+// DocsNavLink renders one sidebar `<li class="navitem">` entry using the
+// public/docs.css `.navitem`/`.ndot` contract and a real file-route link.
 func DocsNavLink(props any) Node {
 	return <>
 		<If when={props.Active}>
 			<li class="navitem on">
-				<a href={props.Href} data-gosx-link class="nav-anchor">
+				<a href={props.Href} class="nav-anchor" aria-current="page">
 					<span class={"ndot " + props.Color}></span>
 					{props.Label}
 				</a>
@@ -48,7 +64,7 @@ func DocsNavLink(props any) Node {
 		</If>
 		<If when={props.Active == false}>
 			<li class="navitem">
-				<a href={props.Href} data-gosx-link class="nav-anchor">
+				<a href={props.Href} class="nav-anchor">
 					<span class={"ndot " + props.Color}></span>
 					{props.Label}
 				</a>
@@ -65,7 +81,7 @@ func DocsNavLink(props any) Node {
 // so a new content/docs/*.md file appears automatically once it carries a
 // recognized nav_group.
 func DocsNavigation() Node {
-	return <>
+	return <nav class="docs-nav" aria-label="Documentation">
 		<Each as="group" of={navGroups}>
 			<div class="navsec">{group.name}</div>
 			<ul class="navlist">
@@ -79,5 +95,5 @@ func DocsNavigation() Node {
 				</Each>
 			</ul>
 		</Each>
-	</>
+	</nav>
 }

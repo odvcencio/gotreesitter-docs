@@ -1,9 +1,8 @@
 // Package docs (this file's declared package; import path
 // github.com/odvcencio/gotreesitter-docs/app — see content.go/docs_nav.go
 // for the rest of this pipeline) is Phase B of the neo-brutalist design
-// pass: it renders content/docs/*.md through the design's own components
-// (design/GoTreeSitter-Docs.html, design/design.css) instead of the plain
-// `<article class="prose">` Phase A shipped.
+// pass: it renders content/docs/*.md through the current components and
+// public/docs.css design system instead of a plain `<article class="prose">`.
 //
 // RenderDesignDoc replaces the content.Library's default MDPP-to-HTML
 // renderer with a hand-written one that walks the mdpp AST (doc.Parsed)
@@ -35,7 +34,7 @@ var RenderDesignDoc = content.RendererFunc(func(doc content.Document) (gosx.Node
 // specifically: it renders exactly like RenderDesignDoc, except the
 // ```langlist fenced block (previously always renderLangGrid's static
 // output) is replaced in place by island(names) — the live 206-language
-// search filter (Island 2, design/PHASE-B-NOTES.md). Everything else in the
+// search filter island. Everything else in the
 // document — prose before and after the block, headings, tables — renders
 // through the same unchanged renderBlocks pipeline every other doc uses.
 //
@@ -74,25 +73,8 @@ func renderDesignDoc(doc content.Document, langIsland func(names []string) gosx.
 	return gosx.Fragment(nodes...), nil
 }
 
-// RenderDesignDocIntroPlus renders a content/docs/*.md page's standard
-// eyebrow + `.h1` + `.lead` intro (straight from frontmatter, same as
-// RenderDesignDoc) followed by extra in place of the document's markdown
-// body. content/docs/playground.md's body is the pre-Island-1 "coming
-// soon" prose; page.server.go uses this to keep the frontmatter-driven
-// title/eyebrow/lead while replacing that prose with the real playground
-// island.
-func RenderDesignDocIntroPlus(extra gosx.Node) content.RendererFunc {
-	return content.RendererFunc(func(doc content.Document) (gosx.Node, error) {
-		nodes := renderDocIntro(doc)
-		nodes = append(nodes, extra)
-		return gosx.Fragment(nodes...), nil
-	})
-}
-
 // renderDocIntro renders the eyebrow + `.h1` + optional `.lead` every
-// content/docs/*.md page opens with, straight from frontmatter. Shared by
-// renderDesignDoc and the playground page's custom body (page.server.go),
-// which needs the same intro but replaces the prose body with Island 1.
+// content/docs/*.md page opens with, straight from frontmatter.
 func renderDocIntro(doc content.Document) []gosx.Node {
 	nodes := make([]gosx.Node, 0, 3)
 	nodes = append(nodes, renderEyebrow(doc))
@@ -205,7 +187,7 @@ func isH2(n *mdpp.Node) bool {
 // renderStepsLayout is the `layout: steps` frontmatter opt-in (currently
 // only getting-started.md): every H2 section becomes a numbered
 // `.step`/`.stepn`/`.sc` block instead of a plain `.h2`+`.underbar` section,
-// porting design/GoTreeSitter-Docs.html's getting-started page structure
+// preserving the current getting-started page structure
 // without inventing new markdown syntax — the section heading itself
 // becomes the step's `<h4>` title.
 //

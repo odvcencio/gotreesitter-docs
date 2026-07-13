@@ -15,8 +15,8 @@ func Page() Node {
 			The docs site is file-routed. If a page is missing, either the file does not exist or the URL needs a redirect rule.
 		</p>
 		<div class="hero-actions">
-			<a href="/" data-gosx-link class="cta-link primary">Return to overview</a>
-			<a href="/docs/getting-started" data-gosx-link class="cta-link">Open getting started</a>
+			<a href="/" class="cta-link primary">Return to overview</a>
+			<a href="/docs/getting-started" class="cta-link">Open getting started</a>
 		</div>
 	</article>
 }

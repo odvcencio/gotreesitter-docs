@@ -3,47 +3,27 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"image"
-	"image/color"
-	"image/png"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
-	"time"
+	"strconv"
+	"strings"
 
 	docsapp "github.com/odvcencio/gotreesitter-docs/app"
 	_ "github.com/odvcencio/gotreesitter-docs/modules"
 	"m31labs.dev/gosx"
-	"m31labs.dev/gosx/auth"
 	"m31labs.dev/gosx/env"
 	islandprogram "m31labs.dev/gosx/island/program"
 	"m31labs.dev/gosx/route"
 	"m31labs.dev/gosx/server"
-	"m31labs.dev/gosx/session"
 )
-
-type navItem struct {
-	href  string
-	label string
-}
-
-var navItems = []navItem{
-	{href: "/", label: "Overview"},
-	{href: "/playground", label: "Playground"},
-	{href: "/docs/introduction", label: "Introduction"},
-	{href: "/docs/getting-started", label: "Getting Started"},
-	{href: "/labs/stream", label: "Streaming"},
-	{href: "/labs/secret", label: "Secret"},
-}
 
 func main() {
 	_, thisFile, _, _ := runtime.Caller(0)
 	root := server.ResolveAppRoot(thisFile)
-	if err := ensureDocsSampleAssets(root); err != nil {
-		log.Fatal(err)
-	}
 	if err := env.LoadDir(root, ""); err != nil {
 		log.Fatal(err)
 	}
@@ -51,25 +31,11 @@ func main() {
 		return versionedPublicAssetURL(root, path)
 	})
 	port := getenv("PORT", "8080")
-	sessions, err := session.New(getenv("SESSION_SECRET", "gosx-docs-session-secret"), session.Options{})
-	if err != nil {
-		log.Fatal(err)
-	}
-	authn := auth.New(sessions, auth.Options{LoginPath: "/docs/auth"})
-	docsapp.BindAuth(authn)
-
-	siteLayout, err := route.FileLayout(filepath.Join(root, "app", "layout.gsx"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	wrapSite := func(ctx *route.RouteContext, body gosx.Node) gosx.Node {
-		return siteLayout(ctx, body)
-	}
 
 	router := route.NewRouter()
 	router.SetLayout(func(ctx *route.RouteContext, body gosx.Node) gosx.Node {
-		// Space Grotesk + JetBrains Mono, per design/GoTreeSitter-Docs.html's
-		// <helmet> — the neo-brutalist system's two typefaces. This is the
+		// Space Grotesk + JetBrains Mono are the current site's two typefaces.
+		// This is the
 		// site's actual head (app/layout.gsx only renders the body shell), so
 		// the fonts are wired in here rather than in the .gsx layout.
 		ctx.AddHead(
@@ -78,81 +44,7 @@ func main() {
 			server.Stylesheet("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap"),
 		)
 		ctx.AddHead(server.Stylesheet(docsapp.PublicAssetURL("docs.css")))
-		ctx.AddHead(server.NavigationScript())
 		return server.HTMLDocument(ctx.Title("GoTreeSitter Docs"), ctx.Head(), body)
-	})
-	router.Add(route.Route{
-		Pattern: "/labs/stream",
-		Handler: func(ctx *route.RouteContext) gosx.Node {
-			ctx.SetMetadata(server.Metadata{
-				Title:       server.Title{Default: "Streaming | GoSX Docs"},
-				Description: "Deferred regions flush fallback HTML first, then stream the resolved node into place.",
-			})
-			region := ctx.DeferWithOptions(server.DeferredOptions{
-				Class: "card",
-			}, gosx.El("div",
-				gosx.El("strong", gosx.Text("Loading region")),
-				gosx.El("p", gosx.Text("The server has already flushed this fallback while the deferred resolver finishes.")),
-			), func() (gosx.Node, error) {
-				time.Sleep(180 * time.Millisecond)
-				return gosx.El("div", gosx.Attrs(gosx.Attr("class", "card")),
-					gosx.El("strong", gosx.Text("Resolved region")),
-					gosx.El("p", gosx.Text("This card streamed after the initial HTML shell and replaced the fallback slot in-place.")),
-				), nil
-			})
-
-			return wrapSite(ctx, gosx.El("article", gosx.Attrs(gosx.Attr("class", "prose")),
-				gosx.El("div", gosx.Attrs(gosx.Attr("class", "page-topper")),
-					gosx.El("span", gosx.Attrs(gosx.Attr("class", "eyebrow")), gosx.Text("Streaming")),
-					gosx.El("p", gosx.Attrs(gosx.Attr("class", "lede")), gosx.Text("Deferred regions flush fallback HTML first, then stream resolved content into place.")),
-				),
-				gosx.El("h1", gosx.Text("Streaming in GoSX starts with deferred regions, not a separate rendering stack.")),
-				gosx.El("p", gosx.Text("A page can flush its shell immediately, keep the fallback visible, and stream late sections into the live DOM as resolvers finish.")),
-				gosx.El("section", gosx.Attrs(gosx.Attr("class", "feature-grid")),
-					region,
-					gosx.El("div", gosx.Attrs(gosx.Attr("class", "card")),
-						gosx.El("strong", gosx.Text("API")),
-						gosx.El("p", gosx.Text("Use ctx.Defer(...) or ctx.DeferWithOptions(...) inside server or route handlers.")),
-					),
-				),
-				gosx.El("pre", gosx.Attrs(gosx.Attr("class", "code-block")), gosx.Text(`ctx.Defer(
-    <p>Loading...</p>,
-    func() (gosx.Node, error) {
-        return <section>Resolved</section>, nil
-    },
-)`)),
-				gosx.El("div", gosx.Attrs(gosx.Attr("class", "hero-actions")),
-					gosx.El("a", gosx.Attrs(gosx.Attr("href", "/docs/runtime"), gosx.Attr("data-gosx-link", true), gosx.Attr("class", "cta-link")), gosx.Text("Back to runtime")),
-					gosx.El("a", gosx.Attrs(gosx.Attr("href", "/"), gosx.Attr("data-gosx-link", true), gosx.Attr("class", "cta-link primary")), gosx.Text("Back to overview")),
-				),
-			))
-		},
-	})
-	router.Add(route.Route{
-		Pattern:    "/labs/secret",
-		Middleware: []route.Middleware{authn.Require},
-		Handler: func(ctx *route.RouteContext) gosx.Node {
-			ctx.SetMetadata(server.Metadata{
-				Title:       server.Title{Default: "Secret Lab | GoSX Docs"},
-				Description: "A guarded route proving auth middleware works on the same router that serves file-based pages.",
-			})
-			name := ""
-			if user, ok := auth.Current(ctx.Request); ok {
-				name = user.Name
-			}
-			return wrapSite(ctx, gosx.El("article", gosx.Attrs(gosx.Attr("class", "prose")),
-				gosx.El("div", gosx.Attrs(gosx.Attr("class", "page-topper")),
-					gosx.El("span", gosx.Attrs(gosx.Attr("class", "eyebrow")), gosx.Text("Protected")),
-					gosx.El("p", gosx.Attrs(gosx.Attr("class", "lede")), gosx.Text("This route is wrapped in auth middleware before the router resolves the page handler.")),
-				),
-				gosx.El("h1", gosx.Text("You reached a guarded route.")),
-				gosx.El("p", gosx.Text("Current user: "+name)),
-				gosx.El("div", gosx.Attrs(gosx.Attr("class", "hero-actions")),
-					gosx.El("a", gosx.Attrs(gosx.Attr("href", "/docs/auth"), gosx.Attr("data-gosx-link", true), gosx.Attr("class", "cta-link primary")), gosx.Text("Back to auth")),
-					gosx.El("a", gosx.Attrs(gosx.Attr("href", "/"), gosx.Attr("data-gosx-link", true), gosx.Attr("class", "cta-link")), gosx.Text("Back to overview")),
-				),
-			))
-		},
 	})
 
 	if err := router.AddDir(filepath.Join(root, "app"), route.FileRoutesOptions{}); err != nil {
@@ -162,23 +54,7 @@ func main() {
 	app := server.New()
 	router.SetRevalidator(app.Revalidator())
 	app.EnableISR()
-	app.EnableNavigation()
-	app.Use(sessions.Middleware)
-	app.Use(authn.Middleware)
-	// CSRF-protect everything except POST /playground/detect: that endpoint
-	// is a stateless, side-effect-free compute call (a bounded parse-race
-	// over the request body, app/playground_api.go) — there is no session
-	// state to ride, and it is meant to be plain-curl-able.
-	app.Use(func(next http.Handler) http.Handler {
-		protected := sessions.Protect(next)
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == http.MethodPost && r.URL.Path == "/playground/detect" {
-				next.ServeHTTP(w, r)
-				return
-			}
-			protected.ServeHTTP(w, r)
-		})
-	})
+	app.Use(playgroundRuntimeMiddleware(root, docsapp.PlaygroundGTSVersion()))
 	app.SetPublicDir(filepath.Join(root, "public"))
 	// A `gosx build` run stages the real WASM runtime + bootstrap JS the
 	// islands need to hydrate into dist/ (build.json + assets/runtime/*);
@@ -190,8 +66,12 @@ func main() {
 	if info, err := os.Stat(filepath.Join(root, "dist", "build.json")); err == nil && !info.IsDir() {
 		app.SetRuntimeRoot(filepath.Join(root, "dist"))
 	}
-	mountIslandProgram(app, docsapp.LangSearchProgramPath, docsapp.LangSearchProgram())
-	mountIslandProgram(app, docsapp.PlaygroundProgramPath, docsapp.PlaygroundProgram())
+	mountIslandProgram(
+		app,
+		docsapp.LangSearchProgramPath,
+		docsapp.LangSearchProgram(),
+		docsapp.LangSearchProgramContentVersion(),
+	)
 	app.Redirect("GET /docs", "/docs/introduction", http.StatusTemporaryRedirect)
 	// Live playground data plane (app/playground_api.go). The page itself is
 	// file-routed (app/playground/page.gsx); its WASM runtime + client assets
@@ -201,37 +81,13 @@ func main() {
 	app.API("GET /playground/langs.json", docsapp.PlaygroundLangsHandler)
 	app.API("GET /playground/lang/{name}", docsapp.PlaygroundLangHandler)
 	app.API("POST /playground/detect", docsapp.PlaygroundDetectHandler)
-	app.API("GET /api/meta", func(ctx *server.Context) (any, error) {
-		ctx.Cache(server.CachePolicy{
-			Public:               true,
-			MaxAge:               time.Minute,
-			StaleWhileRevalidate: 5 * time.Minute,
-		})
-		ctx.CacheTag("docs-meta")
-		pages := make([]map[string]string, 0, len(navItems))
-		for _, item := range navItems {
-			pages = append(pages, map[string]string{
-				"href":  item.href,
-				"label": item.label,
-			})
-		}
+	app.API("GET /healthz", func(ctx *server.Context) (any, error) {
+		ctx.NoStore()
 		return map[string]any{
 			"ok":      true,
-			"product": "gosx-docs",
-			"version": gosx.Version,
-			"pages":   pages,
+			"product": "gotreesitter-docs",
+			"version": docsapp.PlaygroundGTSVersion(),
 		}, nil
-	})
-	app.HandleAPI(server.APIRoute{
-		Pattern:    "GET /api/me",
-		Middleware: []server.Middleware{authn.Require},
-		Handler: func(ctx *server.Context) (any, error) {
-			user, _ := auth.Current(ctx.Request)
-			return map[string]any{
-				"ok":   true,
-				"user": user,
-			}, nil
-		},
 	})
 	rootHandler, err := router.BuildChecked()
 	if err != nil {
@@ -246,19 +102,216 @@ func main() {
 // mountIslandProgram serves a compiled island program's opcode JSON at
 // path, matching the pattern GoSX's own examples use (examples/counter,
 // examples/hotswap): the client bootstrap fetches this once (prefetched via
-// island.Renderer.PreloadHints) and interprets it in the shared WASM VM —
-// see app/lang_island.go / app/playground_island.go's SetProgramAsset
-// calls, which point at exactly these paths.
-func mountIslandProgram(app *server.App, path string, prog *islandprogram.Program) {
+// island.Renderer.PreloadHints) and interprets it in the shared WASM VM.
+// app/lang_island.go's SetProgramAsset call points at this path.
+func mountIslandProgram(app *server.App, path string, prog *islandprogram.Program, contentVersion string) {
 	data, err := islandprogram.EncodeJSON(prog)
 	if err != nil {
 		log.Fatalf("gotreesitter-docs: encode island program %s: %v", path, err)
 	}
-	app.Mount(path, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	app.Mount(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		if contentVersion != "" && r.URL.Query().Get("v") == contentVersion {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
+		}
 		_, _ = w.Write(data)
 	}))
+}
+
+// playgroundRuntimeMiddleware keeps GoSX's normal public-file server for every
+// asset except the large parser runtime. The build stages an exact gzip
+// sidecar for that file, so this narrow middleware can negotiate the sidecar
+// without adding per-request compression work or replacing the framework's
+// static serving behavior.
+func playgroundRuntimeMiddleware(root, releaseVersion string) server.Middleware {
+	handler := playgroundRuntimeHandler(root, releaseVersion)
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/playground/runtime.wasm" {
+				handler.ServeHTTP(w, r)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func playgroundRuntimeHandler(root, releaseVersion string) http.Handler {
+	rawPath := filepath.Join(root, "public", "playground", "runtime.wasm")
+	gzipPath := rawPath + ".gz"
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			w.Header().Set("Allow", "GET, HEAD")
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			return
+		}
+
+		w.Header().Add("Vary", "Accept-Encoding")
+		rawAvailable, err := regularFileAvailable(rawPath)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		gzipAvailable, err := regularFileAvailable(gzipPath)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		if !rawAvailable && !gzipAvailable {
+			http.NotFound(w, r)
+			return
+		}
+
+		accepted := acceptedEncodingQualities(r.Header.Values("Accept-Encoding"))
+		selectedPath := ""
+		contentEncoding := ""
+		// Prefer the representation with the higher client quality. A gzip
+		// sidecar wins explicit ties because it avoids the multi-megabyte raw
+		// transfer; an absent header keeps identity as the server preference.
+		if rawAvailable && accepted.identity > 0 && (accepted.preferIdentityOnTie || !gzipAvailable || accepted.identity > accepted.gzip) {
+			selectedPath = rawPath
+		} else if gzipAvailable && accepted.gzip > 0 {
+			selectedPath = gzipPath
+			contentEncoding = "gzip"
+		} else if rawAvailable && accepted.identity > 0 {
+			selectedPath = rawPath
+		}
+		if selectedPath == "" {
+			http.Error(w, http.StatusText(http.StatusNotAcceptable), http.StatusNotAcceptable)
+			return
+		}
+
+		file, err := os.Open(selectedPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				http.NotFound(w, r)
+				return
+			}
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		defer file.Close()
+
+		info, err := file.Stat()
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/wasm")
+		w.Header().Set("Content-Length", strconv.FormatInt(info.Size(), 10))
+		if contentEncoding != "" {
+			w.Header().Set("Content-Encoding", contentEncoding)
+		}
+		if releaseVersion != "" && releaseVersion != "dev" && r.URL.Query().Get("v") == releaseVersion {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
+		}
+
+		representation := "identity"
+		if contentEncoding != "" {
+			representation = contentEncoding
+		}
+		w.Header().Set("ETag", fmt.Sprintf(`W/"gts-runtime-%s-%x-%x"`, representation, info.Size(), info.ModTime().UnixNano()))
+		http.ServeContent(w, r, "runtime.wasm", info.ModTime(), file)
+	})
+}
+
+func regularFileAvailable(path string) (bool, error) {
+	info, err := os.Stat(path)
+	if err == nil {
+		return !info.IsDir(), nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
+
+type encodingQualities struct {
+	identity            float64
+	gzip                float64
+	preferIdentityOnTie bool
+}
+
+// acceptedEncodingQualities implements the representation choices used by
+// playgroundRuntimeHandler. RFC 9110 makes any coding acceptable when the
+// field is absent, while a present-but-empty field requests no content
+// coding. With a non-empty field, identity remains acceptable at q=1 unless
+// it is explicitly disabled, or a wildcard q=0 disables it without an
+// explicit identity override.
+func acceptedEncodingQualities(headerValues []string) encodingQualities {
+	if len(headerValues) == 0 {
+		return encodingQualities{identity: 1, gzip: 1, preferIdentityOnTie: true}
+	}
+	header := strings.Join(headerValues, ",")
+	if strings.TrimSpace(header) == "" {
+		return encodingQualities{identity: 1}
+	}
+
+	gzipQuality := 0.0
+	identityQuality := 0.0
+	wildcardQuality := 0.0
+	gzipExplicit := false
+	identityExplicit := false
+	wildcardExplicit := false
+	for _, item := range strings.Split(header, ",") {
+		parts := strings.Split(strings.TrimSpace(item), ";")
+		if len(parts) == 0 || strings.TrimSpace(parts[0]) == "" {
+			continue
+		}
+		encoding := strings.ToLower(strings.TrimSpace(parts[0]))
+		quality := encodingQuality(parts[1:])
+
+		switch encoding {
+		case "gzip", "x-gzip":
+			if !gzipExplicit || quality > gzipQuality {
+				gzipQuality = quality
+			}
+			gzipExplicit = true
+		case "identity":
+			if !identityExplicit || quality > identityQuality {
+				identityQuality = quality
+			}
+			identityExplicit = true
+		case "*":
+			if !wildcardExplicit || quality > wildcardQuality {
+				wildcardQuality = quality
+			}
+			wildcardExplicit = true
+		}
+	}
+
+	if !gzipExplicit && wildcardExplicit {
+		gzipQuality = wildcardQuality
+	}
+	if !identityExplicit {
+		identityQuality = 1
+		if wildcardExplicit && wildcardQuality == 0 {
+			identityQuality = 0
+		}
+	}
+	return encodingQualities{identity: identityQuality, gzip: gzipQuality}
+}
+
+func encodingQuality(params []string) float64 {
+	quality := 1.0
+	for _, param := range params {
+		key, value, ok := strings.Cut(strings.TrimSpace(param), "=")
+		if !ok || !strings.EqualFold(strings.TrimSpace(key), "q") {
+			continue
+		}
+		parsed, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+		if err != nil || parsed < 0 || parsed > 1 {
+			return 0
+		}
+		quality = parsed
+	}
+	return quality
 }
 
 func getenv(key, fallback string) string {
@@ -276,47 +329,4 @@ func versionedPublicAssetURL(root, name string) string {
 	}
 	sum := sha256.Sum256(payload)
 	return base + "?v=" + hex.EncodeToString(sum[:6])
-}
-
-func ensureDocsSampleAssets(root string) error {
-	publicDir := filepath.Join(root, "public")
-	if err := os.MkdirAll(publicDir, 0755); err != nil {
-		return err
-	}
-
-	sample := filepath.Join(publicDir, "paper-card.png")
-	if _, err := os.Stat(sample); err == nil {
-		return nil
-	} else if !os.IsNotExist(err) {
-		return err
-	}
-
-	const width = 1200
-	const height = 780
-	img := image.NewRGBA(image.Rect(0, 0, width, height))
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			base := uint8(228 + (y*18)/height)
-			ink := uint8(36 + (x*94)/width)
-			img.Set(x, y, color.RGBA{
-				R: base,
-				G: uint8(216 + (x*20)/width),
-				B: uint8(198 + (y*24)/height),
-				A: 255,
-			})
-			if x > 84 && x < width-84 && y > 84 && y < height-84 && (x+y)%17 < 2 {
-				img.Set(x, y, color.RGBA{R: ink, G: uint8(74 + (y*32)/height), B: 62, A: 255})
-			}
-			if x > 180 && x < width-180 && y > 160 && y < 260 {
-				img.Set(x, y, color.RGBA{R: 181, G: 91, B: 52, A: 255})
-			}
-		}
-	}
-
-	file, err := os.Create(sample)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	return png.Encode(file, img)
 }

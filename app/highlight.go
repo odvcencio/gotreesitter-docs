@@ -6,8 +6,8 @@ package docs
 // small per-language classifier table (adapted from the same idea mdpp's
 // built-in highlighter uses internally, see github.com/odvcencio/mdpp
 // highlight_native.go/highlight_classify.go) maps grammar node types to the
-// design's `tk-*` token classes instead of mdpp's own `hl-*` ones. design.css
-// scopes token colors as `.code .tk-kw` (see design/design.css) so the
+// site's `tk-*` token classes instead of mdpp's own `hl-*` ones. public/docs.css
+// scopes token colors as `.code .tk-kw`, so the
 // classes below only need to be bare `tk-*` — renderCodeBlock (render_blocks.go)
 // is responsible for making sure the highlighted body always lands inside a
 // `.code` container.

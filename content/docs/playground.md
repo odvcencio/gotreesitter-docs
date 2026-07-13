@@ -7,7 +7,7 @@ order: 1
 
 [The playground](/playground) is a live, in-browser syntax-tree explorer: pick a language — or
 just start typing and let it detect one — and watch the tree gotreesitter builds update as you
-type. No install, and no server round trip for the parse itself.
+type. No install, and no server round trip for parsing or query execution.
 
 That last part is the distinctive bit. gotreesitter is pure Go: no CGo, no C toolchain, nothing to
 cross-compile separately per target. The same `go build` that produces a native binary already
@@ -31,9 +31,10 @@ status readout shows the real parse time.
 
 Language auto-detection is the parser doing double duty. Obvious signals (a shebang,
 `package main`, `#include`) switch instantly, client-side. For everything else, a debounced
-request races your snippet against a shortlist of grammars server-side — all 206 live in one
-process, so the race is just parse-and-count-error-nodes — and the cleanest tree wins. Picking
-a language manually always overrides detection.
+request races a bounded source sample against a shortlist of grammars server-side — all 206 live
+in one process, so the race is just parse-and-count-error-nodes — and the cleanest tree wins. The
+request body is capped at 64 KiB and the detector scores at most the first 4 KiB. Picking a language
+manually always overrides detection and avoids sending source to the detector.
 
 [Open the playground](/playground), or read [Architecture](/docs/architecture) for what that
 engine is actually doing under your keystrokes.

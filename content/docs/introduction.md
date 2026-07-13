@@ -57,32 +57,31 @@ for any target Go supports.
 - **A single static binary.** `go build` is the whole pipeline; there's no C toolchain to
   provision in CI or on a teammate's machine.
 - **Byte-exact syntax trees**, verified against the C runtime where checked.
-- **C-faithful error recovery** for the \~124 grammars elected into the oracle campaign so far — the
-  parser's recovery decisions match C tree-sitter's, not an approximation of them. The rest use a
-  resync-based recovery path today and are staged for election.
+- **Oracle-gated recovery and ambiguity handling.** Curated and real-corpus suites compare the
+  selected Go tree with a pinned C runtime; correctness and performance are reported separately.
 - **Incremental parsing that is orders of magnitude faster than a full parse.** Reparsing after a
   no-op edit runs on the engine's 0 B / 0 allocation hot path and returns in single-digit
   nanoseconds; a real edit still reuses almost the whole tree and finishes in a small fraction of a
   full parse.
-- **Full-parse performance at or near C** for the coding languages that matter most, with a
-  scaling curve that favors Go as files grow — a measured scaling exponent of \~1.20 versus C's
-  \~1.29 on tested languages.
+- **Honest full-parse receipts.** The corrected materialized benchmark is 1.895× C on its pinned
+  host, while the current fleet median is about 3× C. Per-language cliffs and held-outs stay
+  visible in the ratcheted ledger.
 
 ## The honest asterisks
 
 This project would rather tell you where it's still catching up than let you find out in
 production.
 
-- **Peak memory per node is higher than C's** — roughly 152 bytes/node in gotreesitter versus C's
-  16–64 bytes/node. That's a structural gap between Go's node representation and C's, not a bug,
-  and it's tracked rather than hidden.
+- **Peak memory per node is higher than C's.** The Go node header has fallen from 144 to 104 bytes,
+  and Poppler retained heap has been cut by 52.5%, but the pointer-rich tree still costs more than
+  C's compact representation.
 - **A handful of very large, generated files** — the asm.js-class extreme of a JS/TS corpus, for
   instance — can still hit the default memory budget.
-- **The full-parse ratchet covers 203/206 grammars**, but coverage is not the same
-  as near-C speed: several measured rows remain over the ≤2× target, while D and F#
-  remain explicit held-outs and Groovy uses a named scoped basis.
-- **The JavaScript Poppler-scale memory cliff remains open.** It is recorded in the
-  Wave 3 ledger rather than being presented as a green performance measurement.
+- **The full-parse ratchet covers 204/206 grammars.** D and F# remain explicit held-outs, and 101
+  rows in the 2026-07-11 ledger were above 3× C.
+- **Poppler correctness and hard-containment are banked, but ordinary-budget economy is not.** The
+  3.4 MB JavaScript witness reaches exact parity inside a hard 2 GiB container; the normal 512 MiB
+  policy still stops and its successful full parse remains 3.50× C.
 
 The discipline behind these claims is the same one that finds them: compile C tree-sitter v0.25.0
 with printf instrumentation, replay the Go parser's decisions against it one at a time, and fix

@@ -17,8 +17,8 @@ func elWith(tag string, attrs gosx.AttrList, children ...gosx.Node) gosx.Node {
 }
 
 // headingClass collapses gotreesitter-docs markdown heading levels onto the
-// design's two heading tokens: design/design.css only defines `.h2` (with a
-// following `.underbar`) and `.h3` — there is no `.h4`+, and the 14 content
+// site's two visual heading tokens: public/docs.css defines `.h2` (with a
+// following `.underbar`) and `.h3` — there is no visual `.h4`+, and the content
 // pages don't use one (verified against content/docs/*.md).
 func headingClass(level int) string {
 	if level <= 2 {

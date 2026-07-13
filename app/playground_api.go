@@ -41,26 +41,39 @@ import (
 // change when the module version does.
 func PlaygroundGTSVersion() string {
 	playgroundVersionOnce.Do(func() {
-		playgroundVersionVal = "dev"
 		info, ok := debug.ReadBuildInfo()
 		if !ok {
+			playgroundVersionVal = "dev"
 			return
 		}
-		for _, dep := range info.Deps {
-			if dep.Path != "github.com/odvcencio/gotreesitter" {
-				continue
-			}
-			version := dep.Version
-			if dep.Replace != nil && dep.Replace.Version != "" {
-				version = dep.Replace.Version
-			}
-			if version != "" {
-				playgroundVersionVal = version
-			}
-			return
-		}
+		playgroundVersionVal = resolvePlaygroundGTSVersion(info)
 	})
 	return playgroundVersionVal
+}
+
+func resolvePlaygroundGTSVersion(info *debug.BuildInfo) string {
+	if info == nil {
+		return "dev"
+	}
+	for _, dep := range info.Deps {
+		if dep == nil || dep.Path != "github.com/odvcencio/gotreesitter" {
+			continue
+		}
+		if dep.Replace != nil {
+			// A versionless replacement is a local filesystem module. Its
+			// original required version is not the code linked into this binary,
+			// so it must never key release-immutable browser assets.
+			if dep.Replace.Version == "" || dep.Replace.Version == "(devel)" {
+				return "dev"
+			}
+			return dep.Replace.Version
+		}
+		if dep.Version == "" || dep.Version == "(devel)" {
+			return "dev"
+		}
+		return dep.Version
+	}
+	return "dev"
 }
 
 var (
@@ -106,14 +119,11 @@ func playgroundLangList() []playgroundLang {
 
 // PlaygroundLangsHandler serves GET /playground/langs.json.
 func PlaygroundLangsHandler(ctx *server.Context) (any, error) {
-	ctx.Cache(server.CachePolicy{
-		Public:               true,
-		MaxAge:               time.Hour,
-		StaleWhileRevalidate: 24 * time.Hour,
-	})
+	version := PlaygroundGTSVersion()
+	cachePlaygroundReleaseData(ctx, version)
 	return map[string]any{
 		"ok":        true,
-		"version":   PlaygroundGTSVersion(),
+		"version":   version,
 		"languages": playgroundLangList(),
 	}, nil
 }
@@ -139,21 +149,40 @@ func PlaygroundLangHandler(ctx *server.Context) (any, error) {
 		ctx.SetStatus(http.StatusNotFound)
 		return nil, errors.New("no compiled blob for language: " + entry.Name)
 	}
-	// Blobs change only with the gotreesitter module version and the client
-	// keys requests with ?v=<version>, so an immutable year is safe.
-	ctx.Cache(server.CachePolicy{
-		Public:    true,
-		MaxAge:    365 * 24 * time.Hour,
-		Immutable: true,
-	})
+	version := PlaygroundGTSVersion()
+	cachePlaygroundReleaseData(ctx, version)
 	return map[string]any{
 		"ok":             true,
 		"name":           entry.Name,
 		"blob":           base64.StdEncoding.EncodeToString(blob),
 		"blobBytes":      len(blob),
 		"highlightQuery": entry.HighlightQuery,
-		"version":        PlaygroundGTSVersion(),
+		"version":        version,
 	}, nil
+}
+
+// cachePlaygroundReleaseData makes the grammar index and individual blobs
+// immutable only when the URL is keyed to the exact linked gotreesitter
+// release. Unversioned, stale-version, and development requests must
+// revalidate so a deployment cannot strand old grammar data in a browser or
+// intermediary cache.
+func cachePlaygroundReleaseData(ctx *server.Context, version string) {
+	ctx.CacheKey("gotreesitter-release=" + version)
+	if version == "" || version == "dev" {
+		ctx.NoStore()
+		return
+	}
+	if ctx.Request.URL.Query().Get("v") == version {
+		ctx.Cache(server.CachePolicy{
+			Public:    true,
+			MaxAge:    365 * 24 * time.Hour,
+			Immutable: true,
+		})
+		return
+	}
+	ctx.Cache(server.CachePolicy{
+		NoCache: true,
+	})
 }
 
 // playgroundDetectShortlist is the parse-race candidate set, in PRIOR order:

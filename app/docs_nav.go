@@ -14,10 +14,9 @@ import (
 // trailing "More" section instead of silently disappearing from the nav.
 //
 // These keys are left exactly as the content frontmatter already has them
-// (Phase A does not touch content/docs/*.md). docsNavGroupLabels below maps
-// each key to the label design/GoTreeSitter-Docs.html actually shows in its
-// sidebar (`.navsec` text): "Start here", "Guides", "Grammar authoring",
-// "Reference", "Project" — a display-only rename.
+// docsNavGroupLabels below maps each key to its current sidebar `.navsec`
+// label: "Start here", "Guides", "Grammar authoring", "Reference", and
+// "Project".
 var docsNavGroupOrder = []string{
 	"Introduction",
 	"Using the Parser",
@@ -34,7 +33,7 @@ var docsNavGroupLabels = map[string]string{
 	"Project":          "Project",
 }
 
-// docsNavDotPalette is design.css's 8-color `.ndot` palette
+// docsNavDotPalette is public/docs.css's 8-color `.ndot` palette
 // (.c-violet/.c-blue/.c-cyan/.c-green/.c-yellow/.c-orange/.c-red/.c-pink).
 // It's the deterministic fallback for any doc slug missing from
 // docsNavDotColors, so a new content/docs/*.md page always gets a dot
@@ -43,12 +42,8 @@ var docsNavDotPalette = []string{
 	"c-violet", "c-blue", "c-cyan", "c-green", "c-yellow", "c-orange", "c-red", "c-pink",
 }
 
-// docsNavDotColors assigns each of the 17 shipped docs pages a design
-// palette color for its sidebar `.ndot`. Where a page has a direct analog
-// in design/GoTreeSitter-Docs.html's own navDefs (e.g. queries,
-// incremental-parsing, external-scanners), the color matches the design;
-// the rest are chosen to stay visually distinct within their own nav
-// section.
+// docsNavDotColors assigns each shipped docs page a palette color for its
+// sidebar `.ndot`, chosen to stay visually distinct within each section.
 var docsNavDotColors = map[string]string{
 	"introduction":             "c-pink",
 	"getting-started":          "c-yellow",
@@ -76,11 +71,8 @@ type docsNavLink struct {
 	Color string
 }
 
-// docsPageEyebrowBySlug gives a handful of content/docs/*.md pages the
-// exact `.eyebrow` text design/GoTreeSitter-Docs.html uses for their direct
-// analog page (getting-started -> "Getting Started", languages -> "Explore",
-// matching the design's isStart/isLang sections). Pages without a direct
-// mockup analog fall back to docsPageEyebrowByGroup below.
+// docsPageEyebrowBySlug gives a handful of content/docs/*.md pages explicit
+// `.eyebrow` text. Other pages fall back to docsPageEyebrowByGroup below.
 var docsPageEyebrowBySlug = map[string]string{
 	"getting-started": "Getting Started",
 	"languages":       "Explore",

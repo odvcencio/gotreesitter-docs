@@ -15,7 +15,7 @@ func Page() Node {
 			If this shows up in practice, the render path or the source file should be treated as broken.
 		</p>
 		<div class="hero-actions">
-			<a href="/" data-gosx-link class="cta-link primary">Return home</a>
+			<a href="/" class="cta-link primary">Return home</a>
 		</div>
 	</article>
 }

@@ -9,7 +9,7 @@ import (
 	"m31labs.dev/gosx"
 )
 
-// dotPalette is design.css's 8-color rotation (.c-violet/.c-blue/.c-cyan/
+// dotPalette is public/docs.css's 8-color rotation (.c-violet/.c-blue/.c-cyan/
 // .c-green/.c-yellow/.c-orange/.c-red/.c-pink), reused everywhere Phase B
 // needs to color-cycle a generated sequence: step numbers, feature cards,
 // and the static language grid.
@@ -18,7 +18,7 @@ var dotPalette = []string{
 }
 
 // tPalette is the matching text-color rotation (.t-violet etc.) used for
-// .statstrip big numbers, which design.css colors with `.t-*` rather than
+// .statstrip big numbers, which public/docs.css colors with `.t-*` rather than
 // `.c-*` (`.stat .sv` is plain text, not a filled swatch).
 var tPalette = []string{
 	"t-violet", "t-green", "t-blue", "t-orange", "t-pink", "t-cyan",
@@ -45,7 +45,7 @@ func renderBlocks(nodes []*mdpp.Node, src []byte) []gosx.Node {
 
 // renderBlock renders one block node. It returns a slice because an `<h2>`
 // expands into two design siblings: the heading itself plus the
-// `.underbar` design.css always renders directly under it.
+// `.underbar` the site stylesheet always renders directly under it.
 func renderBlock(n *mdpp.Node, src []byte) []gosx.Node {
 	if n == nil {
 		return nil
@@ -97,8 +97,7 @@ func renderHeading(n *mdpp.Node) []gosx.Node {
 // ---- code blocks -----------------------------------------------------
 
 // shellLikeFenceLangs are fence languages the design shows with a bare
-// `.cfile` label ("shell") and no `.clang` pill (see e.g. the "Install"
-// step and every ```sh block in design/GoTreeSitter-Docs.html).
+// `.cfile` label ("shell") and no `.clang` pill.
 var shellLikeFenceLangs = map[string]bool{
 	"sh": true, "shell": true, "bash": true, "zsh": true, "console": true,
 }
@@ -210,8 +209,7 @@ func fenceTitle(src []byte, r mdpp.Range) string {
 // ("Non-nil only for languages with a hand-written Go token source instead
 // of the DFA lexer (default build: c, cpp, java, json, authzed)" —
 // content/docs/languages.md, "The registry: LangEntry and AllLanguages").
-// Mirrors design/GoTreeSitter-Docs.html's `.lts` "TS" badge, sized to this
-// site's real catalog (5 languages) rather than the mockup's own (7).
+// Uses the site's `.lts` "TS" badge for the real token-source catalog.
 var langTokenSourceSet = map[string]bool{
 	"c": true, "cpp": true, "java": true, "json": true, "authzed": true,
 }
@@ -240,12 +238,12 @@ func renderLangGrid(literal string) gosx.Node {
 // admonitionVariant maps mdpp's 5 GitHub-style admonition types
 // (`> [!NOTE]` / `[!TIP]` / `[!IMPORTANT]` / `[!WARNING]` / `[!CAUTION]`,
 // parsed by mdpp itself — see extensions.go's processAdmonitions) onto
-// design.css's 3 `.note` accent variants. tip keeps its name; important
+// public/docs.css's 3 `.note` accent variants. tip keeps its name; important
 // reads as "new" (design's yellow, attention-worthy accent — see e.g. "Why
 // it's fast" / "Editor-grade" in the design source); warning and caution
 // both read as "win" (design's pink gotcha/heads-up accent — see "Heads
 // up" / "Contract that differs from C"). Plain [!NOTE] gets no variant
-// class, matching the base `.note` look design.css defines for it.
+// class, matching the base `.note` look public/docs.css defines for it.
 var admonitionVariant = map[string]string{
 	"tip":       "note tip",
 	"important": "note new",
@@ -503,7 +501,7 @@ func renderFeatureCards(n *mdpp.Node) gosx.Node {
 		desc := trimLeadingDash(content[1:])
 
 		card := elWith("a",
-			gosx.Attrs(gosx.Attr("class", "feat"), gosx.Attr("href", href), gosx.Attr("data-gosx-link", true)),
+			gosx.Attrs(gosx.Attr("class", "feat"), gosx.Attr("href", href)),
 			elWith("div", gosx.Attrs(gosx.Attr("class", "featicon "+dotPalette[i%len(dotPalette)])), gosx.Text("→")),
 			elWith("h4", nil, gosx.Text(title)),
 			elWith("p", nil, renderInline(desc)...),
@@ -652,15 +650,14 @@ func isKeyCell(cell *mdpp.Node) bool {
 
 // columnWidths derives a content-weighted fr-width per column from the
 // widest cell (header or body) in that column, floored at 4 characters.
-// design/GoTreeSitter-Docs.html hand-tunes `grid-template-columns` per
-// table; markdown tables have no such per-instance authoring, so this
+// Markdown tables have no per-instance column authoring, so this
 // derives an equivalent automatically from the actual cell text.
 func columnWidths(header *mdpp.Node, rows []*mdpp.Node) []float64 {
 	n := len(header.Children)
 	widths := make([]float64, n)
 	for i, c := range header.Children {
 		// .trh renders header text uppercase with letter-spacing (see
-		// design.css's `.trh{text-transform:uppercase;letter-spacing:.6px}`),
+		// public/docs.css's `.trh{text-transform:uppercase;letter-spacing:.6px}`),
 		// which needs visibly more room per character than the same rune
 		// count in ordinary body text — weight it up so a short-but-wide
 		// header (e.g. "Language") doesn't get squeezed into wrapping by a
@@ -732,7 +729,7 @@ func renderStatTable(n *mdpp.Node) gosx.Node {
 	// design's own .statstrip is a fixed 4-column grid sized to its 4-stat
 	// mockup examples; content/docs/languages.md's real scan table has 6
 	// rows, so this instance uses an auto-fit grid (same minmax idiom
-	// design.css already uses for .langgrid) instead of forcing a 5th/6th
+	// public/docs.css already uses for .langgrid) instead of forcing a 5th/6th
 	// stat to overflow a hardcoded 4-column row.
 	return elWith("div",
 		gosx.Attrs(gosx.Attr("class", "statstrip"), gosx.Attr("style", "grid-template-columns:repeat(auto-fit,minmax(150px,1fr))")),

@@ -8,21 +8,15 @@ package docs
 // production authoring path is `.gsx` source with a `//gosx:island` directive
 // compiled through GoSX's own parser/lowerer; this file instead hand-builds
 // the `program.Program` directly in Go, using only the long-stable opcode
-// surface (signals, props, forEach, conditionals, string/collection ops) —
-// see design/PHASE-B-NOTES.md and the worker report for why. `progBuilder`
-// is the bookkeeping helper both islands (app/lang_island.go,
-// app/playground_island.go) share so NodeID/ExprID arithmetic never has to
-// be hand-computed.
+// surface (signals, props, forEach, conditionals, string/collection ops).
+// `progBuilder` is the bookkeeping helper for app/lang_island.go so
+// NodeID/ExprID arithmetic never has to be hand-computed.
 //
 // This is the REAL hydration mechanism — data-gosx-island + a compiled
 // program served from /gosx/islands/*.json — not inline `onclick=""`
 // attributes (which Phase A found bypass island codegen entirely).
 
-import (
-	"strconv"
-
-	islandprogram "m31labs.dev/gosx/island/program"
-)
+import islandprogram "m31labs.dev/gosx/island/program"
 
 type exprID = islandprogram.ExprID
 type nodeID = islandprogram.NodeID
@@ -39,14 +33,12 @@ type progBuilder struct {
 	handlers []islandprogram.Handler
 	signals  []islandprogram.SignalDef
 
-	litStrCache  map[string]exprID
-	litBoolCache map[bool]exprID
+	litStrCache map[string]exprID
 }
 
 func newProgBuilder() *progBuilder {
 	return &progBuilder{
-		litStrCache:  make(map[string]exprID),
-		litBoolCache: make(map[bool]exprID),
+		litStrCache: make(map[string]exprID),
 	}
 }
 
@@ -71,23 +63,6 @@ func (b *progBuilder) lit(s string) exprID {
 	id := b.addExpr(islandprogram.Expr{Op: islandprogram.OpLitString, Value: s, Type: islandprogram.TypeString})
 	b.litStrCache[s] = id
 	return id
-}
-
-func (b *progBuilder) litBool(v bool) exprID {
-	if id, ok := b.litBoolCache[v]; ok {
-		return id
-	}
-	val := "false"
-	if v {
-		val = "true"
-	}
-	id := b.addExpr(islandprogram.Expr{Op: islandprogram.OpLitBool, Value: val, Type: islandprogram.TypeBool})
-	b.litBoolCache[v] = id
-	return id
-}
-
-func (b *progBuilder) litInt(n int) exprID {
-	return b.addExpr(islandprogram.Expr{Op: islandprogram.OpLitInt, Value: strconv.Itoa(n), Type: islandprogram.TypeInt})
 }
 
 func (b *progBuilder) signalGet(name string, typ islandprogram.ExprType) exprID {
@@ -134,36 +109,12 @@ func (b *progBuilder) cond(c, t, f exprID) exprID {
 	return b.addExpr(islandprogram.Expr{Op: islandprogram.OpCond, Operands: []exprID{c, t, f}, Type: islandprogram.TypeAny})
 }
 
-func (b *progBuilder) eq(a, c exprID) exprID {
-	return b.addExpr(islandprogram.Expr{Op: islandprogram.OpEq, Operands: []exprID{a, c}, Type: islandprogram.TypeBool})
-}
-
-func (b *progBuilder) neq(a, c exprID) exprID {
-	return b.addExpr(islandprogram.Expr{Op: islandprogram.OpNeq, Operands: []exprID{a, c}, Type: islandprogram.TypeBool})
-}
-
-func (b *progBuilder) and(a, c exprID) exprID {
-	return b.addExpr(islandprogram.Expr{Op: islandprogram.OpAnd, Operands: []exprID{a, c}, Type: islandprogram.TypeBool})
-}
-
-func (b *progBuilder) not(a exprID) exprID {
-	return b.addExpr(islandprogram.Expr{Op: islandprogram.OpNot, Operands: []exprID{a}, Type: islandprogram.TypeBool})
-}
-
-func (b *progBuilder) add(a, c exprID) exprID {
-	return b.addExpr(islandprogram.Expr{Op: islandprogram.OpAdd, Operands: []exprID{a, c}, Type: islandprogram.TypeInt})
-}
-
 func (b *progBuilder) length(a exprID) exprID {
 	return b.addExpr(islandprogram.Expr{Op: islandprogram.OpLen, Operands: []exprID{a}, Type: islandprogram.TypeInt})
 }
 
 func (b *progBuilder) filter(coll, pred exprID) exprID {
 	return b.addExpr(islandprogram.Expr{Op: islandprogram.OpFilter, Operands: []exprID{coll, pred}, Type: islandprogram.TypeAny})
-}
-
-func (b *progBuilder) split(s exprID, sep string) exprID {
-	return b.addExpr(islandprogram.Expr{Op: islandprogram.OpSplit, Operands: []exprID{s}, Value: sep, Type: islandprogram.TypeAny})
 }
 
 func (b *progBuilder) eventGet(field string) exprID {

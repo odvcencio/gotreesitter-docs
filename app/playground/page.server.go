@@ -61,10 +61,9 @@ func init() {
 					"wasmReady": wasmReady,
 					"wasmBytes": strconv.FormatInt(wasmBytes, 10),
 					"wasmMB":    fmt.Sprintf("%.1f MB", float64(wasmBytes)/(1024*1024)),
-					// Blobs and the runtime change only with the module
-					// version, so ?v= keys the browser cache to it. (The
-					// public-file server replies must-revalidate anyway;
-					// the key just guarantees no stale runtime after a bump.)
+					// Exact release keys receive immutable caching; unversioned
+					// or stale keys revalidate so release bumps cannot reuse an
+					// older runtime.
 					"wasmURL":       "/playground/runtime.wasm?v=" + version,
 					"wasmExecURL":   docsapp.PublicAssetURL("playground/wasm_exec.js"),
 					"playgroundJS":  docsapp.PublicAssetURL("playground/playground.js"),

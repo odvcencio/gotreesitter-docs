@@ -1,6 +1,6 @@
 package docs
 
-// Island 2 — the 206-language search filter (design/PHASE-B-NOTES.md).
+// The 206-language search filter island.
 //
 // A single hand-built island Program owns the whole `.langbar` +
 // `.langgrid`: a `query` signal, a `<input oninput>` handler that sets it,
@@ -18,6 +18,8 @@ package docs
 // /gosx/islands/LangSearch.json) instead of inert HTML.
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"sync"
 
 	"m31labs.dev/gosx"
@@ -34,6 +36,8 @@ const LangSearchProgramPath = "/gosx/islands/LangSearch.json"
 var (
 	langSearchProgramOnce sync.Once
 	langSearchProgramVal  *islandprogram.Program
+	langSearchVersionOnce sync.Once
+	langSearchVersionVal  string
 )
 
 // LangSearchProgram returns the (process-wide constant) compiled island
@@ -44,6 +48,30 @@ func LangSearchProgram() *islandprogram.Program {
 		langSearchProgramVal = buildLangSearchProgram()
 	})
 	return langSearchProgramVal
+}
+
+// LangSearchProgramContentVersion returns a short digest of the exact encoded
+// island program. The content-versioned URL is safe to cache immutably even
+// when the docs site changes independently of gotreesitter releases.
+func LangSearchProgramContentVersion() string {
+	langSearchVersionOnce.Do(func() {
+		data, err := islandprogram.EncodeJSON(LangSearchProgram())
+		if err != nil {
+			return
+		}
+		sum := sha256.Sum256(data)
+		langSearchVersionVal = hex.EncodeToString(sum[:6])
+	})
+	return langSearchVersionVal
+}
+
+// LangSearchProgramURL is the browser-facing, content-versioned island URL.
+func LangSearchProgramURL() string {
+	version := LangSearchProgramContentVersion()
+	if version == "" {
+		return LangSearchProgramPath
+	}
+	return LangSearchProgramPath + "?v=" + version
 }
 
 func buildLangSearchProgram() *islandprogram.Program {
@@ -119,6 +147,6 @@ func BuildLangGridIsland(rt *server.PageRuntime, names []string) gosx.Node {
 	if rt == nil {
 		return gosx.Text("")
 	}
-	rt.SetProgramAsset(langSearchIslandName, LangSearchProgramPath, "json", "")
+	rt.SetProgramAsset(langSearchIslandName, LangSearchProgramURL(), "json", LangSearchProgramContentVersion())
 	return rt.Island(LangSearchProgram(), langSearchProps(names))
 }

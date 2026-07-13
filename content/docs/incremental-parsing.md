@@ -7,15 +7,20 @@ order: 4
 
 An editor re-parses on every keystroke. If parsing a large file from scratch takes a millisecond, and a user types at ten keystrokes a second, a naive editor integration spends ten milliseconds a second just re-deriving syntax it already knew. Incremental parsing is how tree-sitter (and gotreesitter) avoid that: you tell the parser exactly what byte range changed, and it reuses every subtree that the edit didn't touch, re-lexing and re-parsing only the invalidated span.
 
-This is gotreesitter's headline number. On the project's own benchmark (a generated 500-function, 19,294-byte Go file, median of 10 runs, `GOMAXPROCS=1`) — **measured**, not projected:
+On the pinned-host benchmark (a generated 500-function, 19,294-byte Go file,
+`GOMAXPROCS=1`, median of 10 runs):
 
-| Parse | Median time | Bytes/op | Allocs/op |
-|---|---:|---:|---:|
-| Full parse | 1.54 ms | 728 | 7 |
-| Incremental, one byte edited | 649 ns | 176 | 3 |
-| Incremental, no edit | 2.43 ns | 0 | 0 |
+| Parse | Median time | Allocs/op |
+|---|---:|---:|
+| Full parse, materialized | 10.907 ms | 9 |
+| Incremental, one byte edited | 1.98 µs | 0 |
+| Incremental, no edit | 9.9 ns | 0 |
 
-A single-byte edit reparses about **2,370× faster** than a full parse of the same file; a no-op check (nothing changed) is about **632,000× faster**, on 0 bytes and 0 allocations. That no-edit path isn't a fluke of this one benchmark — it's a real fast path: `ParseIncremental` detects "nothing changed" with a pointer comparison and returns immediately. The same benchmark shows gotreesitter's incremental single-byte edit running roughly **158× faster than native C tree-sitter's** equivalent (102.3 μs) and its no-edit check roughly **41,800× faster** than native C's (101.7 μs) — full figures and raw benchmark commands are in the project [README](https://github.com/odvcencio/gotreesitter#benchmarks).
+A single-byte edit is about **5,500× faster** than a full parse of the same file; a no-op check
+is about **1.1 million× faster**. Both incremental lanes allocate zero. Against the cgo-backed C
+runtime's pinned-host receipts, the one-byte edit is about **167× faster** and the no-edit path
+about **33,000× faster**. Full figures and methodology live in the project's canonical
+[`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.33.0/BENCH.md).
 
 This page assumes you already have a `*gotreesitter.Tree` from a first `parser.Parse` call — see [Syntax Trees and Nodes](/docs/syntax-trees-and-nodes) if you need that first, or [Tree Cursors](/docs/tree-cursors) for traversal patterns that keep working across reparses.
 
@@ -87,7 +92,10 @@ func (p *Parser) ParseIncremental(source []byte, oldTree *Tree) (*Tree, error)
 
 `ParseIncremental` walks the old tree's spine, identifies the region actually invalidated by the recorded edit(s), and reuses everything outside it by reference — both leaf and non-leaf subtrees are eligible; non-leaf reuse is driven by pre-goto state tracking on interior nodes, so the parser can skip an entire unchanged subtree (a whole function body, say) without re-deriving its contents node by node. Only the invalidated span is re-lexed and re-parsed, and the result is stitched back together with the reused subtrees around it.
 
-When no edit was recorded at all — `source` is byte-identical to `oldTree`'s source and no `Edit` call happened — `ParseIncremental` returns `oldTree` itself on a pointer check, in single-digit nanoseconds with zero allocations (the `2.43 ns` / `0 B` row above). This makes it cheap to call `ParseIncremental` speculatively rather than tracking "did anything actually change" yourself.
+When no edit was recorded at all — `source` is byte-identical to `oldTree`'s source and no `Edit`
+call happened — `ParseIncremental` returns `oldTree` itself on a pointer check, in single-digit
+nanoseconds with zero allocations (9.9 ns on the pinned receipt). This makes it cheap to call
+`ParseIncremental` speculatively rather than tracking "did anything actually change" yourself.
 
 UTF-16, custom token sources, and profiling all have incremental counterparts: `ParseIncrementalUTF16`, `ParseIncrementalWithTokenSource`, `ParseIncrementalProfiled` (returns an `IncrementalParseProfile` with reuse attribution), and the option-based `parser.ParseWith(source, gotreesitter.WithOldTree(oldTree))`.
 

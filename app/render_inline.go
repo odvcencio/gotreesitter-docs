@@ -41,9 +41,8 @@ func renderInlineNode(n *mdpp.Node) gosx.Node {
 	case mdpp.NodeStrikethrough:
 		return elWith("del", nil, renderInline(n.Children)...)
 	case mdpp.NodeCodeSpan:
-		// Matches design/GoTreeSitter-Docs.html's inline-code convention —
-		// `<span class="mono">Name</span>` in running prose, not a boxed
-		// `<code>` pill (there's no such component in design.css).
+		// The site's inline-code convention uses the mono token in running
+		// prose rather than a boxed code pill.
 		return elWith("code", gosx.Attrs(gosx.Attr("class", "mono")), gosx.Text(n.Literal))
 	case mdpp.NodeLink:
 		return renderLink(n)
@@ -76,10 +75,6 @@ func renderLink(n *mdpp.Node) gosx.Node {
 		pairs = append(pairs, gosx.Attr("title", title))
 	}
 	switch {
-	case strings.HasPrefix(href, "/"):
-		// Internal doc link — opt into GoSX's client-side navigation, same
-		// as the sidebar links in app/layout.gsx.
-		pairs = append(pairs, gosx.Attr("data-gosx-link", true))
 	case strings.HasPrefix(href, "http://"), strings.HasPrefix(href, "https://"):
 		pairs = append(pairs, gosx.Attr("target", "_blank"), gosx.Attr("rel", "noopener noreferrer"))
 	}

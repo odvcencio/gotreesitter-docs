@@ -19,8 +19,8 @@ func Page() Node {
 			instead of falling back to the root 404 page.
 		</p>
 		<div class="hero-actions">
-			<a href="/docs/introduction" data-gosx-link class="cta-link primary">Open the introduction</a>
-			<a href="/docs/getting-started" data-gosx-link class="cta-link">Open getting started</a>
+			<a href="/docs/introduction" class="cta-link primary">Open the introduction</a>
+			<a href="/docs/getting-started" class="cta-link">Open getting started</a>
 		</div>
 	</article>
 }
