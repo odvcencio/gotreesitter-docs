@@ -166,9 +166,14 @@ func PlaygroundLangHandler(ctx *server.Context) (any, error) {
 // against the registry at init; missing ones are dropped.
 var playgroundDetectShortlist = []string{
 	"go", "c", "python", "javascript", "json", "rust", "java", "ruby",
-	"php", "bash", "typescript", "tsx", "cpp", "csharp", "kotlin", "swift",
+	"php", "bash", "typescript", "tsx", "cpp", "csharp", "kotlin",
 	"lua", "haskell", "elixir", "zig", "ocaml", "scala", "css", "toml",
 	"dockerfile", "make", "sql", "html", "yaml", "markdown",
+	// swift is deliberately absent: loading its grammar allocates ~1.5 GB
+	// (measured; every other grammar here costs single- to low-double-digit MB,
+	// ~105 MB for the whole rest of the list). It OOM-killed this pod on the
+	// first detect request. This is an engine bug, not a shortlist-sizing
+	// problem — restore swift here once the grammar's table load is fixed.
 }
 
 const (
