@@ -71,8 +71,11 @@ fmt.<span class="tk-fn">Println</span>(tree.<span class="tk-fn">RootNode</span>(
 				<div class="wtop c-green"></div>
 				<h4>② Fast</h4>
 				<p>
-					Fast enough to parse on every keystroke. Full parse in <b>1.54 ms</b> — quicker
-					than native C — and incremental edits in nanoseconds with zero allocations.
+					Fast enough to parse on every keystroke. A single-byte incremental edit
+					reparses in <b>649 ns</b> — <b>158×</b> faster than the C runtime — and a no-op
+					reparse returns in nanoseconds with zero allocations. Full parse is
+					competitive on representative files and slower on adversarial giants;
+					the <a href="/docs/performance" data-gosx-link>numbers, with asterisks</a>.
 				</p>
 				<span class="pillref">tree-sitter → "fast enough to parse on every keystroke"</span>
 			</div>
@@ -101,6 +104,14 @@ fmt.<span class="tk-fn">Println</span>(tree.<span class="tk-fn">RootNode</span>(
 		<h2 class="h2">The numbers</h2>
 		<div class="underbar"></div>
 		<p class="p mut">500-function Go source (19,294 bytes). Medians of 10 runs, Intel Core Ultra 9 285, GOMAXPROCS=1.</p>
+		<p class="p mut">
+			This is one representative corpus, not a universal claim. On deliberately adversarial
+			files — the largest 8 files per language from real repositories — full parse runs from
+			1.5× to 39× <i>slower</i> than C depending on the grammar. Incremental parsing is the
+			category win and holds everywhere. The full spread is on the
+			<a href="/docs/performance" data-gosx-link>performance page</a>, including the cases
+			we still lose.
+		</p>
 		<div class="bench">
 			<div class="brow">
 				<div class="blabel"><span>FULL PARSE — lower is better</span><span class="mut">ms</span></div>

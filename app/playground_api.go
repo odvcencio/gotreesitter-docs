@@ -172,10 +172,13 @@ var playgroundDetectShortlist = []string{
 }
 
 const (
-	playgroundDetectMaxSource   = 4 << 10  // score only the first 4KB
-	playgroundDetectMaxBody     = 64 << 10 // request body hard cap
-	playgroundDetectTimeoutUs   = 50_000   // per-parse budget (50ms)
-	playgroundDetectCandidateSz = 5        // candidates returned
+	playgroundDetectMaxSource = 4 << 10  // score only the first 4KB
+	playgroundDetectMaxBody   = 64 << 10 // request body hard cap
+	playgroundDetectTimeoutUs = 50_000   // per-parse budget (50ms)
+	// Peak memory, not CPU, is the binding constraint on the detect race: each
+	// racer loads grammar tables and a parse arena, so width drives RSS.
+	playgroundDetectConcurrency = 4
+	playgroundDetectCandidateSz = 5 // candidates returned
 )
 
 type playgroundDetectLang struct {
@@ -244,11 +247,19 @@ func PlaygroundDetectHandler(ctx *server.Context) (any, error) {
 		ok    bool
 	}
 	results := make([]raceResult, len(candidates))
+	// Bound the fan-out. Each racer loads a grammar's parse tables and allocates
+	// a parse arena; launching all ~30 at once peaked past the container memory
+	// limit and got the pod OOM-killed (exit 137) on the first real request. The
+	// race is latency-bound by the slowest grammar's timeout, not by width, so a
+	// small worker pool costs almost nothing and bounds peak RSS.
+	sem := make(chan struct{}, playgroundDetectConcurrency)
 	var wg sync.WaitGroup
 	for i, cand := range candidates {
 		wg.Add(1)
 		go func(i int, cand playgroundDetectLang) {
 			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
 			// One misbehaving grammar must not take the race down.
 			defer func() { _ = recover() }()
 			lang := cand.entry.Language()
