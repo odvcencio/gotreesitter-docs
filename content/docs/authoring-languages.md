@@ -59,6 +59,12 @@ The relevant functions, all public:
 `grammar.js` — is the canonical input; it has no `require()` calls or helper functions to
 interpret.
 
+Writing a good `grammar.js` in the first place — rule design, precedence strategy, what belongs
+in `extras` — is upstream tree-sitter's craft, and their docs own it:
+[the grammar DSL](https://tree-sitter.github.io/tree-sitter/creating-parsers/2-the-grammar-dsl.html)
+and [writing the grammar](https://tree-sitter.github.io/tree-sitter/creating-parsers/3-writing-the-grammar.html).
+This page documents the gotreesitter pipeline that consumes the result.
+
 ```go
 data, err := os.ReadFile("src/grammar.json")
 if err != nil {

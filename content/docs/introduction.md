@@ -25,6 +25,13 @@ The payoff of doing the work twice: parse trees that are byte-exact matches agai
 decision-by-decision against that same C runtime for every language that has gone through the
 process (more below).
 
+The relationship to [upstream tree-sitter](https://tree-sitter.github.io/tree-sitter/), then, is
+independent implementation, shared interface: gotreesitter consumes the same `grammar.json` files
+and the same query language, so grammars and queries written for the C ecosystem carry over. For
+the parts both implementations share — grammar-writing craft, the query-language spec — upstream's
+documentation is canonical, and these pages link it rather than restating it; what's documented
+here is the Go engine itself and every place its behavior or API differs.
+
 ## Why it exists
 
 Every other Go tree-sitter binding wraps the C library through CGo, and that has a cost that only

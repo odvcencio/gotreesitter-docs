@@ -43,7 +43,7 @@ var docsNavDotPalette = []string{
 	"c-violet", "c-blue", "c-cyan", "c-green", "c-yellow", "c-orange", "c-red", "c-pink",
 }
 
-// docsNavDotColors assigns each of the 14 shipped docs pages a design
+// docsNavDotColors assigns each of the 17 shipped docs pages a design
 // palette color for its sidebar `.ndot`. Where a page has a direct analog
 // in design/GoTreeSitter-Docs.html's own navDefs (e.g. queries,
 // incremental-parsing, external-scanners), the color matches the design;
@@ -56,6 +56,9 @@ var docsNavDotColors = map[string]string{
 	"tree-cursors":             "c-cyan",
 	"queries":                  "c-violet",
 	"incremental-parsing":      "c-green",
+	"syntax-highlighting":      "c-orange",
+	"code-navigation":          "c-red",
+	"language-injection":       "c-pink",
 	"languages":                "c-cyan",
 	"authoring-languages":      "c-violet",
 	"external-scanners":        "c-red",

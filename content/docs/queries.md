@@ -5,7 +5,7 @@ nav_group: Using the Parser
 order: 3
 ---
 
-A query is a set of S-expression patterns matched against a parsed tree. Queries answer questions like "every exported function," "every string literal inside a loop," or "every import statement" without a hand-written tree walk. The same engine backs gotreesitter's syntax highlighter, symbol tagger, and multi-language injection parser — all three compile a query and run it against your tree; this page covers the query language and the `Query`/`QueryCursor` API directly.
+A query is a set of S-expression patterns matched against a parsed tree. Queries answer questions like "every exported function," "every string literal inside a loop," or "every import statement" without a hand-written tree walk. The same engine backs gotreesitter's [syntax highlighter](/docs/syntax-highlighting), [symbol tagger](/docs/code-navigation), and [multi-language injection parser](/docs/language-injection) — all three compile a query and run it against your tree; this page covers the query language and the `Query`/`QueryCursor` API directly.
 
 This page assumes you already have a `*gotreesitter.Tree` — see [Syntax Trees and Nodes](/docs/syntax-trees-and-nodes) if you need that first.
 
@@ -109,6 +109,14 @@ q, _ := gts.NewQuery(`(parameter_list (parameter_declaration) @param)`, lang)
 
 **Grouping** — `(pattern1 pattern2 ...)` without a leading node type groups a run of sibling patterns, mainly so a quantifier can apply to the whole group at once (`((line_comment) (line_comment))* @doc-block`).
 
+**The `ERROR` node** — `(ERROR) @err` matches the parser's error nodes: spans the parser couldn't assign to any grammar rule (the same nodes `node.IsError()` reports — see [Syntax Trees and Nodes](/docs/syntax-trees-and-nodes)). `ERROR` resolves to the real error symbol at compile time, so patterns like `(ERROR (identifier) @salvaged)` work for picking recognizable pieces out of broken regions.
+
+**The `MISSING` node — not supported.** Upstream's query language can match zero-width missing nodes with `(MISSING)`, `(MISSING identifier)`, or `(MISSING ";")`. gotreesitter's compiler currently accepts the `MISSING` keyword but compiles it to a plain any-node wildcard — the matcher never checks missing-ness, so `(MISSING)` silently matches everything and the child form matches the wrong shape entirely. Don't use it; find missing nodes by walking the tree and checking `node.IsMissing()` instead.
+
+**Supertypes — not supported in patterns.** Upstream grammars declare supertype rules (like `expression`), and upstream queries can write `(expression)` to match any of its subtypes, or qualify one as `expression/identifier`. gotreesitter does not expand supertypes at pattern positions: `(expression)` matches only a node literally named `expression`, and a `parent/child` name silently resolves to just the rightmost segment — `expression/identifier` behaves exactly like `(identifier)`. The supertype tables do exist on the `Language` (they power ancestor-type predicates), but pattern-position matching doesn't consult them. Spell out the subtypes you want in an alternation `[...]` instead.
+
+The pattern language is upstream tree-sitter's, and upstream's query docs are the canonical spec for it: [syntax](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html), [operators](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/2-operators.html), and [predicates and directives](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/3-predicates-and-directives.html). Where gotreesitter's engine differs — the two unsupported cases above, and predicate evaluation below — this page says so explicitly.
+
 ## Predicates
 
 A predicate is a parenthesized directive following the patterns it applies to, written `(#name? args...)`. Unlike the reference C tree-sitter library — which only parses predicates and leaves evaluation to whatever binding consumes the query — gotreesitter's engine evaluates predicates itself and filters matches before they reach you.
@@ -160,6 +168,8 @@ for {
 `QueryCursor` also has `SetPointRange` (row/column window), `SetUTF16Range` (the UTF-16 equivalent, for trees produced by a UTF-16 parse), `SetMaxStartDepth`, and `NextCapture()` — a capture-at-a-time alternative to `NextMatch()` that drains the same match stream one capture at a time. A `QueryCursor` is single-use and **not** safe for concurrent use; get one per goroutine from `q.Exec(...)` (the `*Query` itself is fine to share).
 
 Each `QueryMatch` carries `PatternIndex` (which top-level pattern in the source matched — useful with multi-pattern queries and `q.PredicatesForPattern(idx)`) and `Captures []QueryCapture`, where each `QueryCapture` has `Name`, `Node *gts.Node`, and a `Text(source []byte) string` method that respects any `#strip!` override.
+
+If you keep queries in `.scm` files, `cmd/tsquery` generates a typed Go wrapper from one (`tsquery -input FILE.scm -lang LANG -output FILE.go -package PKG`) — it is a code generator for embedding a query as compiled Go source, not a query runner.
 
 ## Compile-checked example
 

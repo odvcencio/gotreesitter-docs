@@ -226,5 +226,8 @@ constructing a one-byte range by hand.
 For traversal patterns that scale to large files — and the actual reason `TreeCursor` exists
 instead of just recursing on `Child`/`NamedChild` — see [Tree Cursors](/docs/tree-cursors).
 Structural search across a tree (rather than positional lookup) is covered on the
-[Queries](/docs/queries) page; grammar authoring and external scanners have their own pages under
-[Authoring Languages](/docs/authoring-languages) and [External Scanners](/docs/external-scanners).
+[Queries](/docs/queries) page, and the query-built consumers —
+[Syntax Highlighting](/docs/syntax-highlighting) and [Code Navigation](/docs/code-navigation) —
+turn trees into styled ranges and symbol tables; grammar authoring and external scanners have
+their own pages under [Authoring Languages](/docs/authoring-languages) and
+[External Scanners](/docs/external-scanners).
