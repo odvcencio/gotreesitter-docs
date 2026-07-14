@@ -21,24 +21,24 @@ func TestResolvePlaygroundGTSVersion(t *testing.T) {
 			name: "release dependency",
 			info: &debug.BuildInfo{Deps: []*debug.Module{{
 				Path:    "github.com/odvcencio/gotreesitter",
-				Version: "v0.33.0",
+				Version: "v0.36.0",
 			}}},
-			want: "v0.33.0",
+			want: "v0.36.0",
 		},
 		{
 			name: "versioned replacement",
 			info: &debug.BuildInfo{Deps: []*debug.Module{{
 				Path:    "github.com/odvcencio/gotreesitter",
-				Version: "v0.33.0",
-				Replace: &debug.Module{Path: "github.com/example/fork", Version: "v0.33.1"},
+				Version: "v0.36.0",
+				Replace: &debug.Module{Path: "github.com/example/fork", Version: "v0.36.1"},
 			}}},
-			want: "v0.33.1",
+			want: "v0.36.1",
 		},
 		{
 			name: "versionless local replacement",
 			info: &debug.BuildInfo{Deps: []*debug.Module{{
 				Path:    "github.com/odvcencio/gotreesitter",
-				Version: "v0.33.0",
+				Version: "v0.36.0",
 				Replace: &debug.Module{Path: "../gotreesitter"},
 			}}},
 			want: "dev",

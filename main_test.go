@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-const testReleaseVersion = "v0.33.0"
+const testReleaseVersion = "v0.36.0"
 
 func TestPlaygroundRuntimeHandlerNegotiatesAcceptEncoding(t *testing.T) {
 	root := t.TempDir()
@@ -214,7 +214,7 @@ func TestPlaygroundRuntimeHandlerHeadConditionalAndCacheSemantics(t *testing.T) 
 
 	for _, url := range []string{
 		"/playground/runtime.wasm",
-		"/playground/runtime.wasm?v=v0.33.1",
+		"/playground/runtime.wasm?v=v0.36.1",
 	} {
 		request := httptest.NewRequest(http.MethodHead, url, nil)
 		response := httptest.NewRecorder()

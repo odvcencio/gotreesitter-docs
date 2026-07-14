@@ -27,7 +27,7 @@ func Page() Node {
 				<div class="install">
 					<div class="cmd mono">
 						<span class="pr">$</span>
-						go get github.com/odvcencio/gotreesitter@v0.33.0
+						go get github.com/odvcencio/gotreesitter@v0.36.0
 					</div>
 				</div>
 				<div class="pillrow">
@@ -131,7 +131,7 @@ func Page() Node {
 			500-function Go source (19,294 bytes). Medians of 10 runs on an idle Intel Xeon D-2141I core, GOMAXPROCS=1.
 		</p>
 		<p class="p mut">
-			The corrected public benchmark materializes and releases the full tree. The old 1.54 ms headline measured a no-tree diagnostic and has been withdrawn. Real-corpus full-parse ratios vary substantially by grammar; the full fleet distribution and named gaps are on the
+			The corrected public benchmark materializes and releases the full tree. The pre-correction headline measured a no-tree diagnostic and has been withdrawn. Real-corpus full-parse ratios vary substantially by grammar; the full fleet distribution and named gaps are on the
 			<a href="/docs/performance">performance page</a>
 			, including the cases we still lose.
 		</p>

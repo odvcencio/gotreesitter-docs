@@ -10,8 +10,9 @@ distinction matters: the pure-Go runtime is exceptionally fast on editor-style r
 fresh materialized parse is currently slower than the C runtime on the canonical workload and
 across much of the grammar fleet.
 
-The repository's [`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.33.0/BENCH.md)
-is the canonical source for linkable performance claims. This page follows its v0.33.0 receipts.
+The repository's [`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.36.0/BENCH.md)
+is the canonical source for linkable performance claims. This page follows the receipts published
+with v0.36.0.
 
 ## Corrected canonical benchmark
 
@@ -26,9 +27,10 @@ reporting.
 | Incremental, 1-byte edit | 1.98 µs | 331 µs | **0.006× — 167× faster** | 0 |
 | Incremental, no edit | 9.9 ns | 330 µs | **about 33,000× faster** | 0 |
 
-These are the v0.33.0 canonical receipts from one pinned host and workload contract. Each row is
-independently release-pinned rather than produced by a single benchmark run. Absolute times are
-host-specific; the same-host ratios and allocation counts are the portable claims.
+These are the canonical receipts published with v0.36.0 from one pinned host and workload
+contract. Each row is independently release-pinned rather than produced by a single benchmark
+run. Absolute times are host-specific; the same-host ratios and allocation counts are the
+portable claims.
 
 ```sh
 GOMAXPROCS=1 go test . -run '^$' \
@@ -37,10 +39,10 @@ GOMAXPROCS=1 go test . -run '^$' \
 ```
 
 > [!IMPORTANT] Benchmark integrity correction
-> Before v0.24.1, `BenchmarkGoParseFullDFA` silently selected a no-tree diagnostic path. The old
-> 1.54 ms, 728 B/op, and 7 allocs/op headline therefore did **not** describe a materialized public
-> parse and has been withdrawn. `BenchmarkGoParseCoreDFA` remains useful for attribution, but its
-> results are never presented as full-parse performance.
+> Before v0.24.1, `BenchmarkGoParseFullDFA` silently selected a no-tree diagnostic path. That
+> pre-correction headline therefore did **not** describe a materialized public parse and has been
+> withdrawn. `BenchmarkGoParseCoreDFA` remains useful for attribution, but its results are never
+> presented as full-parse performance.
 
 ## Why incremental work is different
 

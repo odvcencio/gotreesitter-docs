@@ -20,7 +20,7 @@ A single-byte edit is about **5,500× faster** than a full parse of the same fil
 is about **1.1 million× faster**. Both incremental lanes allocate zero. Against the cgo-backed C
 runtime's pinned-host receipts, the one-byte edit is about **167× faster** and the no-edit path
 about **33,000× faster**. Full figures and methodology live in the project's canonical
-[`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.33.0/BENCH.md).
+[`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.36.0/BENCH.md).
 
 This page assumes you already have a `*gotreesitter.Tree` from a first `parser.Parse` call — see [Syntax Trees and Nodes](/docs/syntax-trees-and-nodes) if you need that first, or [Tree Cursors](/docs/tree-cursors) for traversal patterns that keep working across reparses.
 

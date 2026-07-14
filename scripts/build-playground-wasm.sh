@@ -47,8 +47,9 @@ mkdir -p "$OUT"
 install -m 644 "$MODDIR/wasm/wasm_exec.js" "$OUT/wasm_exec.js"
 
 # .gz sidecar so a deploy target (CDN / ingress) can serve the compressed
-# body without compressing 14MB on the fly.
-gzip -9 -kf "$OUT/runtime.wasm"
+# body without compressing 14MB on the fly. Omit the source name and mtime so
+# identical release runtimes produce byte-identical sidecars.
+gzip -9 -n -kf "$OUT/runtime.wasm"
 
 echo "staged into $OUT:"
 ls -la "$OUT" | grep -E 'runtime\.wasm|wasm_exec\.js' || true
