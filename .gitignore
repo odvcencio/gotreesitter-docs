@@ -6,8 +6,10 @@ node_modules/
 .env
 .env.*
 !.env.example
-# playground wasm runtime — built artifacts, staged by
-# scripts/build-playground-wasm.sh (do not commit the ~14MB binary)
+# playground Go-WASM engine — built artifacts staged by
+# scripts/build-playground-wasm.sh (do not commit the binary)
 public/playground/runtime.wasm
 public/playground/runtime.wasm.gz
-public/playground/wasm_exec.js
+# language-search Go-WASM engine — built by the same reproducible script
+public/lang-search/runtime.wasm
+public/lang-search/runtime.wasm.gz

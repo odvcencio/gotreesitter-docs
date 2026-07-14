@@ -4,26 +4,9 @@ import (
 	"strings"
 
 	docsapp "github.com/odvcencio/gotreesitter-docs/app"
-	"m31labs.dev/gosx"
-	"m31labs.dev/gosx/content"
 	"m31labs.dev/gosx/route"
 	"m31labs.dev/gosx/server"
 )
-
-// docsRenderer keeps the docs server-rendered except for the language-list
-// filter. The actual parser playground has its own /playground route and WASM
-// runtime; the documentation page describes and links to it instead of
-// maintaining a second simulated playground.
-func docsRenderer(slug string, ctx *route.RouteContext) content.RendererFunc {
-	switch slug {
-	case "languages":
-		return docsapp.RenderDesignDocWithLangIsland(func(names []string) gosx.Node {
-			return docsapp.BuildLangGridIsland(ctx.Runtime(), names)
-		})
-	default:
-		return docsapp.RenderDesignDoc
-	}
-}
 
 // This directory uses the double-underscore catch-all convention
 // (__slug -> {slug...}) instead of the legacy [...slug] bracket syntax. The
@@ -50,9 +33,19 @@ func init() {
 					return nil, route.NotFound("no docs page for " + slug)
 				}
 
-				node, err := doc.Render(docsRenderer(slug, ctx))
-				if err != nil {
-					return nil, err
+				var rendered docsapp.LangSearchDocument
+				if slug == "languages" {
+					var err error
+					rendered, err = docsapp.RenderDesignDocWithLangSearch(doc)
+					if err != nil {
+						return nil, err
+					}
+				} else {
+					node, err := doc.Render(docsapp.RenderDesignDoc)
+					if err != nil {
+						return nil, err
+					}
+					rendered.Before = node
 				}
 
 				title := strings.TrimSpace(doc.Frontmatter["title"])
@@ -61,9 +54,15 @@ func init() {
 				}
 
 				return map[string]any{
-					"title":       title,
-					"description": doc.Frontmatter["description"],
-					"content":     node,
+					"title":             title,
+					"description":       doc.Frontmatter["description"],
+					"contentBefore":     rendered.Before,
+					"contentAfter":      rendered.After,
+					"hasLangSearch":     len(rendered.Names) > 0,
+					"langSearchWasmURL": docsapp.PublicAssetURL("lang-search/runtime.wasm"),
+					"langs":             rendered.Names,
+					"langTokenSources":  docsapp.LangSearchTokenSources(rendered.Names),
+					"langTotal":         len(rendered.Names),
 				}, nil
 			},
 			Metadata: func(ctx *route.RouteContext, page route.FilePage, data any) (server.Metadata, error) {

@@ -22,18 +22,20 @@ and its 206 grammars are just Go code and data, so one build targets all of them
 
 ## How it works
 
-The page ships the v0.36.0 engine-only runtime — the parser, the GLR core, recovery, the query
-engine, and the highlighter, built with `GOOS=js GOARCH=wasm` — as a single WASM module (about 3.6 MB
-compressed). Grammars are not baked in: picking a language fetches that language's compiled
+The page declares a GoSX `<Surface runtime="go-wasm">` backed by an ordinary standard-Go program.
+That dedicated v0.36.0 module contains the parser, GLR core, recovery, query engine, highlighter,
+and the playground's browser behavior in Go (about 3.9 MB compressed). Grammars are not baked in:
+picking a language fetches that language's compiled
 grammar blob on demand (2 KB for JSON, ~40 KB for JavaScript, ~120 KB for TypeScript) and hands
-it to the runtime's `loadBlob`. After that, every keystroke parses locally in your tab; the
-status readout shows the real parse time.
+it to the retained document runtime. After that, every keystroke parses locally in your tab; the
+status readout shows the real parse time. GoSX owns module loading, capability checks, mount
+lifecycle, and exact disposal. There is no application-authored JavaScript or TypeScript layer.
 
-The release also exposes persistent incremental browser documents through `open`, `update`,
-`close`, and `queryDocument`. The current playground intentionally uses the stateless `parse`,
-`highlight`, and `query` calls so each timing readout describes the complete operation it just
-performed; browser integrations can opt into the retained-document API when reuse across edits is
-the desired contract.
+The playground keeps one parser and tree for the active language. The first parse opens the
+document, edits use the smallest safe UTF-16 replacement plus incremental reparse, queries and
+highlights run against that same tree, language changes replace the document, and unmount closes
+it exactly once. If an incremental update fails after editing the old tree, the runtime performs a
+fresh transactional parse instead of retaining a half-updated document.
 
 Language auto-detection is the parser doing double duty. Obvious signals (a shebang,
 `package main`, `#include`) switch instantly, client-side. For everything else, a debounced

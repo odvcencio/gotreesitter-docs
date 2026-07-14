@@ -47,7 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          go install m31labs.dev/gosx/cmd/gosx@v0.29.5
+          go install m31labs.dev/gosx/cmd/gosx@v0.31.4
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Verify toolchain pins
@@ -55,7 +55,7 @@ jobs:
         run: |
           set -euo pipefail
           go version
-          [[ "$(gosx version)" == 'gosx v0.29.5' ]]
+          [[ "$(gosx version)" == 'gosx v0.31.4' ]]
           tinygo version | grep -Fq 'tinygo version 0.41.1'
 
       - name: Verify module graph and Go code
@@ -68,7 +68,7 @@ jobs:
 
       - name: Run production release gate
         shell: bash
-        run: ./scripts/verify-production.sh
+        run: RUN_BROWSER_SMOKE=1 ./scripts/verify-production.sh
 
       - name: Confirm tracked sources remain clean
         shell: bash

@@ -27,28 +27,10 @@ import (
 // called from that file via its existing `docsapp` import alias for this
 // package).
 var RenderDesignDoc = content.RendererFunc(func(doc content.Document) (gosx.Node, error) {
-	return renderDesignDoc(doc, nil)
+	return renderDesignDoc(doc)
 })
 
-// RenderDesignDocWithLangIsland is RenderDesignDoc for content/docs/languages.md
-// specifically: it renders exactly like RenderDesignDoc, except the
-// ```langlist fenced block (previously always renderLangGrid's static
-// output) is replaced in place by island(names) — the live 206-language
-// search filter island. Everything else in the
-// document — prose before and after the block, headings, tables — renders
-// through the same unchanged renderBlocks pipeline every other doc uses.
-//
-// page.server.go passes docsapp.BuildLangGridIsland (closed over the
-// current request's ctx.Runtime()) as island, so the returned node is
-// already a real, hydration-wired GoSX island — not a second copy of the
-// static grid.
-func RenderDesignDocWithLangIsland(island func(names []string) gosx.Node) content.RendererFunc {
-	return content.RendererFunc(func(doc content.Document) (gosx.Node, error) {
-		return renderDesignDoc(doc, island)
-	})
-}
-
-func renderDesignDoc(doc content.Document, langIsland func(names []string) gosx.Node) (gosx.Node, error) {
+func renderDesignDoc(doc content.Document) (gosx.Node, error) {
 	var children []*mdpp.Node
 	var src []byte
 	if doc.Parsed != nil && doc.Parsed.Root != nil {
@@ -64,8 +46,6 @@ func renderDesignDoc(doc content.Document, langIsland func(names []string) gosx.
 	switch {
 	case strings.TrimSpace(doc.Frontmatter["layout"]) == "steps":
 		nodes = append(nodes, renderStepsLayout(children, src)...)
-	case langIsland != nil:
-		nodes = append(nodes, renderBlocksWithLangIsland(children, src, langIsland)...)
 	default:
 		nodes = append(nodes, renderBlocks(children, src)...)
 	}
@@ -85,24 +65,40 @@ func renderDocIntro(doc content.Document) []gosx.Node {
 	return nodes
 }
 
-// renderBlocksWithLangIsland is renderBlocks, except the first top-level
-// ```langlist code block (languages.md carries exactly one, not nested in
-// any list/admonition/step — dropLeadingH1/normalizeBlocks never move it)
-// is replaced by langIsland(names) instead of going through
-// renderCodeBlock/renderLangGrid. Blocks before and after it render
-// normally through the ordinary (unmodified) renderBlocks/renderBlock/
-// renderCodeBlock chain, so every other content/docs/*.md page — and the
-// no-hook RenderDesignDoc path — is byte-for-byte unaffected by this
-// function existing.
-func renderBlocksWithLangIsland(children []*mdpp.Node, src []byte, langIsland func(names []string) gosx.Node) []gosx.Node {
+// LangSearchDocument is the server-rendered content surrounding the language
+// catalog's standard-Go GoSX engine. Names become the fallback component's
+// serializable props in the file-routed page.
+type LangSearchDocument struct {
+	Before gosx.Node
+	After  gosx.Node
+	Names  []string
+}
+
+// RenderDesignDocWithLangSearch splits languages.md at its top-level
+// ```langlist block while preserving the ordinary document renderer before
+// and after it. The route's .gsx page inserts the engine-enhanced LangSearch
+// fallback at that exact position.
+func RenderDesignDocWithLangSearch(doc content.Document) (LangSearchDocument, error) {
+	var children []*mdpp.Node
+	var src []byte
+	if doc.Parsed != nil && doc.Parsed.Root != nil {
+		children = doc.Parsed.Root.Children
+		src = doc.Parsed.Source
+	}
+	children = normalizeBlocks(dropLeadingH1(children))
+
 	idx, names, ok := findLangListBlock(children)
 	if !ok {
-		return renderBlocks(children, src)
+		node, err := renderDesignDoc(doc)
+		return LangSearchDocument{Before: node}, err
 	}
-	out := renderBlocks(children[:idx], src)
-	out = append(out, langIsland(names))
-	out = append(out, renderBlocks(children[idx+1:], src)...)
-	return out
+
+	before := append(renderDocIntro(doc), renderBlocks(children[:idx], src)...)
+	return LangSearchDocument{
+		Before: gosx.Fragment(before...),
+		After:  gosx.Fragment(renderBlocks(children[idx+1:], src)...),
+		Names:  names,
+	}, nil
 }
 
 // findLangListBlock locates the top-level ```langlist fenced code block (see

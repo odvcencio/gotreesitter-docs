@@ -102,6 +102,14 @@ a{color:var(--blue);text-decoration:none;font-weight:600}a:hover{color:var(--vio
 .langtile.hidden{display:none}
 .lang-island{display:block}
 .ldot{width:15px;height:15px;flex:none;border:2px solid var(--ink);border-radius:3px}
+.langtile:nth-child(8n+1) .ldot{background:var(--violet)}
+.langtile:nth-child(8n+2) .ldot{background:var(--blue)}
+.langtile:nth-child(8n+3) .ldot{background:var(--cyan)}
+.langtile:nth-child(8n+4) .ldot{background:var(--green)}
+.langtile:nth-child(8n+5) .ldot{background:var(--yellow)}
+.langtile:nth-child(8n+6) .ldot{background:var(--orange)}
+.langtile:nth-child(8n+7) .ldot{background:var(--red)}
+.langtile:nth-child(8n) .ldot{background:var(--pink)}
 .lname{font:600 13.5px 'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lts{margin-left:auto;font:700 9px 'JetBrains Mono',monospace;background:var(--ink);color:var(--paper);padding:2px 5px;border-radius:2px}
 .langteaser{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0}

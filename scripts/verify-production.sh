@@ -69,6 +69,11 @@ if grep -REn \
   fail "withdrawn benchmark claim remains in public site source"
 fi
 
+authored_client_source="$(find app public -type f \
+  \( -name '*.js' -o -name '*.mjs' -o -name '*.ts' -o -name '*.tsx' \) \
+  -print -quit)"
+[[ -z "$authored_client_source" ]] || fail "application client script remains: $authored_client_source"
+
 rm -rf build dist
 
 ./scripts/build-playground-wasm.sh
@@ -91,6 +96,8 @@ test -x dist/server/app
 test -s dist/build.json
 test -s dist/public/playground/runtime.wasm
 test -s dist/public/playground/runtime.wasm.gz
+test -s dist/public/lang-search/runtime.wasm
+test -s dist/public/lang-search/runtime.wasm.gz
 
 port="${VERIFY_PORT:-18080}"
 base="http://127.0.0.1:${port}"
@@ -184,10 +191,32 @@ assert_immutable_response "/playground/lang/go.json?v=$gts_version" '"name":"go"
 new_temp_file
 languages_html="$temp_path"
 curl --silent --show-error --fail --max-time 15 --output "$languages_html" "$base/docs/languages"
-lang_search_url="$(grep -oE '/gosx/islands/LangSearch\.json\?v=[0-9a-f]{12}' "$languages_html" | head -n 1)"
-[[ -n "$lang_search_url" ]] || fail "cannot find content-versioned LangSearch island URL"
-assert_revalidating_response "/gosx/islands/LangSearch.json" 'LangSearch'
-assert_immutable_response "$lang_search_url" 'LangSearch'
+lang_search_url="$(grep -Eo '/lang-search/runtime\.wasm\?v=[0-9a-f]{12}' "$languages_html" | head -n 1)"
+[[ "$lang_search_url" =~ ^/lang-search/runtime\.wasm\?v=[0-9a-f]{12}$ ]] || \
+  fail "unexpected language-search runtime URL: $lang_search_url"
+grep -Fq 'data-gosx-engine="GoTreesitterLangSearch"' "$languages_html" || fail "languages page has no GoSX search engine"
+grep -Eq '"runtime"[[:space:]]*:[[:space:]]*"go-wasm"' "$languages_html" || fail "language search manifest has no go-wasm runtime"
+if grep -Fq 'data-gosx-island="LangSearch"' "$languages_html"; then
+  fail "language search still uses the island runtime"
+fi
+new_temp_file
+lang_search_headers="$temp_path"
+new_temp_file
+lang_search_body="$temp_path"
+curl --silent --show-error --fail --max-time 15 \
+  -H 'Accept-Encoding: gzip' \
+  --dump-header "$lang_search_headers" --output "$lang_search_body" "$base$lang_search_url"
+grep -Eiq '^Content-Type:[[:space:]]*application/wasm' "$lang_search_headers" || \
+  fail "language-search runtime MIME type is not application/wasm"
+grep -Eiq '^Content-Encoding:[[:space:]]*gzip' "$lang_search_headers" || \
+  fail "language-search runtime did not use its gzip sidecar"
+grep -Eiq '^Cache-Control:.*max-age=31536000.*immutable' "$lang_search_headers" || \
+  fail "language-search runtime is not immutable"
+cmp -s "$lang_search_body" dist/public/lang-search/runtime.wasm.gz || \
+  fail "served language-search runtime differs from its gzip sidecar"
+lang_search_compressed_bytes="$(wc -c <"$lang_search_body" | tr -d '[:space:]')"
+(( lang_search_compressed_bytes <= 1000000 )) || \
+  fail "compressed language-search runtime exceeds 1 MB: $lang_search_compressed_bytes bytes"
 
 new_temp_file
 detect_response="$temp_path"
@@ -202,15 +231,19 @@ grep -q '"best":"go"' "$detect_response"
 new_temp_file
 playground_html="$temp_path"
 curl --silent --show-error --fail --max-time 15 --output "$playground_html" "$base/playground"
-runtime_url="$(sed -n 's/.*data-wasm-url="\([^"]*\)".*/\1/p' "$playground_html" | head -n 1)"
-wasm_exec_url="$(sed -n 's/.*src="\([^"]*playground\/wasm_exec\.js[^"]*\)".*/\1/p' "$playground_html" | head -n 1)"
-playground_js_url="$(sed -n 's/.*src="\([^"]*playground\/playground\.js[^"]*\)".*/\1/p' "$playground_html" | head -n 1)"
+runtime_url="$(grep -Eo '/playground/runtime\.wasm\?v=[^"&<]+' "$playground_html" | head -n 1)"
+standard_go_wasm_exec_url="$(sed -n 's/.*src="\([^"]*\/gosx\/assets\/runtime\/standard-go-wasm_exec\.[^"]*\.js\)".*/\1/p' "$playground_html" | head -n 1)"
 playground_css_url="$(sed -n 's/.*href="\([^"]*playground\/playground\.css[^"]*\)".*/\1/p' "$playground_html" | head -n 1)"
 
 [[ "$runtime_url" == "/playground/runtime.wasm?v=$gts_version" ]] || fail "unexpected runtime URL: $runtime_url"
-[[ "$wasm_exec_url" =~ ^/playground/wasm_exec\.js\?v=[0-9a-f]{12}$ ]] || fail "unexpected wasm_exec URL: $wasm_exec_url"
-[[ "$playground_js_url" =~ ^/playground/playground\.js\?v=[0-9a-f]{12}$ ]] || fail "unexpected playground JS URL: $playground_js_url"
+[[ "$standard_go_wasm_exec_url" =~ ^/gosx/assets/runtime/standard-go-wasm_exec\.[0-9a-f]{16}\.js$ ]] || \
+  fail "unexpected standard-Go wasm_exec URL: $standard_go_wasm_exec_url"
 [[ "$playground_css_url" =~ ^/playground/playground\.css\?v=[0-9a-f]{12}$ ]] || fail "unexpected playground CSS URL: $playground_css_url"
+grep -Fq 'data-gosx-engine="GoTreesitterPlayground"' "$playground_html" || fail "playground has no GoSX engine mount"
+grep -Eq '"runtime"[[:space:]]*:[[:space:]]*"go-wasm"' "$playground_html" || fail "playground manifest has no go-wasm runtime"
+if grep -Eq '<script[^>]+(playground\.js|playground\.ts)' "$playground_html"; then
+  fail "playground references an application-authored client script"
+fi
 grep -Eq 'id="pg-status"[^>]*role="status"[^>]*aria-live="polite"' "$playground_html" || fail "playground status is not an ARIA live status"
 grep -Eq 'id="pg-qerr"[^>]*role="alert"' "$playground_html" || fail "playground query errors are not alerts"
 grep -Eq 'id="pg-tree"[^>]*role="tree"[^>]*aria-label="Syntax tree"' "$playground_html" || fail "playground syntax tree has no accessible name"
@@ -225,19 +258,16 @@ assert_public_asset() {
   grep -Eiq "^Content-Type:.*$content_type_pattern" "$headers" || fail "unexpected Content-Type for $url"
   grep -Eiq '^Cache-Control:.*max-age=0.*must-revalidate' "$headers" || fail "unexpected Cache-Control for $url"
 }
-assert_public_asset "$wasm_exec_url" 'javascript'
-assert_public_asset "$playground_js_url" 'javascript'
 assert_public_asset "$playground_css_url" 'text/css'
 
 new_temp_file
-playground_js_body="$temp_path"
-curl --silent --show-error --fail --max-time 15 --output "$playground_js_body" "$base$playground_js_url"
-grep -Fq 'row.setAttribute("role", "treeitem")' "$playground_js_body" || fail "playground tree rows are not treeitems"
-grep -Fq 'case "ArrowDown":' "$playground_js_body" || fail "playground tree has no ArrowDown handling"
-grep -Fq 'case "ArrowUp":' "$playground_js_body" || fail "playground tree has no ArrowUp handling"
-grep -Fq 'case "Home":' "$playground_js_body" || fail "playground tree has no Home handling"
-grep -Fq 'case "End":' "$playground_js_body" || fail "playground tree has no End handling"
-grep -Fq 'case "Enter":' "$playground_js_body" || fail "playground tree has no activation handling"
+standard_go_wasm_exec_headers="$temp_path"
+curl --silent --show-error --fail --max-time 15 --head \
+  --dump-header "$standard_go_wasm_exec_headers" --output /dev/null "$base$standard_go_wasm_exec_url"
+grep -Eiq '^Content-Type:.*javascript' "$standard_go_wasm_exec_headers" || \
+  fail "standard-Go wasm_exec has unexpected Content-Type"
+grep -Eiq '^Cache-Control:.*max-age=31536000.*immutable' "$standard_go_wasm_exec_headers" || \
+  fail "hashed standard-Go wasm_exec is not immutable"
 
 new_temp_file
 playground_css_body="$temp_path"
@@ -335,6 +365,12 @@ conditional_status="$(curl --silent --show-error --max-time 15 \
   "$base$runtime_url")"
 [[ "$conditional_status" == "304" ]] || fail "runtime conditional status is $conditional_status, want 304"
 
+if [[ "${RUN_BROWSER_SMOKE:-0}" == "1" || "${RUN_BROWSER_PERF:-0}" == "1" ]]; then
+  PLAYGROUND_BROWSER_URL="$base/playground" \
+    LANG_SEARCH_BROWSER_URL="$base/docs/languages" \
+    go test ./app/playground -run '^(TestPlaygroundBrowserSmoke|TestLangSearchBrowserSmoke)$' -count=1
+fi
+
 if [[ "${RUN_BROWSER_PERF:-0}" == "1" ]]; then
   for route in / /docs/getting-started /docs/performance; do
     gosx perf --coverage --budget perf-budget.json --budget-profile docs "$base$route"
@@ -345,3 +381,4 @@ fi
 echo "production verification passed"
 echo "verified GoSX $gosx_version with gotreesitter $gts_version"
 echo "compressed playground runtime: $compressed_bytes bytes"
+echo "compressed language-search runtime: $lang_search_compressed_bytes bytes"

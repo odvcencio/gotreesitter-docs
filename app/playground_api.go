@@ -7,9 +7,9 @@ package docs
 //	                                    compiled-blob size (0 when a grammar
 //	                                    has no embedded blob to ship).
 //	GET  /playground/lang/{name}.json — one grammar's compiled blob (base64)
-//	                                    plus its highlight query; the client
-//	                                    feeds both to the WASM runtime's
-//	                                    gotreesitter.loadBlob.
+//	                                    plus its highlight query; the Go-WASM
+//	                                    engine loads both into its retained
+//	                                    document runtime.
 //	POST /playground/detect           — server-side language detection: a
 //	                                    bounded parse-race over a shortlist
 //	                                    of popular grammars, scored by
@@ -94,8 +94,8 @@ var (
 
 // playgroundLangList enumerates grammars.AllLanguages() once. BlobBytes is
 // len(BlobByName): grammargen runtime extensions carry no embedded blob and
-// report 0 — the client disables those picker entries since loadBlob has
-// nothing to load.
+// report 0 — the client disables those picker entries because there is no
+// grammar payload to load.
 func playgroundLangList() []playgroundLang {
 	playgroundLangsOnce.Do(func() {
 		all := grammars.AllLanguages()

@@ -1,8 +1,8 @@
 // Package playground backs the live /playground route (page.gsx): the real
 // gotreesitter engine compiled to WASM, parsing in the visitor's tab. This
-// file only stages data for the template — the parse/highlight/detect logic
-// lives in public/playground/playground.js (client) and
-// app/playground_api.go (JSON endpoints, mounted in main.go).
+// file only stages data for the template — the Go-WASM client lives in
+// app/playground/client and the bounded detection API lives in
+// app/playground_api.go.
 package playground
 
 import (
@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 
 	docsapp "github.com/odvcencio/gotreesitter-docs/app"
 	"m31labs.dev/gosx/route"
@@ -19,8 +18,7 @@ import (
 
 // initialGoSource is the buffer the page ships server-rendered inside the
 // <textarea>, so the first paint already shows real code while the runtime
-// downloads. playground.js reads this back as its "go" try-sample (single
-// source of truth — the JS file defines only the other samples).
+// downloads. The Go-WASM engine reads this back as its "go" try-sample.
 const initialGoSource = `package main
 
 import "fmt"
@@ -51,24 +49,27 @@ func init() {
 				version := docsapp.PlaygroundGTSVersion()
 				// Stat per request so `scripts/build-playground-wasm.sh` takes
 				// effect on reload, without restarting the server.
-				wasmBytes := int64(0)
+				transferBytes := int64(0)
 				wasmReady := false
 				if info, err := os.Stat(filepath.Join(root, "public", "playground", "runtime.wasm")); err == nil && !info.IsDir() {
-					wasmBytes = info.Size()
+					transferBytes = info.Size()
 					wasmReady = true
+				}
+				if info, err := os.Stat(filepath.Join(root, "public", "playground", "runtime.wasm.gz")); err == nil && !info.IsDir() {
+					transferBytes = info.Size()
 				}
 				return map[string]any{
 					"wasmReady": wasmReady,
-					"wasmBytes": strconv.FormatInt(wasmBytes, 10),
-					"wasmMB":    fmt.Sprintf("%.1f MB", float64(wasmBytes)/(1024*1024)),
+					"wasmMB":    fmt.Sprintf("%.1f MB", float64(transferBytes)/1_000_000),
 					// Exact release keys receive immutable caching; unversioned
 					// or stale keys revalidate so release bumps cannot reuse an
 					// older runtime.
-					"wasmURL":       "/playground/runtime.wasm?v=" + version,
-					"wasmExecURL":   docsapp.PublicAssetURL("playground/wasm_exec.js"),
-					"playgroundJS":  docsapp.PublicAssetURL("playground/playground.js"),
-					"gtsVersion":    version,
-					"initialSource": initialGoSource,
+					"wasmURL":           "/playground/runtime.wasm?v=" + version,
+					"gtsVersion":        version,
+					"languagesURL":      "/playground/langs.json",
+					"languageURLPrefix": "/playground/lang/",
+					"detectURL":         "/playground/detect",
+					"initialSource":     initialGoSource,
 				}, nil
 			},
 			Metadata: func(ctx *route.RouteContext, page route.FilePage, data any) (server.Metadata, error) {
