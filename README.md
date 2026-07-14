@@ -14,7 +14,7 @@ Requirements:
 
 - Go 1.26
 - GoSX 0.29.5 (`go install m31labs.dev/gosx/cmd/gosx@v0.29.5`)
-- TinyGo 0.40.1 for the production GoSX runtime
+- TinyGo 0.41.1 for the production GoSX runtime
 
 ```sh
 cp .env.example .env
@@ -93,6 +93,5 @@ This documentation site is available under the [MIT License](LICENSE).
 ## Performance claims
 
 User-visible numbers must match gotreesitter's release-pinned
-[`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.33.0/BENCH.md). In particular, the
-withdrawn 1.54 ms no-tree diagnostic must never be presented as materialized full-parse
-performance.
+[`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.36.0/BENCH.md). In particular,
+withdrawn no-tree diagnostics must never be presented as materialized full-parse performance.

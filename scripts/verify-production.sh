@@ -30,7 +30,7 @@ go_toolchain="$(awk '$1 == "toolchain" { print $2; exit }' go.mod)"
 [[ "$(go env GOVERSION)" == "$go_toolchain" ]] || fail "Go $(go env GOVERSION) does not match go.mod $go_toolchain"
 
 tinygo_version="$(tinygo version | awk '{ print $3; exit }')"
-[[ "$tinygo_version" == "0.40.1" ]] || fail "TinyGo $tinygo_version does not match required 0.40.1"
+[[ "$tinygo_version" == "0.41.1" ]] || fail "TinyGo $tinygo_version does not match required 0.41.1"
 
 module_version() {
   local module="$1"
@@ -57,6 +57,17 @@ if [[ "$gosx_cli_version" != "$gosx_version" ]]; then
 fi
 grep -Fq "GoSX ${gosx_version#v}" README.md || fail "README GoSX requirement does not match go.mod $gosx_version"
 grep -Fq "m31labs.dev/gosx/cmd/gosx@$gosx_version" README.md || fail "README GoSX install command does not match go.mod $gosx_version"
+grep -Fq "github.com/odvcencio/gotreesitter@$gts_version" app/page.gsx || \
+  fail "landing-page install command does not match go.mod $gts_version"
+bench_url="https://github.com/odvcencio/gotreesitter/blob/$gts_version/BENCH.md"
+for source in README.md content/docs/performance.md content/docs/incremental-parsing.md; do
+  grep -Fq "$bench_url" "$source" || fail "$source benchmark link does not match go.mod $gts_version"
+done
+if grep -REn \
+  '1[.]54[[:space:]]*ms|649[[:space:]]*ns|2[.]43[[:space:]]*ns|41[,]?800' \
+  README.md app content; then
+  fail "withdrawn benchmark claim remains in public site source"
+fi
 
 rm -rf build dist
 
