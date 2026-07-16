@@ -63,7 +63,9 @@ matrices smacker never had to support. gotreesitter is pure Go, so the same buil
 everywhere Go's toolchain does, with no C compiler in the loop:
 
 ```sh
-CGO_ENABLED=0 GOARCH=arm64 GOOS=wasip1 go build ./...
+# a WASI/WASM target and a Linux/arm64 target — both cgo-impossible, both clean here
+GOOS=wasip1 GOARCH=wasm CGO_ENABLED=0 go build ./...
+GOOS=linux  GOARCH=arm64 CGO_ENABLED=0 go build ./...
 ```
 
 No C toolchain to install or pin in CI, no per-platform shared library to vendor, and one
@@ -85,7 +87,9 @@ that mirrors the same layout — `compat/smacker/golang`, `compat/smacker/python
 subpackages export. If a grammar you depend on isn't covered yet, adding one is a few lines
 mapping the name to gotreesitter's existing `grammars.XLanguage()` entry for that language.
 
-> [!NOTE] Where this lands
-> `compat/smacker` ships alongside the rest of gotreesitter's module — no separate `go get`. See
+> [!NOTE] Availability
+> `compat/smacker` lands in gotreesitter's module — once released, there's no separate `go get`,
+> just the one import swap above. It is not in `v0.38.0`; until the release that carries it is
+> tagged, pin the module to the revision that includes `compat/smacker` (or track `main`). See
 > [Getting Started](/docs/getting-started) if you're setting up gotreesitter for the first time
 > rather than migrating an existing smacker integration.
