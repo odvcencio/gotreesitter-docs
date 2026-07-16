@@ -27,7 +27,7 @@ func Page() Node {
 				<div class="install">
 					<div class="cmd mono">
 						<span class="pr">$</span>
-						go get github.com/odvcencio/gotreesitter@v0.36.0
+						go get github.com/odvcencio/gotreesitter
 					</div>
 				</div>
 				<div class="pillrow">
@@ -89,8 +89,8 @@ func Page() Node {
 					Fast enough to parse on every keystroke. On the pinned-host receipt, a single-byte edit takes
 					<b>1.98 µs</b>
 					—
-					<b>167×</b>
-					faster than the cgo-backed C runtime — and a no-op reparse takes 9.9 ns. Both allocate zero. Full parse is slower than C on the canonical workload and across much of the fleet; the
+					<b>5,500×</b>
+					faster than a full parse of the same file — and a no-op reparse takes 9.9 ns. Both allocate zero. Full parse is slower than C on the canonical workload and across much of the fleet; the
 					<a href="/docs/performance" data-gosx-link="true">numbers, with asterisks</a>
 					.
 				</p>
@@ -128,48 +128,34 @@ func Page() Node {
 		<h2 class="h2">The numbers</h2>
 		<div class="underbar"></div>
 		<p class="p mut">
-			500-function Go source (19,294 bytes). Medians of 10 runs on an idle Intel Xeon D-2141I core, GOMAXPROCS=1.
+			Full-parse headline: four frozen, human-written Go files (5 KB–236 KB), each measured against a locked upstream tree-sitter v0.25.1 C oracle — ten process-isolated samples per fixture, byte-exact tree identity admitted before every timing run.
 		</p>
 		<p class="p mut">
-			The corrected public benchmark materializes and releases the full tree. The old 1.54 ms headline measured a no-tree diagnostic and has been withdrawn. Real-corpus full-parse ratios vary substantially by grammar; the full fleet distribution and named gaps are on the
+			Full parse is currently slower than the C runtime on that real-code matrix — that's the honest number, not a marketing one; gotreesitter wins on the editor-style incremental path below instead. An older generated 500-function file is retained only for tracking single-stack regressions, not as a full-parse headline. Fleet ratios vary widely by grammar; the complete distribution and every named gap are on the
 			<a href="/docs/performance" data-gosx-link="true">performance page</a>
-			, including the cases we still lose.
+			.
 		</p>
-		<div class="bench">
-			<div class="brow">
-				<div class="blabel">
-					<span>FULL PARSE — lower is better</span>
-					<span class="mut">ms</span>
-				</div>
-				<div class="btrack">
-					<div class="bbar">
-						<span class="bname">C via cgo</span>
-						<div class="bfillwrap">
-							<div class="bfill c-orange" style="width:53%">5.756</div>
-						</div>
-					</div>
-					<div class="bbar">
-						<span class="bname">gotreesitter</span>
-						<div class="bfillwrap">
-							<div class="bfill c-blue" style="width:100%">10.907</div>
-						</div>
-					</div>
-				</div>
+		<div class="mult" style="background:#ffedd0">
+			<div class="big t-orange">5.48×</div>
+			<div class="sub">
+				slower than
+				<b>C</b>
+				— full parse, real-code equal-fixture geomean across the four frozen fixtures. 204/206 grammars ratcheted, 206/206 pass curated structural parity.
 			</div>
 		</div>
 		<div class="multrow">
 			<div class="mult c-pink" style="background:#ffe0ec">
-				<div class="big t-pink">167×</div>
+				<div class="big t-pink">5,500×</div>
 				<div class="sub">
-					faster single-byte edit vs C through cgo —
+					faster single-byte edit vs a full parse of the same file —
 					<b>1.98 µs</b>
 					, 0 allocs
 				</div>
 			</div>
 			<div class="mult" style="background:#d6f7ea">
-				<div class="big t-green">~33,000×</div>
+				<div class="big t-green">~1.1M×</div>
 				<div class="sub">
-					faster no-edit reparse —
+					faster no-edit reparse vs a full parse of the same file —
 					<b>9.9 ns</b>
 					, 0 B/op, 0 allocs
 				</div>
