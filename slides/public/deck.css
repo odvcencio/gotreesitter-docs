@@ -1,0 +1,1063 @@
+/* GoTreeSitter · GopherCon 2026 — deck visual system.
+   Implements the "GopherCon GoTreeSitter Deck v2" design contract (DESIGN.md):
+   paper & ink, hard-edged print cards, registration-color strips, mono chrome.
+   Loaded by the DeckStyle island on top of the swiss base theme. */
+
+:root {
+  --color-paper: #efe9db;
+  --color-paper-2: #e7e0cf;
+  --color-ink: #141210;
+  --color-body: #2a2620;
+  --color-card: #fbf7ee;
+  --color-muted: #726b5c;
+  --color-dark-body: #d8d2c2;
+  --color-dark-muted: #a89f8d;
+  --color-dark-surface: #221d16;
+  --color-dark-border: #4b4439;
+  --color-code-surface: #17140f;
+  --color-code-text: #e3ddce;
+  --color-violet: #9d4edd;
+  --color-blue: #3a86ff;
+  --color-cyan: #1fbcd8;
+  --color-green: #12b886;
+  --color-yellow: #f0b429;
+  --color-orange: #ff8c42;
+  --color-red: #ef476f;
+  --color-pink: #ff5da2;
+  --color-accent-soft: rgba(255, 93, 162, 0.14);
+  --color-progress: rgba(20, 18, 16, 0.12);
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --type-xs: clamp(0.72rem, 1.05vw, 1.2rem);
+  --type-citation: 0.78rem;
+  --type-button: 0.9rem;
+  --type-chrome: clamp(0.72rem, 1.1vw, 1.25rem);
+  --type-code: clamp(0.75rem, 1.15vw, 1.3rem);
+  --type-pill: clamp(0.78rem, 1.2vw, 1.35rem);
+  --type-sm: clamp(0.8rem, 1.18vw, 1.32rem);
+  --type-card: clamp(0.85rem, 1.3vw, 1.5rem);
+  --type-card-title: clamp(1.05rem, 1.7vw, 1.9rem);
+  --type-list: clamp(1rem, 1.5vw, 1.75rem);
+  --type-body: clamp(1.05rem, 1.55vw, 1.85rem);
+  --type-lead: clamp(1.05rem, 1.72vw, 2rem);
+  --type-rule: clamp(1.9rem, 3.4vw, 3.4rem);
+  --type-section-body: clamp(1.2rem, 2.1vw, 2.35rem);
+  --type-takeaway: clamp(1.2rem, 2vw, 2.25rem);
+  --type-h2: clamp(1.65rem, 3.4vw, 3.2rem);
+  --type-stat: clamp(2.7rem, 5.4vw, 5.3rem);
+  --type-h1: clamp(3rem, 6vw, 5.5rem);
+  --type-hero: clamp(3.2rem, 5.6vw, 6.7rem);
+  --type-section: clamp(4rem, 8vw, 7.5rem);
+  --type-secn: clamp(6rem, 13vw, 13rem);
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+  --space-page-x: clamp(3.5rem, 6.8vw, 7.4rem);
+  --space-page-top: clamp(3.25rem, 6.2vw, 6.9rem);
+  --space-page-bottom: clamp(6rem, 10vw, 8.4rem);
+  --space-compact: 0.55rem;
+  --space-tight: 0.65rem;
+  --space-dense: 0.7rem;
+  --space-chip: 0.8rem;
+  --space-strip: 0.8rem;
+  --space-pill-gap: 0.85rem;
+  --space-button-gap: 0.9rem;
+  --space-marker: 1.05rem;
+  --space-control: 1.2rem;
+  --space-stage: 1.25rem;
+  --space-grid-row: 1.3rem;
+  --space-card: 1.35rem;
+  --space-card-lg: 1.4rem;
+  --space-eyebrow: 1.6rem;
+  --space-section-gap: 1.7rem;
+  --space-code: 1.8rem;
+  --space-indent: 2.2rem;
+  --space-footer: 2.5rem;
+  --space-grid: 2.6rem;
+  --space-heading-gap: clamp(1.75rem, 3vw, 2.7rem);
+  --size-logo: 3.5rem;
+  --size-track: 3.6rem;
+  --size-takeaway: 4.5rem;
+  --size-takeaway-min: 4.8rem;
+  --size-rule: clamp(5rem, 8vw, 7.5rem);
+  --size-rule-section: 8rem;
+  --size-takeaway-indent: 6.3rem;
+  --size-benchmark-label: 11rem;
+  --size-content: 60rem;
+  --size-benchmark: 72rem;
+  --duration-fast: 220ms;
+  --duration-medium: 300ms;
+  --duration-slow: 600ms;
+  --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Base canvas ─────────────────────────────────────────────────────────── */
+
+main.deck[data-theme="swiss"] {
+  --bg: var(--color-paper);
+  --surface: var(--color-card);
+  --accent: var(--color-pink);
+  --accent-soft: var(--color-accent-soft);
+  --fg: var(--color-ink);
+  --fg-muted: var(--color-muted);
+  --line: var(--color-ink);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+main.deck[data-theme="swiss"] > .slide {
+  box-sizing: border-box;
+  /* Full-bleed stage: the swiss base theme boxes slides to a 1080px column;
+     the v2 design owns the whole viewport. */
+  width: auto;
+  max-width: none;
+  margin: 0;
+  border-top: 0; /* the swiss base adds a 6px accent rule; v2 has none */
+  min-height: 100vh;
+  padding: var(--space-page-top) var(--space-page-x) var(--space-page-bottom);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-size: var(--type-body);
+  line-height: 1.43;
+  position: relative;
+}
+
+/* Footer chrome: mono label bottom-left; the framework counter is restyled as
+   the ink number chip bottom-right. */
+main.deck[data-theme="swiss"] > .slide::after {
+  content: "gotreesitter · gophercon 2026";
+  position: absolute;
+  left: var(--space-page-x);
+  bottom: var(--space-footer);
+  color: var(--color-muted);
+  font: 600 var(--type-chrome)/1 var(--font-mono);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="0"]::after { content: "gotreesitter.m31labs.dev"; }
+main.deck[data-theme="swiss"] > .slide.layout-title:last-of-type::after { content: "gophercon 2026"; }
+
+main.deck[data-theme="swiss"] .deck-counter {
+  right: var(--space-page-x);
+  bottom: var(--space-lg);
+  padding: 0.45rem var(--space-button-gap);
+  border: 3px solid var(--color-ink);
+  border-radius: 3px;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  opacity: 1;
+  font: 700 var(--type-chrome)/1 var(--font-mono);
+}
+
+main.deck[data-theme="swiss"] .deck-progress {
+  height: 5px;
+  background: var(--color-progress);
+}
+
+main.deck[data-theme="swiss"] .deck-progress-fill { background: var(--accent); }
+
+/* ── Type ────────────────────────────────────────────────────────────────── */
+
+main.deck[data-theme="swiss"] h1,
+main.deck[data-theme="swiss"] h2,
+main.deck[data-theme="swiss"] h3 {
+  font-family: var(--font-display);
+  color: inherit;
+  text-transform: none;
+}
+
+main.deck[data-theme="swiss"] h1 {
+  max-width: 18ch;
+  margin: 0 0 var(--space-heading-gap);
+  font-size: var(--type-h1);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+}
+
+/* The accent bar under every heading. */
+main.deck[data-theme="swiss"] h1::after {
+  content: "";
+  display: block;
+  width: var(--size-rule);
+  height: var(--space-tight);
+  margin-top: clamp(var(--space-control), 2.2vw, var(--space-lg));
+  border: 3px solid currentColor;
+  background: var(--accent);
+}
+
+main.deck[data-theme="swiss"] h2 {
+  margin: 0 0 var(--space-md);
+  font-size: var(--type-h2);
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+}
+
+main.deck[data-theme="swiss"] p {
+  max-width: 57ch;
+  margin: 0 0 var(--space-md);
+  color: var(--color-body);
+  font-size: var(--type-lead);
+}
+
+main.deck[data-theme="swiss"] strong { color: inherit; font-weight: 700; }
+main.deck[data-theme="swiss"] code { font-family: var(--font-mono); }
+
+/* ── Eyebrow: the slide's first blockquote renders as the ink label chip ── */
+
+main.deck[data-theme="swiss"] > .slide > blockquote:first-of-type {
+  display: inline-flex;
+  width: auto;
+  margin: 0 0 var(--space-eyebrow);
+  padding: 0.45rem var(--space-sm);
+  border: 0;
+  border-radius: 3px;
+  background: var(--color-ink);
+  box-shadow: none;
+}
+
+main.deck[data-theme="swiss"] > .slide > blockquote:first-of-type p {
+  margin: 0;
+  color: var(--color-paper);
+  font: 700 var(--type-xs)/1.2 var(--font-mono);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+/* Any later blockquote is a note card: ink frame, colored left rail. */
+main.deck[data-theme="swiss"] > .slide > blockquote:not(:first-of-type) {
+  max-width: 72rem;
+  margin: var(--space-lg) 0 0;
+  padding: var(--space-sm) var(--space-md);
+  border: 4px solid var(--color-ink);
+  border-left-width: 14px;
+  border-left-color: var(--color-cyan);
+  border-radius: 4px;
+  background: var(--color-card);
+  box-shadow: 5px 5px 0 var(--color-ink);
+}
+
+main.deck[data-theme="swiss"] > .slide > blockquote:not(:first-of-type) p {
+  max-width: none;
+  margin: 0;
+  color: var(--color-body);
+  font-size: var(--type-body);
+}
+
+/* ── Lists ───────────────────────────────────────────────────────────────── */
+
+main.deck[data-theme="swiss"] ul,
+main.deck[data-theme="swiss"] ol {
+  margin: var(--space-control) 0 var(--space-md);
+  padding: 0;
+  list-style: none;
+}
+
+main.deck[data-theme="swiss"] li {
+  position: relative;
+  max-width: 54ch;
+  margin: 0;
+  padding: var(--space-compact) 0 var(--space-compact) var(--space-indent);
+  font-size: var(--type-list);
+  line-height: 1.4;
+}
+
+main.deck[data-theme="swiss"] ul > li::before {
+  content: "";
+  position: absolute;
+  left: 0.1rem;
+  top: var(--space-marker);
+  width: var(--space-xs);
+  height: var(--space-xs);
+  border: 3px solid var(--color-ink);
+  background: var(--accent);
+}
+
+main.deck[data-theme="swiss"] ol { counter-reset: deck-item; }
+main.deck[data-theme="swiss"] ol > li { counter-increment: deck-item; }
+main.deck[data-theme="swiss"] ol > li::before {
+  content: counter(deck-item);
+  position: absolute;
+  left: 0;
+  top: 0.45rem;
+  color: var(--accent);
+  font: 700 1.15em/1.4 var(--font-mono);
+}
+
+/* ── Code panels: dark surface, ink frame, print shadow, terminal chrome ── */
+
+main.deck[data-theme="swiss"] pre.code-block {
+  max-width: var(--size-content);
+  margin: var(--space-grid-row) 0 var(--space-lg);
+  padding: var(--space-md) var(--space-code);
+  border: 4px solid var(--color-ink);
+  border-radius: 4px;
+  background: var(--color-code-surface);
+  box-shadow: var(--space-tight) var(--space-tight) 0 var(--color-ink);
+  color: var(--color-code-text);
+  font-size: var(--type-code);
+  line-height: 1.6;
+  position: relative;
+}
+
+main.deck[data-theme="swiss"] pre.code-block::before {
+  content: "gotreesitter";
+  display: block;
+  margin: calc(-1 * var(--space-md)) calc(-1 * var(--space-code)) var(--space-md);
+  padding: var(--space-dense) var(--space-sm) var(--space-dense) 3.6rem;
+  border-bottom: 3px solid #000;
+  border-radius: 1px 1px 0 0;
+  background-color: var(--color-dark-surface);
+  background-image:
+    radial-gradient(circle at 1rem 50%, var(--color-red) 0.27rem, transparent 0.34rem),
+    radial-gradient(circle at 1.9rem 50%, var(--color-yellow) 0.27rem, transparent 0.34rem),
+    radial-gradient(circle at 2.8rem 50%, var(--color-green) 0.27rem, transparent 0.34rem);
+  color: var(--color-dark-muted);
+  font: 600 var(--type-xs)/1.2 var(--font-mono);
+  white-space: normal;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="1"] pre.code-block::before { content: "anywhere Go goes"; }
+main.deck[data-theme="swiss"] > .slide[data-slide="6"] pre.code-block::before { content: "the parity lane"; }
+main.deck[data-theme="swiss"] > .slide[data-slide="10"] pre.code-block::before { content: "AGENTS.md"; }
+
+main.deck[data-theme="swiss"] pre.code-block code { color: inherit; background: none; }
+
+/* v2 token palette on the dark panel. */
+main.deck[data-theme="swiss"] pre.code-block .ts-keyword { color: #c79bff; font-weight: 600; }
+main.deck[data-theme="swiss"] pre.code-block .ts-function { color: #7aacff; }
+main.deck[data-theme="swiss"] pre.code-block .ts-type { color: #ffd23f; }
+main.deck[data-theme="swiss"] pre.code-block .ts-string { color: #5fdc9a; }
+main.deck[data-theme="swiss"] pre.code-block .ts-number { color: #ffb066; }
+main.deck[data-theme="swiss"] pre.code-block .ts-comment { color: #847c6d; font-style: italic; }
+main.deck[data-theme="swiss"] pre.code-block .ts-operator { color: #ff86bb; }
+main.deck[data-theme="swiss"] pre.code-block .ts-punctuation { color: var(--color-dark-muted); }
+
+/* ── Print cards (shared card body; per-slide grids assign strips) ───────── */
+
+main.deck[data-theme="swiss"] > .slide[data-slide="6"] > ul li,
+main.deck[data-theme="swiss"] > .slide[data-slide="7"] > ul li,
+main.deck[data-theme="swiss"] > .slide[data-slide="8"] > ul li,
+main.deck[data-theme="swiss"] > .slide[data-slide="10"] > ul li,
+main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li,
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li {
+  max-width: none;
+  padding: calc(var(--space-card) + var(--space-strip)) var(--space-md) var(--space-card);
+  border: 4px solid var(--color-ink);
+  border-radius: 4px;
+  background: var(--color-card);
+  box-shadow: 6px 6px 0 var(--color-ink);
+  font-size: var(--type-card);
+  color: var(--color-body);
+}
+
+/* The registration strip: the freed list marker becomes a full-width bar. */
+main.deck[data-theme="swiss"] > .slide[data-slide="6"] > ul li::before,
+main.deck[data-theme="swiss"] > .slide[data-slide="7"] > ul li::before,
+main.deck[data-theme="swiss"] > .slide[data-slide="8"] > ul li::before,
+main.deck[data-theme="swiss"] > .slide[data-slide="10"] > ul li::before,
+main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li::before,
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  width: auto;
+  height: var(--space-strip);
+  border: 0;
+  border-bottom: 4px solid var(--color-ink);
+  border-radius: 2px 2px 0 0;
+  background: var(--accent);
+  transform: none;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="6"] > ul li strong,
+main.deck[data-theme="swiss"] > .slide[data-slide="7"] > ul li strong,
+main.deck[data-theme="swiss"] > .slide[data-slide="8"] > ul li strong,
+main.deck[data-theme="swiss"] > .slide[data-slide="10"] > ul li strong,
+main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li strong,
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li strong {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--color-ink);
+  font-size: var(--type-card-title);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+/* ── 01 Title (slide 0) ──────────────────────────────────────────────────── */
+
+main.deck[data-theme="swiss"] > .slide[data-slide="0"],
+main.deck[data-theme="swiss"] > .slide.layout-title:last-of-type {
+  align-items: flex-start;
+  justify-content: center;
+  text-align: left;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="0"] h1,
+main.deck[data-theme="swiss"] > .slide.layout-title:last-of-type h1 {
+  max-width: none;
+  font-size: var(--type-hero);
+}
+
+/* v2 breaks the hero after "Pure-Go Tree-sitter:"; markdown headings cannot
+   carry a <br>, so the strong run starts on its own line instead. */
+main.deck[data-theme="swiss"] > .slide[data-slide="0"] h1 strong::before {
+  content: "\A";
+  white-space: pre;
+}
+
+/* The 2×2 registration block above the hero. */
+main.deck[data-theme="swiss"] > .slide[data-slide="0"] h1::before,
+main.deck[data-theme="swiss"] > .slide.layout-title:last-of-type h1::before {
+  content: "";
+  display: block;
+  width: var(--size-logo);
+  height: var(--size-logo);
+  margin-bottom: var(--space-card-lg);
+  border: 4px solid currentColor;
+  background: conic-gradient(var(--color-yellow) 0 25%, var(--color-green) 0 50%, var(--color-cyan) 0 75%, var(--color-pink) 0);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="0"] h1 strong { color: var(--color-blue); }
+main.deck[data-theme="swiss"] > .slide[data-slide="0"] h1 em {
+  color: var(--color-violet);
+  font-style: normal;
+}
+
+main.deck[data-theme="swiss"] > .slide.layout-title:last-of-type h1 strong { color: var(--color-green); }
+
+/* Pill rows: the title/close slides' list renders as mono badge pills. */
+main.deck[data-theme="swiss"] > .slide[data-slide="0"] > ul,
+main.deck[data-theme="swiss"] > .slide.layout-title:last-of-type > ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-pill-gap);
+  margin-top: var(--space-xl);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="0"] > ul li,
+main.deck[data-theme="swiss"] > .slide.layout-title:last-of-type > ul li {
+  width: auto;
+  max-width: none;
+  padding: var(--space-tight) var(--space-sm) var(--space-tight) var(--space-footer);
+  border: 3px solid var(--color-ink);
+  border-radius: 3px;
+  background: var(--color-card);
+  box-shadow: 4px 4px 0 var(--color-ink);
+  color: var(--color-ink);
+  font: 600 var(--type-pill)/1.2 var(--font-mono);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="0"] > ul li::before,
+main.deck[data-theme="swiss"] > .slide.layout-title:last-of-type > ul li::before {
+  left: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="0"] > ul li:nth-child(1)::before { background: var(--color-green); }
+main.deck[data-theme="swiss"] > .slide[data-slide="0"] > ul li:nth-child(2)::before { background: var(--color-cyan); }
+main.deck[data-theme="swiss"] > .slide[data-slide="0"] > ul li:nth-child(3)::before { background: var(--color-pink); }
+main.deck[data-theme="swiss"] > .slide[data-slide="0"] > ul li:nth-child(4)::before { background: var(--color-yellow); }
+main.deck[data-theme="swiss"] > .slide.layout-title:last-of-type > ul li:nth-child(1)::before { background: var(--color-green); }
+main.deck[data-theme="swiss"] > .slide.layout-title:last-of-type > ul li:nth-child(2)::before { background: var(--color-cyan); }
+
+/* Close slide sign-off. */
+main.deck[data-theme="swiss"] > .slide.layout-title:last-of-type h2 {
+  margin-top: var(--space-2xl);
+  color: var(--color-green);
+  font: 700 var(--type-lead)/1.2 var(--font-mono);
+}
+
+/* ── Dark slides (declared via slide metadata background) ────────────────── */
+
+main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] { color: var(--color-paper); }
+main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] h1,
+main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] h2,
+main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] h3 { color: var(--color-paper); }
+main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] p { color: var(--color-dark-body); }
+main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] li { color: var(--color-dark-body); }
+main.deck[data-theme="swiss"] > .slide[style*="--color-ink"]::after { color: var(--color-dark-muted); }
+
+main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] > blockquote:first-of-type { background: var(--color-paper); }
+main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] > blockquote:first-of-type p { color: var(--color-ink); }
+
+main.deck[data-theme="swiss"]:has(> .slide.deck-active[style*="--color-ink"]) .deck-counter {
+  border-color: var(--color-paper);
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* ── Section dividers (slides 4 / 9 / 13): outlined act number + display h ─ */
+
+main.deck[data-theme="swiss"] > .slide.layout-section {
+  align-items: flex-start;
+  justify-content: center;
+  text-align: left;
+}
+
+main.deck[data-theme="swiss"] > .slide.layout-section > blockquote:first-of-type {
+  margin-bottom: 0;
+  padding: 0;
+  background: transparent;
+}
+
+main.deck[data-theme="swiss"] > .slide.layout-section > blockquote:first-of-type p {
+  color: transparent;
+  -webkit-text-stroke: 4px var(--color-paper);
+  font: 700 var(--type-secn)/1 var(--font-mono);
+  letter-spacing: -0.05em;
+  opacity: 0.9;
+}
+
+main.deck[data-theme="swiss"] > .slide.layout-section h1 {
+  max-width: 24ch;
+  margin-top: var(--space-md);
+  color: var(--color-paper);
+  font-size: var(--type-section);
+  letter-spacing: -0.035em;
+  text-align: left;
+}
+
+main.deck[data-theme="swiss"] > .slide.layout-section h1::after {
+  width: var(--size-rule-section);
+  margin-inline: 0;
+  border-color: var(--color-paper);
+}
+
+main.deck[data-theme="swiss"] > .slide.layout-section p {
+  max-width: 46ch;
+  margin-inline: 0;
+  color: var(--color-dark-body);
+  font-size: var(--type-section-body);
+  text-align: left;
+}
+
+/* ── 02 The constraint (slide 1): bullets left, terminal right ───────────── */
+
+main.deck[data-theme="swiss"] > .slide[data-slide="1"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  column-gap: var(--space-xl);
+  align-content: start;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="1"] > blockquote,
+main.deck[data-theme="swiss"] > .slide[data-slide="1"] > h1,
+main.deck[data-theme="swiss"] > .slide[data-slide="1"] > p,
+main.deck[data-theme="swiss"] > .slide[data-slide="1"] > [data-gosx-component] {
+  grid-column: 1 / -1;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="1"] > blockquote { justify-self: start; }
+
+main.deck[data-theme="swiss"] > .slide[data-slide="1"] > ul {
+  grid-column: 1;
+  margin-top: var(--space-sm);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="1"] > pre.code-block {
+  grid-column: 2;
+  align-self: start;
+  width: auto;
+  margin: var(--space-sm) 0 0;
+}
+
+/* ── 03 The pipeline (slide 2): six stage boxes, arrowed, striped ────────── */
+
+main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-grid-row) var(--space-grid);
+  margin-top: var(--space-lg);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li {
+  max-width: none;
+  padding: calc(var(--space-stage) + var(--space-strip)) var(--space-card) var(--space-stage);
+  border: 4px solid var(--color-ink);
+  border-radius: 4px;
+  background: var(--color-card);
+  box-shadow: 6px 6px 0 var(--color-ink);
+  color: var(--color-muted);
+  font: 600 var(--type-sm)/1.35 var(--font-body);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--space-strip);
+  border-bottom: 4px solid var(--color-ink);
+  border-radius: 2px 2px 0 0;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li:nth-child(1)::before { background: var(--color-violet); }
+main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li:nth-child(2)::before { background: var(--color-blue); }
+main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li:nth-child(3)::before { background: var(--color-cyan); }
+main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li:nth-child(4)::before { background: var(--color-green); }
+main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li:nth-child(5)::before { background: var(--color-yellow); }
+main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li:nth-child(6)::before { background: var(--color-pink); }
+
+main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--color-ink);
+  font: 700 var(--type-card-title)/1.15 var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li:nth-child(1)::after,
+main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li:nth-child(2)::after,
+main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li:nth-child(4)::after,
+main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li:nth-child(5)::after {
+  content: "→";
+  position: absolute;
+  top: 50%;
+  right: calc(-1 * var(--space-grid) + 0.35rem);
+  transform: translateY(-50%);
+  color: var(--color-muted);
+  font: 700 var(--type-h2)/1 var(--font-mono);
+}
+
+/* ── 04 The scale (slide 3) & 17 adoption stats (slide 16): stat blocks ──── */
+
+main.deck[data-theme="swiss"] > .slide[data-slide="3"] > ul,
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ol {
+  display: grid;
+  gap: var(--space-md) var(--space-grid);
+  margin-top: var(--space-lg);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="3"] > ul { grid-template-columns: 1fr 1fr; }
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ol { grid-template-columns: repeat(3, 1fr); }
+
+main.deck[data-theme="swiss"] > .slide[data-slide="3"] > ul li,
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ol li {
+  max-width: none;
+  padding: var(--space-card) var(--space-md);
+  border: 4px solid var(--color-ink);
+  border-radius: 4px;
+  background: var(--color-card);
+  box-shadow: 6px 6px 0 var(--color-ink);
+  color: var(--color-muted);
+  font: 600 var(--type-xs)/1.4 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="3"] > ul li::before,
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ol li::before { display: none; }
+
+main.deck[data-theme="swiss"] > .slide[data-slide="3"] > ul li strong,
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ol li strong {
+  display: block;
+  margin-bottom: var(--space-xs);
+  color: var(--color-ink);
+  font: 700 var(--type-stat)/1 var(--font-mono);
+  letter-spacing: -0.06em;
+  text-transform: none;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="3"] > p { margin-top: var(--space-lg); }
+
+/* ── 06 The rule (slide 5): oversized statement, yellow mechanical mark ──── */
+
+main.deck[data-theme="swiss"] > .slide[data-slide="5"] > p:first-of-type {
+  max-width: 32ch;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--type-rule);
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: -0.025em;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="5"] > p:first-of-type em {
+  padding: 0 0.5rem;
+  border: 3px solid var(--color-ink);
+  background: var(--color-yellow);
+  font-style: normal;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="5"] > ul { margin-top: var(--space-xl); }
+
+/* ── 07 The oracle (slide 6) & 11 the contract (slide 10): panel + cards ─── */
+
+main.deck[data-theme="swiss"] > .slide[data-slide="6"],
+main.deck[data-theme="swiss"] > .slide[data-slide="10"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  column-gap: var(--space-xl);
+  align-content: start;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="6"] > blockquote,
+main.deck[data-theme="swiss"] > .slide[data-slide="6"] > h1,
+main.deck[data-theme="swiss"] > .slide[data-slide="6"] > p,
+main.deck[data-theme="swiss"] > .slide[data-slide="6"] > [data-gosx-component],
+main.deck[data-theme="swiss"] > .slide[data-slide="10"] > blockquote,
+main.deck[data-theme="swiss"] > .slide[data-slide="10"] > h1,
+main.deck[data-theme="swiss"] > .slide[data-slide="10"] > p,
+main.deck[data-theme="swiss"] > .slide[data-slide="10"] > [data-gosx-component] {
+  grid-column: 1 / -1;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="6"] > blockquote,
+main.deck[data-theme="swiss"] > .slide[data-slide="10"] > blockquote { justify-self: start; }
+
+main.deck[data-theme="swiss"] > .slide[data-slide="6"] > pre.code-block,
+main.deck[data-theme="swiss"] > .slide[data-slide="10"] > pre.code-block {
+  grid-column: 1;
+  align-self: start;
+  width: auto;
+  margin: var(--space-sm) 0 0;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="6"] > ul,
+main.deck[data-theme="swiss"] > .slide[data-slide="10"] > ul {
+  grid-column: 2;
+  display: grid;
+  gap: var(--space-md);
+  align-content: start;
+  margin-top: var(--space-sm);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="6"] > ul li:nth-child(1)::before { background: var(--color-green); }
+main.deck[data-theme="swiss"] > .slide[data-slide="6"] > ul li:nth-child(2)::before { background: var(--color-cyan); }
+main.deck[data-theme="swiss"] > .slide[data-slide="10"] > ul li:nth-child(1)::before { background: var(--color-blue); }
+main.deck[data-theme="swiss"] > .slide[data-slide="10"] > ul li:nth-child(2)::before { background: var(--color-pink); }
+
+/* ── 08 The gates (slide 7): three separated gate cards + verdict note ───── */
+
+main.deck[data-theme="swiss"] > .slide[data-slide="7"] > ul {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="7"] > ul li:nth-child(1)::before { background: var(--color-green); }
+main.deck[data-theme="swiss"] > .slide[data-slide="7"] > ul li:nth-child(2)::before { background: var(--color-violet); }
+main.deck[data-theme="swiss"] > .slide[data-slide="7"] > ul li:nth-child(3)::before { background: var(--color-yellow); }
+
+main.deck[data-theme="swiss"] > .slide[data-slide="7"] > blockquote:not(:first-of-type) { border-left-color: var(--color-yellow); }
+
+/* ── 09 The audits (slide 8): withdrawn/replaced verdict cards ───────────── */
+
+main.deck[data-theme="swiss"] > .slide[data-slide="8"] > ul {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-grid);
+  margin-top: var(--space-lg);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="8"] > ul li:nth-child(1)::before { background: var(--color-red); }
+main.deck[data-theme="swiss"] > .slide[data-slide="8"] > ul li:nth-child(2)::before { background: var(--color-green); }
+
+main.deck[data-theme="swiss"] > .slide[data-slide="8"] > ul li::after {
+  display: inline-block;
+  margin-top: var(--space-chip);
+  padding: 0.25rem 0.7rem;
+  border: 3px solid var(--color-ink);
+  border-radius: 3px;
+  color: var(--color-ink);
+  font: 700 var(--type-xs)/1.2 var(--font-mono);
+  letter-spacing: 0.08em;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="8"] > ul li:nth-child(1)::after {
+  content: "retracted";
+  background: var(--color-red);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="8"] > ul li:nth-child(2)::after {
+  content: "receipts";
+  background: var(--color-green);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="8"] > p:nth-of-type(2) {
+  margin-top: var(--space-lg);
+  color: var(--color-muted);
+  font-size: var(--type-body);
+}
+
+/* ── 12 The trajectory (slide 11): release rail ──────────────────────────── */
+
+main.deck[data-theme="swiss"] > .slide[data-slide="11"] > ol {
+  display: grid;
+  gap: var(--space-xl);
+  margin-top: var(--space-lg);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="11"] > ol li {
+  max-width: 68rem;
+  padding: 0.4rem 0 0.4rem var(--space-lg);
+  border-left: 6px solid var(--color-ink);
+  font-size: var(--type-sm);
+  color: var(--color-body);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="11"] > ol li::before {
+  content: "";
+  left: -0.85rem;
+  top: 0.9rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 4px solid var(--color-ink);
+  background: var(--accent);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="11"] > ol li:nth-child(1)::before { background: var(--color-cyan); }
+main.deck[data-theme="swiss"] > .slide[data-slide="11"] > ol li:nth-child(2)::before { background: var(--color-yellow); }
+main.deck[data-theme="swiss"] > .slide[data-slide="11"] > ol li:nth-child(3)::before { background: var(--color-pink); }
+
+main.deck[data-theme="swiss"] > .slide[data-slide="11"] > ol li em {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0.8rem;
+  border-radius: 3px;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font: 700 var(--type-xs)/1.2 var(--font-mono);
+  font-style: normal;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="11"] > ol li strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--color-ink);
+  font-size: var(--type-card-title);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+/* ── 13 The evidence (slide 12): benchmark captions ──────────────────────── */
+
+/* Tighter vertical rhythm: the bench + captions run tall, and a slide that
+   overflows the viewport gets auto-scaled (paper edges on a dark slide). */
+main.deck[data-theme="swiss"] > .slide[data-slide="12"] { padding-top: var(--space-xl); }
+main.deck[data-theme="swiss"] > .slide[data-slide="12"] h1 { margin-bottom: var(--space-md); }
+
+main.deck[data-theme="swiss"] > .slide[data-slide="12"] > p:nth-of-type(2),
+main.deck[data-theme="swiss"] > .slide[data-slide="12"] > p:nth-of-type(3) {
+  max-width: none;
+  margin: var(--space-sm) 0 0;
+  color: var(--color-dark-muted);
+  font: 600 var(--type-sm)/1.4 var(--font-mono);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="12"] > p:nth-of-type(3) { color: var(--color-green); }
+
+/* ── 15 The pieces (slide 14) & 16 the factory (slide 15): product grids ─── */
+
+main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li:nth-child(1)::before { background: var(--color-green); }
+main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li:nth-child(2)::before { background: var(--color-blue); }
+main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li:nth-child(3)::before { background: var(--color-yellow); }
+main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li:nth-child(4)::before { background: var(--color-pink); }
+main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li:nth-child(5)::before { background: var(--color-violet); }
+main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li:nth-child(6)::before { background: var(--color-cyan); }
+
+main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li strong,
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li strong { font-family: var(--font-mono); }
+
+main.deck[data-theme="swiss"] > .slide[data-slide="14"] > blockquote:not(:first-of-type),
+main.deck[data-theme="swiss"] > .slide[data-slide="2"] > blockquote:not(:first-of-type) { border-left-color: var(--color-cyan); }
+
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li {
+  padding: calc(var(--space-sm) + var(--space-strip)) var(--space-sm) var(--space-sm);
+  font-size: var(--type-xs);
+  line-height: 1.35;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li strong { font-size: var(--type-sm); }
+
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(1)::before { background: var(--color-blue); }
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(2)::before { background: var(--color-orange); }
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(3)::before { background: var(--color-violet); }
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(4)::before { background: var(--color-red); }
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(5)::before { background: var(--color-green); }
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(6)::before { background: var(--color-yellow); }
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(7)::before { background: var(--color-pink); }
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(8)::before { background: var(--color-cyan); }
+
+/* ── 17 The adoption (slide 16): bullets under the stat row ──────────────── */
+
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul { margin-top: var(--space-lg); }
+
+/* ── 18 Agent-native, concretely (slide 17): two balanced columns ────────── */
+
+main.deck[data-theme="swiss"] > .slide[data-slide="17"] > ul {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 var(--space-3xl);
+  margin-top: var(--space-md);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="17"] > ul li { max-width: none; }
+
+/* ── 19 Takeaways (slide 18): numbered step chips ────────────────────────── */
+
+main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ol {
+  display: grid;
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ol li {
+  max-width: none;
+  min-height: var(--size-takeaway-min);
+  padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--size-takeaway-indent);
+  font-size: var(--type-takeaway);
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ol li::before {
+  top: 0.45rem;
+  width: var(--size-takeaway);
+  height: var(--size-takeaway);
+  display: grid;
+  place-items: center;
+  border: 4px solid var(--color-ink);
+  border-radius: 4px;
+  background: var(--color-pink);
+  box-shadow: 5px 5px 0 var(--color-ink);
+  color: var(--color-ink);
+  line-height: 1;
+}
+
+main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ol li:nth-child(2)::before { background: var(--color-yellow); }
+main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ol li:nth-child(3)::before { background: var(--color-cyan); }
+
+/* ── Interactive benchmark island ────────────────────────────────────────── */
+
+.bench {
+  display: grid;
+  gap: var(--space-button-gap);
+  width: min(100%, var(--size-benchmark));
+  margin: var(--space-section-gap) 0 var(--space-sm);
+  font-family: var(--font-mono);
+}
+
+.bench-row {
+  display: grid;
+  grid-template-columns: minmax(var(--size-benchmark-label), 23%) 1fr;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.bench-name { color: var(--color-dark-body); font-weight: 600; }
+.bench-track { height: var(--size-track); border: 3px solid var(--color-paper); background: var(--color-dark-surface); }
+.bench-fill {
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: var(--space-sm);
+  border-right: 3px solid var(--color-paper);
+  color: var(--color-ink);
+  font-weight: 700;
+  transition: width var(--duration-slow) var(--ease-out), background var(--duration-medium) var(--ease-out);
+}
+
+.bench-fill.c { width: 17%; background: var(--color-green); }
+.bench-fill.before { width: 100%; background: var(--color-red); }
+.bench-fill.after { width: 100%; background: var(--color-yellow); }
+.bench-fill.after.is-live { width: 74%; background: var(--color-green); }
+.bench-action { display: flex; justify-content: space-between; align-items: center; gap: var(--space-sm); color: var(--color-dark-muted); }
+.bench-action button {
+  border: 3px solid var(--color-paper);
+  border-radius: 3px;
+  padding: var(--space-tight) var(--space-sm);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: 700 var(--type-button)/1 var(--font-mono);
+  cursor: pointer;
+}
+
+.bench-action button:hover { background: var(--color-green); }
+.bench-action button:active { transform: translateY(1px); }
+.bench-action button:focus-visible {
+  outline: 3px solid var(--color-cyan);
+  outline-offset: 3px;
+}
+
+/* ── Citation chip ───────────────────────────────────────────────────────── */
+
+/* gosx-slides' built-in theme owns link color at a higher layer; the two
+   !important declarations below are isolated framework overrides. */
+.citation {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-compact);
+  margin-top: 0.4rem;
+  padding: 0.4rem var(--space-chip);
+  border: 2px solid var(--color-dark-border);
+  border-radius: 999px;
+  color: var(--color-dark-muted) !important;
+  font: 600 var(--type-citation)/1 var(--font-mono);
+  text-decoration: none;
+}
+
+.citation span { color: var(--color-green); }
+.citation:hover { border-color: var(--color-green); color: var(--color-paper) !important; }
+.citation:active { transform: translateY(1px); }
+.citation:focus-visible {
+  outline: 3px solid var(--color-cyan);
+  outline-offset: 3px;
+}
+
+/* ── Motion, small screens, print ────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .bench-fill { transition: none; }
+  .bench-action button,
+  .citation { transition: none; }
+}
+
+@media (max-width: 900px) {
+  main.deck[data-theme="swiss"] > .slide[data-slide="1"],
+  main.deck[data-theme="swiss"] > .slide[data-slide="6"],
+  main.deck[data-theme="swiss"] > .slide[data-slide="10"] { grid-template-columns: 1fr; }
+
+  main.deck[data-theme="swiss"] > .slide[data-slide="1"] > pre.code-block { grid-column: 1; }
+  main.deck[data-theme="swiss"] > .slide[data-slide="6"] > ul,
+  main.deck[data-theme="swiss"] > .slide[data-slide="10"] > ul { grid-column: 1; }
+
+  main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol,
+  main.deck[data-theme="swiss"] > .slide[data-slide="7"] > ul,
+  main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul { grid-template-columns: 1fr 1fr; }
+
+  main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li::after { display: none; }
+
+  main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul { grid-template-columns: repeat(2, 1fr); }
+
+  main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ol { grid-template-columns: 1fr; }
+  main.deck[data-theme="swiss"] > .slide[data-slide="17"] > ul { grid-template-columns: 1fr; }
+}
+
+@media print {
+  main.deck[data-theme="swiss"] > .slide::after { display: block !important; }
+}

@@ -10,6 +10,12 @@ application-authored JavaScript.
 
 Live site: [gotreesitter.m31labs.dev](https://gotreesitter.m31labs.dev/)
 
+## GopherCon slide deck
+
+The repository also contains a self-contained `gosx-slides` presentation in
+[`slides/`](slides/README.md). It carries the 20-slide talk, presenter notes,
+the supplied paper-and-ink visual system, and a live GLR benchmark island.
+
 ## Local development
 
 Requirements:
