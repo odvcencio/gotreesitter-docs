@@ -3,14 +3,11 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
-	"strings"
 
 	docsapp "github.com/odvcencio/gotreesitter-docs/app"
 	_ "github.com/odvcencio/gotreesitter-docs/modules"
@@ -34,6 +31,7 @@ func main() {
 
 	router := route.NewRouter()
 	router.SetLayout(func(ctx *route.RouteContext, body gosx.Node) gosx.Node {
+		ctx.AddHead(server.NavigationScript())
 		// Space Grotesk + JetBrains Mono are the current site's two typefaces.
 		// This is the
 		// site's actual head (app/layout.gsx only renders the body shell), so
@@ -54,7 +52,7 @@ func main() {
 	app := server.New()
 	router.SetRevalidator(app.Revalidator())
 	app.EnableISR()
-	app.Use(playgroundRuntimeMiddleware(root, docsapp.PlaygroundGTSVersion()))
+	app.EnableNavigation()
 	app.SetPublicDir(filepath.Join(root, "public"))
 	// A `gosx build` run stages the real WASM runtime + bootstrap JS the
 	// islands need to hydrate into dist/ (build.json + assets/runtime/*);
@@ -73,14 +71,6 @@ func main() {
 		docsapp.LangSearchProgramContentVersion(),
 	)
 	app.Redirect("GET /docs", "/docs/introduction", http.StatusTemporaryRedirect)
-	// Live playground data plane (app/playground_api.go). The page itself is
-	// file-routed (app/playground/page.gsx); its WASM runtime + client assets
-	// are static files under public/playground/, staged by
-	// scripts/build-playground-wasm.sh. The {name} wildcard carries the .json
-	// suffix ("go.json") because ServeMux wildcards must span a full segment.
-	app.API("GET /playground/langs.json", docsapp.PlaygroundLangsHandler)
-	app.API("GET /playground/lang/{name}", docsapp.PlaygroundLangHandler)
-	app.API("POST /playground/detect", docsapp.PlaygroundDetectHandler)
 	app.API("GET /healthz", func(ctx *server.Context) (any, error) {
 		ctx.NoStore()
 		return map[string]any{
@@ -118,200 +108,6 @@ func mountIslandProgram(app *server.App, path string, prog *islandprogram.Progra
 		}
 		_, _ = w.Write(data)
 	}))
-}
-
-// playgroundRuntimeMiddleware keeps GoSX's normal public-file server for every
-// asset except the large parser runtime. The build stages an exact gzip
-// sidecar for that file, so this narrow middleware can negotiate the sidecar
-// without adding per-request compression work or replacing the framework's
-// static serving behavior.
-func playgroundRuntimeMiddleware(root, releaseVersion string) server.Middleware {
-	handler := playgroundRuntimeHandler(root, releaseVersion)
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/playground/runtime.wasm" {
-				handler.ServeHTTP(w, r)
-				return
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-func playgroundRuntimeHandler(root, releaseVersion string) http.Handler {
-	rawPath := filepath.Join(root, "public", "playground", "runtime.wasm")
-	gzipPath := rawPath + ".gz"
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet && r.Method != http.MethodHead {
-			w.Header().Set("Allow", "GET, HEAD")
-			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-			return
-		}
-
-		w.Header().Add("Vary", "Accept-Encoding")
-		rawAvailable, err := regularFileAvailable(rawPath)
-		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		gzipAvailable, err := regularFileAvailable(gzipPath)
-		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		if !rawAvailable && !gzipAvailable {
-			http.NotFound(w, r)
-			return
-		}
-
-		accepted := acceptedEncodingQualities(r.Header.Values("Accept-Encoding"))
-		selectedPath := ""
-		contentEncoding := ""
-		// Prefer the representation with the higher client quality. A gzip
-		// sidecar wins explicit ties because it avoids the multi-megabyte raw
-		// transfer; an absent header keeps identity as the server preference.
-		if rawAvailable && accepted.identity > 0 && (accepted.preferIdentityOnTie || !gzipAvailable || accepted.identity > accepted.gzip) {
-			selectedPath = rawPath
-		} else if gzipAvailable && accepted.gzip > 0 {
-			selectedPath = gzipPath
-			contentEncoding = "gzip"
-		} else if rawAvailable && accepted.identity > 0 {
-			selectedPath = rawPath
-		}
-		if selectedPath == "" {
-			http.Error(w, http.StatusText(http.StatusNotAcceptable), http.StatusNotAcceptable)
-			return
-		}
-
-		file, err := os.Open(selectedPath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				http.NotFound(w, r)
-				return
-			}
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		defer file.Close()
-
-		info, err := file.Stat()
-		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/wasm")
-		w.Header().Set("Content-Length", strconv.FormatInt(info.Size(), 10))
-		if contentEncoding != "" {
-			w.Header().Set("Content-Encoding", contentEncoding)
-		}
-		if releaseVersion != "" && releaseVersion != "dev" && r.URL.Query().Get("v") == releaseVersion {
-			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		} else {
-			w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
-		}
-
-		representation := "identity"
-		if contentEncoding != "" {
-			representation = contentEncoding
-		}
-		w.Header().Set("ETag", fmt.Sprintf(`W/"gts-runtime-%s-%x-%x"`, representation, info.Size(), info.ModTime().UnixNano()))
-		http.ServeContent(w, r, "runtime.wasm", info.ModTime(), file)
-	})
-}
-
-func regularFileAvailable(path string) (bool, error) {
-	info, err := os.Stat(path)
-	if err == nil {
-		return !info.IsDir(), nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
-}
-
-type encodingQualities struct {
-	identity            float64
-	gzip                float64
-	preferIdentityOnTie bool
-}
-
-// acceptedEncodingQualities implements the representation choices used by
-// playgroundRuntimeHandler. RFC 9110 makes any coding acceptable when the
-// field is absent, while a present-but-empty field requests no content
-// coding. With a non-empty field, identity remains acceptable at q=1 unless
-// it is explicitly disabled, or a wildcard q=0 disables it without an
-// explicit identity override.
-func acceptedEncodingQualities(headerValues []string) encodingQualities {
-	if len(headerValues) == 0 {
-		return encodingQualities{identity: 1, gzip: 1, preferIdentityOnTie: true}
-	}
-	header := strings.Join(headerValues, ",")
-	if strings.TrimSpace(header) == "" {
-		return encodingQualities{identity: 1}
-	}
-
-	gzipQuality := 0.0
-	identityQuality := 0.0
-	wildcardQuality := 0.0
-	gzipExplicit := false
-	identityExplicit := false
-	wildcardExplicit := false
-	for _, item := range strings.Split(header, ",") {
-		parts := strings.Split(strings.TrimSpace(item), ";")
-		if len(parts) == 0 || strings.TrimSpace(parts[0]) == "" {
-			continue
-		}
-		encoding := strings.ToLower(strings.TrimSpace(parts[0]))
-		quality := encodingQuality(parts[1:])
-
-		switch encoding {
-		case "gzip", "x-gzip":
-			if !gzipExplicit || quality > gzipQuality {
-				gzipQuality = quality
-			}
-			gzipExplicit = true
-		case "identity":
-			if !identityExplicit || quality > identityQuality {
-				identityQuality = quality
-			}
-			identityExplicit = true
-		case "*":
-			if !wildcardExplicit || quality > wildcardQuality {
-				wildcardQuality = quality
-			}
-			wildcardExplicit = true
-		}
-	}
-
-	if !gzipExplicit && wildcardExplicit {
-		gzipQuality = wildcardQuality
-	}
-	if !identityExplicit {
-		identityQuality = 1
-		if wildcardExplicit && wildcardQuality == 0 {
-			identityQuality = 0
-		}
-	}
-	return encodingQualities{identity: identityQuality, gzip: gzipQuality}
-}
-
-func encodingQuality(params []string) float64 {
-	quality := 1.0
-	for _, param := range params {
-		key, value, ok := strings.Cut(strings.TrimSpace(param), "=")
-		if !ok || !strings.EqualFold(strings.TrimSpace(key), "q") {
-			continue
-		}
-		parsed, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
-		if err != nil || parsed < 0 || parsed > 1 {
-			return 0
-		}
-		quality = parsed
-	}
-	return quality
 }
 
 func getenv(key, fallback string) string {

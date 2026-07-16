@@ -71,6 +71,9 @@ func renderLink(n *mdpp.Node) gosx.Node {
 		return gosx.Fragment(renderInline(n.Children)...)
 	}
 	pairs := []any{gosx.Attr("href", href)}
+	if strings.HasPrefix(href, "/") {
+		pairs = append(pairs, gosx.Attr("data-gosx-link", "true"))
+	}
 	if title := n.Attrs["title"]; title != "" {
 		pairs = append(pairs, gosx.Attr("title", title))
 	}

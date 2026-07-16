@@ -25,8 +25,8 @@ func TestLangSearchIslandInitialRender(t *testing.T) {
 	if strings.Contains(html, "langtile hidden") {
 		t.Errorf("no tiles should be hidden with an empty query; got %s", html)
 	}
-	if !strings.Contains(html, `class="count mono">5 / 206<`) {
-		t.Errorf("expected count 5 / 206; got %s", html)
+	if !strings.Contains(compactHTML(html), `class="count mono"> 5 / 5 </span>`) {
+		t.Errorf("expected count 5 / 5; got %s", html)
 	}
 }
 
@@ -40,8 +40,8 @@ func TestLangSearchIslandFiltersOnInput(t *testing.T) {
 		t.Fatalf("dispatch setQuery: %v", err)
 	}
 	html := h.HTML()
-	if !strings.Contains(html, `class="count mono">2 / 206<`) {
-		t.Errorf("expected count 2 / 206 after filtering to 'go'; got %s", html)
+	if !strings.Contains(compactHTML(html), `class="count mono"> 2 / 5 </span>`) {
+		t.Errorf("expected count 2 / 5 after filtering to 'go'; got %s", html)
 	}
 	if !strings.Contains(html, ">go<") || !strings.Contains(html, ">gomod<") {
 		t.Errorf("expected go and gomod tiles visible; got %s", html)
@@ -53,4 +53,8 @@ func TestLangSearchIslandFiltersOnInput(t *testing.T) {
 			t.Errorf("expected json tile to carry langtile hidden; got %s", html)
 		}
 	}
+}
+
+func compactHTML(value string) string {
+	return strings.Join(strings.Fields(value), " ")
 }

@@ -1,9 +1,5 @@
-/* /playground page styles — loaded only on that route (metadata link in
-   app/playground/page.server.go). Everything rides the site's neo-brutalist
-   tokens from public/docs.css: --ink/--paper/--card borders, hard
-   offset shadows, JetBrains Mono chrome. Token colors (.tk-*) come from
-   docs.css's existing `.panelbd .tk-*` rules — the editor overlay <pre>
-   lives inside a .panelbd, so no color table is duplicated here. */
+/* /playground route styles. Behavior and markup are owned by the GoSX page
+   and Go-WASM surface; this file only extends the shared design tokens. */
 
 /* toolbar */
 .pg-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:20px 0 10px}
@@ -14,6 +10,8 @@
 .pg-select:focus{background:#fff}
 .pg-select:focus-visible{outline:3px solid var(--violet);outline-offset:-3px;background:#fff}
 .pg-select:disabled{color:var(--mut);cursor:wait}
+.pg-submit{font:700 12px 'JetBrains Mono',monospace;cursor:pointer}
+.pg-anon-light{color:var(--ink);margin-left:4px}
 .pg-badge{display:inline-flex;align-items:center;gap:7px;font:700 11.5px 'JetBrains Mono',monospace;background:var(--violet);color:var(--paper);border:2px solid var(--ink);border-radius:2px;padding:7px 10px;box-shadow:var(--shs)}
 .pg-status{display:inline-flex;align-items:center;gap:8px;font:600 12.5px 'JetBrains Mono',monospace;background:var(--card);border:2px solid var(--ink);border-radius:2px;padding:7px 11px;box-shadow:var(--shs);white-space:nowrap}
 .pg-dot{width:10px;height:10px;flex:none;border-radius:50%;border:2px solid var(--ink);background:var(--yellow)}
@@ -24,10 +22,9 @@
 .pg-tryrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 16px}
 .pg-trylabel{font:700 11px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:var(--mut)}
 
-/* editor pane: <pre> overlay behind a transparent-text <textarea>. Both
-   share font/padding/whitespace metrics exactly; the textarea owns
-   scrolling and its scroll offsets are mirrored onto the pre by JS. */
+/* editor panes */
 .pg-grid{align-items:stretch}
+.pg-input-grid{grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr)}
 .pg-editorwrap{position:relative;padding:0;background:#17140f;height:460px;overflow:hidden}
 .pg-hlpre,
 .pg-src{margin:0;border:0;width:100%;height:100%;padding:16px 18px;font:400 13.5px/1.7 'JetBrains Mono',monospace;white-space:pre;tab-size:4;overflow:auto;box-sizing:border-box}
@@ -36,6 +33,9 @@
 .pg-src:focus-visible{outline:3px solid var(--yellow);outline-offset:-3px}
 .pg-src::selection{background:rgba(157,78,221,.45);color:transparent}
 .pg-src:disabled{cursor:wait}
+.pg-server-editor{height:460px}
+.pg-src-server{color:#ece7db;background:#17140f;caret-color:#ece7db;position:static}
+.pg-src-server::selection{background:rgba(157,78,221,.45);color:#fff}
 .pg-loading{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:rgba(23,20,15,.88);color:#ece7db;font:600 13px/1.6 'JetBrains Mono',monospace;white-space:pre-line}
 .pg-loading[hidden]{display:none}
 .pg-loading.err{color:#ff9db1}
@@ -62,6 +62,8 @@
 
 /* query pane */
 .pg-qpanel{margin-top:18px}
+.pg-input-grid .pg-qpanel{margin-top:0}
+.pg-input-grid .pg-qsrc{height:460px;min-height:460px;border:0;border-radius:0}
 .pg-qcollapse{font:700 10px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;background:transparent;color:var(--paper);border:2px solid var(--paper);border-radius:2px;padding:2px 8px;cursor:pointer;margin-left:8px}
 .pg-qcollapse:hover{background:var(--paper);color:var(--ink)}
 .pg-qbd[hidden]{display:none}
@@ -80,6 +82,14 @@
 .pg-legendtrunc{font:600 11px 'JetBrains Mono',monospace;color:var(--mut)}
 .pg-qhint{align-self:flex-start;text-align:left;font:600 11.5px 'JetBrains Mono',monospace;background:var(--card);border:2px solid var(--ink);border-radius:2px;padding:6px 9px;box-shadow:var(--shs);cursor:pointer;color:var(--ink)}
 .pg-qhint:hover{background:#ece1ff;transform:translate(-1px,-1px)}
+.pg-captures{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto}
+.pg-capture{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;background:var(--card);border:2px solid var(--ink);padding:8px 10px;box-shadow:var(--shs);font-size:11.5px}
+.pg-capture strong{color:var(--violet)}
+.pg-capture span{color:var(--mut);text-align:right}
+.pg-capture code{grid-column:1/-1;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
+.pg-results{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr);gap:18px;margin-top:18px;align-items:stretch}
+.pg-qresults{margin:0}
+.pg-qresult-body{height:460px;box-sizing:border-box;overflow:auto}
 
 /* capture palette — deterministic per-capture-name (djb2 % 8), text colors
    tuned for the dark editor overlay, swatches for the light legend/tree */
@@ -102,4 +112,6 @@
 	.pg-select{min-width:0;flex:1}
 	.pg-picker{flex:1}
 	.pg-qgrid{grid-template-columns:1fr}
+	.pg-input-grid,.pg-results{grid-template-columns:1fr}
+	.pg-input-grid .pg-qsrc,.pg-qresult-body{height:320px;min-height:320px}
 }

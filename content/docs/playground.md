@@ -1,13 +1,13 @@
 ---
 title: Playground
-description: A live, in-browser syntax-tree explorer running gotreesitter's actual production parser via WASM — with automatic language detection.
+description: A live, in-browser syntax-tree explorer running gotreesitter's production parser via a GoSX-managed WebAssembly engine.
 nav_group: Project
 order: 1
 ---
 
-[The playground](/playground) is a live, in-browser syntax-tree explorer: pick a language — or
-just start typing and let it detect one — and watch the tree gotreesitter builds update as you
-type. No install, and no server round trip for parsing or query execution.
+[The playground](/playground) is a live, in-browser syntax-tree explorer: pick any of the 206
+languages and watch the tree gotreesitter builds update as you type. No install, and no server
+round trip for parsing or query execution.
 
 That last part is the distinctive bit. gotreesitter is pure Go: no CGo, no C toolchain, nothing to
 cross-compile separately per target. The same `go build` that produces a native binary already
@@ -22,25 +22,17 @@ and its 206 grammars are just Go code and data, so one build targets all of them
 
 ## How it works
 
-The page ships the v0.36.0 engine-only runtime — the parser, the GLR core, recovery, the query
-engine, and the highlighter, built with `GOOS=js GOARCH=wasm` — as a single WASM module (about 3.6 MB
-compressed). Grammars are not baked in: picking a language fetches that language's compiled
-grammar blob on demand (2 KB for JSON, ~40 KB for JavaScript, ~120 KB for TypeScript) and hands
-it to the runtime's `loadBlob`. After that, every keystroke parses locally in your tab; the
-status readout shows the real parse time.
+The page ships the engine-only runtime — the parser, GLR core, recovery, query engine, scanner
+adapters, and GoSX engine registration — as one standard-Go WASM module. Grammar tables are not
+baked in. The browser engine first fetches a small 206-language index; picking a language then
+fetches that content-hashed compiled grammar blob and attaches gotreesitter's registered scanner
+support locally. Loaded languages stay cached in the tab, and every keystroke after that parses
+without a network request.
 
-The release also exposes persistent incremental browser documents through `open`, `update`,
-`close`, and `queryDocument`. The current playground intentionally uses the stateless `parse`,
-`highlight`, and `query` calls so each timing readout describes the complete operation it just
-performed; browser integrations can opt into the retained-document API when reuse across edits is
-the desired contract.
-
-Language auto-detection is the parser doing double duty. Obvious signals (a shebang,
-`package main`, `#include`) switch instantly, client-side. For everything else, a debounced
-request races a bounded source sample against a shortlist of grammars server-side — all 206 live
-in one process, so the race is just parse-and-count-error-nodes — and the cleanest tree wins. The
-request body is capped at 64 KiB and the detector scores at most the first 4 KiB. Picking a language
-manually always overrides detection and avoids sending source to the detector.
+Only immutable program data crosses the network: the GoSX runtime, the parser engine, the grammar
+index, and selected grammar blobs. Source and query text never enter a request. The production
+browser gate types a private marker, verifies it parses locally, switches to a second language to
+prove lazy blob loading, and rejects any non-GET request or URL containing the marker.
 
 [Open the playground](/playground), or read [Architecture](/docs/architecture) for what that
 engine is actually doing under your keystrokes.

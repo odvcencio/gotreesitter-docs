@@ -6,8 +6,6 @@ node_modules/
 .env
 .env.*
 !.env.example
-# playground wasm runtime — built artifacts, staged by
-# scripts/build-playground-wasm.sh (do not commit the ~14MB binary)
+app/.canopy/
 public/playground/runtime.wasm
-public/playground/runtime.wasm.gz
-public/playground/wasm_exec.js
+public/playground/grammars/

@@ -63,9 +63,11 @@ for any target Go supports.
   no-op edit runs on the engine's 0 B / 0 allocation hot path and returns in single-digit
   nanoseconds; a real edit still reuses almost the whole tree and finishes in a small fraction of a
   full parse.
-- **Honest full-parse receipts.** The corrected materialized benchmark is 1.895× C on its pinned
-  host, while the current fleet median is about 3× C. Per-language cliffs and held-outs stay
-  visible in the ratcheted ledger.
+- **Honest full-parse receipts.** The canonical claim is a locked publication receipt on four
+  human-authored, genuinely forking Go fixtures: a 5.48× C equal-fixture geomean against a
+  fingerprinted static oracle. The old 1.895× synthetic headline was withdrawn as
+  unrepresentative, the current fleet median is about 3× C, and per-language cliffs and
+  held-outs stay visible in the ratcheted ledger.
 
 ## The honest asterisks
 

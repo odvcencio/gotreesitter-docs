@@ -10,27 +10,39 @@ distinction matters: the pure-Go runtime is exceptionally fast on editor-style r
 fresh materialized parse is currently slower than the C runtime on the canonical workload and
 across much of the grammar fleet.
 
-The repository's [`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.36.0/BENCH.md)
-is the canonical source for linkable performance claims. This page follows the receipts published
-with v0.36.0.
+The repository's [`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.37.0/BENCH.md)
+is the canonical source for linkable performance claims. This page follows its v0.37.0 receipts.
 
-## Corrected canonical benchmark
+## Canonical full parse: the real-code matrix
 
-The public benchmark uses a generated 500-function Go file (19,294 bytes), calls the ordinary
-`Parser.Parse` API, requires a complete root, materializes the returned tree, and releases it.
-Stable runs use one pinned core, `GOMAXPROCS=1`, ten samples, a 750 ms benchtime, and allocation
-reporting.
+The full-parse headline is measured on four immutable snapshots of clean, human-authored Go that
+exercise genuine GLR forking (12–18 live stacks), against one fingerprinted static C oracle
+(upstream tree-sitter v0.25.1, `-O2`, statically linked). The first complete publication receipt
+(2026-07-14, pinned quiet host, ten process-isolated samples per backend and fixture, exact
+deep-tree identity admitted before timing):
 
-| Lane | Pure Go | C through cgo | Go / C | Go allocations |
-|---|---:|---:|---:|---:|
-| Full parse, materialized | 10.907 ms | 5.756 ms | **1.895×** | 9 |
-| Incremental, 1-byte edit | 1.98 µs | 331 µs | **0.006× — 167× faster** | 0 |
-| Incremental, no edit | 9.9 ns | 330 µs | **about 33,000× faster** | 0 |
+| Fixture | Go median | static C median | Go / C |
+|---|---:|---:|---:|
+| `rewrite.go` (5.1 KB) | 5.556 ms | 1.197 ms | 4.64× |
+| `query_compile.go` (20 KB) | 31.525 ms | 5.469 ms | 5.76× |
+| `language.go` (41 KB) | 30.106 ms | 5.809 ms | 5.18× |
+| `grammargen/lr.go` (236 KB) | 376.938 ms | 57.867 ms | 6.51× |
 
-These are the canonical receipts published with v0.36.0 from one pinned host and workload
-contract. Each row is independently release-pinned rather than produced by a single benchmark
-run. Absolute times are host-specific; the same-host ratios and allocation counts are the
-portable claims.
+The canonical equal-fixture geomean is **5.48× C**. Optimization work since that receipt lands
+behind exact-tree and work-count gates and is recorded in the changelog; the published ratio only
+moves with a complete new publication receipt from the same locked pipeline.
+
+An earlier **1.895× C** headline was withdrawn: it measured a generated 500-function Go file that
+never forks (a straight-LR control, not representative code) against a C baseline built from a
+different grammar. The control is retained for tracking single-stack and incremental fast paths:
+
+| Lane (straight-LR control) | Result | Allocations |
+|---|---:|---:|
+| Full parse, materialized | 10.9 ms | 9 |
+| Incremental, 1-byte edit | 1.98 µs | **0** |
+| Incremental, no edit | 9.9 ns | **0** |
+
+Absolute times are host-specific; the allocation counts are the portable claims.
 
 ```sh
 GOMAXPROCS=1 go test . -run '^$' \
@@ -39,10 +51,10 @@ GOMAXPROCS=1 go test . -run '^$' \
 ```
 
 > [!IMPORTANT] Benchmark integrity correction
-> Before v0.24.1, `BenchmarkGoParseFullDFA` silently selected a no-tree diagnostic path. That
-> pre-correction headline therefore did **not** describe a materialized public parse and has been
-> withdrawn. `BenchmarkGoParseCoreDFA` remains useful for attribution, but its results are never
-> presented as full-parse performance.
+> Before v0.24.1, `BenchmarkGoParseFullDFA` silently selected a no-tree diagnostic path. The old
+> 1.54 ms, 728 B/op, and 7 allocs/op headline therefore did **not** describe a materialized public
+> parse and has been withdrawn. `BenchmarkGoParseCoreDFA` remains useful for attribution, but its
+> results are never presented as full-parse performance.
 
 ## Why incremental work is different
 
@@ -51,9 +63,12 @@ states, and external-scanner checkpoints instead of rebuilding the document. A n
 return the old tree immediately. On the pinned receipt, both the one-byte edit and no-edit lanes
 allocate nothing.
 
-The comparison is against the cgo binding a Go application would actually call. That path pays a
-roughly 330 µs fixed per-call cost on this workload, while gotreesitter stays inside the Go runtime.
-This is why the incremental advantage is much larger than the full-parse comparison.
+Earlier releases published incremental speedup multipliers against the cgo binding a Go
+application would otherwise call (which pays a fixed per-call FFI cost that pure Go avoids).
+Those same-host calibration rows were withdrawn together with the old full-parse headline because
+the binding used a mismatched grammar; the portable claims today are the zero-allocation
+fast paths above. Representative incremental timing on real code returns once the remaining
+incremental/fresh tree-identity work closes — correctness gates timing here.
 
 ## Full parse across the grammar fleet
 

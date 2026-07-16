@@ -10,10 +10,8 @@ import (
 	"m31labs.dev/gosx/server"
 )
 
-// docsRenderer keeps the docs server-rendered except for the language-list
-// filter. The actual parser playground has its own /playground route and WASM
-// runtime; the documentation page describes and links to it instead of
-// maintaining a second simulated playground.
+// docsRenderer keeps the docs server-rendered except for the GoSX-authored
+// language-list filter. The parser playground runs in its browser WASM engine.
 func docsRenderer(slug string, ctx *route.RouteContext) content.RendererFunc {
 	switch slug {
 	case "languages":

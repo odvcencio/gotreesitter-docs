@@ -2,9 +2,11 @@
 
 The documentation and browser playground for
 [`github.com/odvcencio/gotreesitter`](https://github.com/odvcencio/gotreesitter), built with
-[GoSX](https://github.com/odvcencio/gosx). Pages render on the server; the language catalog uses a
-small GoSX island, and `/playground` loads the released gotreesitter WASM runtime plus grammar blobs
-on demand.
+[GoSX](https://github.com/odvcencio/gosx). Pages render on the server, the language catalog uses a
+GoSX-authored island, and `/playground` runs gotreesitter in a standard-Go WebAssembly engine owned
+by a GoSX surface. The engine indexes all 206 languages and fetches content-hashed grammar blobs
+on demand. Every internal route uses managed navigation. The repository contains no
+application-authored JavaScript.
 
 Live site: [gotreesitter.m31labs.dev](https://gotreesitter.m31labs.dev/)
 
@@ -13,23 +15,15 @@ Live site: [gotreesitter.m31labs.dev](https://gotreesitter.m31labs.dev/)
 Requirements:
 
 - Go 1.26
-- GoSX 0.29.5 (`go install m31labs.dev/gosx/cmd/gosx@v0.29.5`)
+- GoSX 0.31.4 (`go install m31labs.dev/gosx/cmd/gosx@v0.31.4`)
 - TinyGo 0.41.1 for the production GoSX runtime
+- Chrome or Chromium for the browser privacy/navigation gate
 
 ```sh
 cp .env.example .env
+go run ./cmd/build-playground-wasm
 gosx dev .
 ```
-
-The interactive playground runtime is generated and intentionally untracked:
-
-```sh
-./scripts/build-playground-wasm.sh
-```
-
-That script resolves the exact gotreesitter version from `go.mod`, builds `wasm/runtime` with the
-standard Go `js/wasm` target, and stages the runtime and compressed sidecar under
-`public/playground/`.
 
 ## Production verification
 
@@ -40,11 +34,12 @@ Run the complete source, build, export, size, and route smoke gate:
 ```
 
 The gate derives the exact GoSX and gotreesitter versions from `go.mod`, rejects local engine
-overrides, validates every `.gsx` source, runs the Go tests, creates a clean `gosx build --prod`
-artifact, runs `gosx export`, reports runtime size, boots `dist/run.sh`, and requests every
-documentation route plus the playground APIs and browser assets. It also proves that the
-release-versioned parser runtime is served from its gzip sidecar with immutable caching. The `gosx`
-binary on `PATH` must exactly match the version in `go.mod`.
+overrides, builds the browser parser and all 206 lazy grammar assets from Go, validates every `.gsx` source, runs the Go tests,
+creates a clean `gosx build --prod` artifact, runs `gosx export`, reports runtime size, boots
+`dist/run.sh`, and requests every documentation route. Its Chrome check types a unique private
+marker into the editor and proves that gotreesitter parses it without any source-bearing request;
+it then proves an internal route change does not issue a document request. The `gosx` binary on
+`PATH` must exactly match the version in `go.mod`.
 
 Browser performance budgets are optional because they require a local Chrome installation:
 
@@ -54,7 +49,7 @@ RUN_BROWSER_PERF=1 ./scripts/verify-production.sh
 
 The public CI workflow installs the exact GoSX and TinyGo versions declared by this repository,
 then runs module verification, tests, vet, GoSX source checks, the production build/export, and the
-same route, API, asset, compression, and cache-policy gate.
+same route, browser-privacy, navigation, asset, and cache-policy gate.
 
 ## Deployment contract
 
@@ -66,14 +61,13 @@ PORT=8080 GOSX_ENV=production ./dist/run.sh
 curl --fail http://localhost:8080/healthz
 ```
 
-`gosx export` currently pre-renders the landing route only. The documentation collection and WASM
-playground are dynamic routes, and auto-detection is a JSON API, so
-the static export alone is not a complete deployment.
+`gosx export` currently pre-renders the landing route only. The documentation collection and
+playground shell are dynamic routes, so the static export alone is not a complete deployment.
 
 Require intermediaries to preserve and honor the origin's `Cache-Control` response. Grant immutable
 caching only to exact content-hashed or release-versioned URLs; do not blanket-cache `/gosx/*`.
-Unversioned island, API, and runtime URLs revalidate or use `no-store`, while hashed `/assets/*`
-and exact-version playground resources may be cached immutably when the origin says so.
+Unversioned island and grammar-index URLs revalidate, while hashed `/assets/*` resources, the
+content-versioned playground engine, and content-hashed grammar blobs may be cached immutably.
 
 The canonical deployment manifests and Harbor image promotion live in the private `m31labs.dev`
 infrastructure repository. This source repository intentionally carries no registry credentials,
@@ -82,9 +76,14 @@ verified `dist/` artifact described above.
 
 ## Playground privacy boundary
 
-Parsing and query execution happen in the browser. Automatic language detection sends a bounded
-source sample to the server (request body capped at 64 KiB; the first 4 KiB is scored). Selecting a
-language before typing avoids that request and keeps source fully local.
+Parsing and query execution happen inside the browser in `public/playground/runtime.wasm`, a
+standard-Go module registered through GoSX's engine runtime. The server sends the initial shell,
+framework runtime, parser binary, and immutable grammar assets; the engine fetches each selected
+language blob lazily and caches its loaded grammar in the browser. It exposes no playground
+mutation endpoint. Source is capped at 64 KiB in the engine and is rendered back with `textContent`,
+never HTML. The production browser gate verifies all 206 languages, proves a second grammar is
+fetched on demand, and fails if editor interaction emits a non-GET request, leaks its private marker
+into a URL, or causes a full document navigation.
 
 ## License
 
@@ -93,5 +92,6 @@ This documentation site is available under the [MIT License](LICENSE).
 ## Performance claims
 
 User-visible numbers must match gotreesitter's release-pinned
-[`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.36.0/BENCH.md). In particular,
-withdrawn no-tree diagnostics must never be presented as materialized full-parse performance.
+[`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.36.0/BENCH.md). In particular, the
+withdrawn 1.54 ms no-tree diagnostic must never be presented as materialized full-parse
+performance.

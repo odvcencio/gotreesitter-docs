@@ -500,8 +500,12 @@ func renderFeatureCards(n *mdpp.Node) gosx.Node {
 		title := link.Text()
 		desc := trimLeadingDash(content[1:])
 
+		linkAttrs := []any{gosx.Attr("class", "feat"), gosx.Attr("href", href)}
+		if strings.HasPrefix(href, "/") {
+			linkAttrs = append(linkAttrs, gosx.Attr("data-gosx-link", "true"))
+		}
 		card := elWith("a",
-			gosx.Attrs(gosx.Attr("class", "feat"), gosx.Attr("href", href)),
+			gosx.Attrs(linkAttrs...),
 			elWith("div", gosx.Attrs(gosx.Attr("class", "featicon "+dotPalette[i%len(dotPalette)])), gosx.Text("→")),
 			elWith("h4", nil, gosx.Text(title)),
 			elWith("p", nil, renderInline(desc)...),

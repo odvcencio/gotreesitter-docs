@@ -91,7 +91,7 @@ func Page() Node {
 					—
 					<b>167×</b>
 					faster than the cgo-backed C runtime — and a no-op reparse takes 9.9 ns. Both allocate zero. Full parse is slower than C on the canonical workload and across much of the fleet; the
-					<a href="/docs/performance">numbers, with asterisks</a>
+					<a href="/docs/performance" data-gosx-link="true">numbers, with asterisks</a>
 					.
 				</p>
 				<span class="pillref">
@@ -131,8 +131,8 @@ func Page() Node {
 			500-function Go source (19,294 bytes). Medians of 10 runs on an idle Intel Xeon D-2141I core, GOMAXPROCS=1.
 		</p>
 		<p class="p mut">
-			The corrected public benchmark materializes and releases the full tree. The pre-correction headline measured a no-tree diagnostic and has been withdrawn. Real-corpus full-parse ratios vary substantially by grammar; the full fleet distribution and named gaps are on the
-			<a href="/docs/performance">performance page</a>
+			The corrected public benchmark materializes and releases the full tree. The old 1.54 ms headline measured a no-tree diagnostic and has been withdrawn. Real-corpus full-parse ratios vary substantially by grammar; the full fleet distribution and named gaps are on the
+			<a href="/docs/performance" data-gosx-link="true">performance page</a>
 			, including the cases we still lose.
 		</p>
 		<div class="bench">
@@ -190,7 +190,7 @@ func Page() Node {
 		<div class="underbar"></div>
 		<p class="p">
 			All 206 pass the curated C-oracle structural matrix, with no known-degraded skips. 116 have hand-written Go external scanners; 7 use hand-written Go token sources.
-			<a href="/docs/languages">Browse the full registry →</a>
+			<a href="/docs/languages" data-gosx-link="true">Browse the full registry →</a>
 		</p>
 		<div class="langteaser">
 			<Each as="l" of={langTeaser}>

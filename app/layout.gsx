@@ -11,7 +11,7 @@ func Layout() Node {
 	return <div class="shell">
 		<a href="#docs-main" class="skip-link">Skip to content</a>
 		<header class="topbar">
-			<a href="/" class="brand">
+			<a href="/" class="brand" data-gosx-link="true">
 				<span class="blk">
 					<i></i>
 					<i></i>
@@ -27,7 +27,7 @@ func Layout() Node {
 				{gtsVersion}
 				· 206/206 curated parity
 			</span>
-			<a class="ghlink" href="/playground">Playground</a>
+			<a class="ghlink" href="/playground" data-gosx-link="true">Playground</a>
 			<a
 				class="ghlink"
 				href="https://github.com/odvcencio/gotreesitter"
@@ -39,7 +39,7 @@ func Layout() Node {
 			<aside class="sidebar">
 				<DocsNavigation></DocsNavigation>
 			</aside>
-			<main class="main" id="docs-main">
+			<main class="main" id="docs-main" data-gosx-main="true">
 				<details class="mobile-nav">
 					<summary>Browse documentation</summary>
 					<DocsNavigation></DocsNavigation>
@@ -56,7 +56,7 @@ func DocsNavLink(props any) Node {
 	return <>
 		<If when={props.Active}>
 			<li class="navitem on">
-				<a href={props.Href} class="nav-anchor" aria-current="page">
+				<a href={props.Href} class="nav-anchor" aria-current="page" data-gosx-link="true">
 					<span class={"ndot " + props.Color}></span>
 					{props.Label}
 				</a>
@@ -64,7 +64,7 @@ func DocsNavLink(props any) Node {
 		</If>
 		<If when={props.Active == false}>
 			<li class="navitem">
-				<a href={props.Href} class="nav-anchor">
+				<a href={props.Href} class="nav-anchor" data-gosx-link="true">
 					<span class={"ndot " + props.Color}></span>
 					{props.Label}
 				</a>
