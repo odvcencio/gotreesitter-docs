@@ -105,6 +105,7 @@ compiles. One person plus agents.
 layout: section
 class: dark
 accent: "var(--color-pink)"
+scene: parse-forest
 ```
 
 > 01
@@ -221,6 +222,7 @@ BENCH.md. That's the same discipline applied to the human.
 layout: section
 class: dark
 accent: "var(--color-pink)"
+scene: parse-forest
 ```
 
 > 02
@@ -295,6 +297,32 @@ throughout.
 ---
 
 ```yaml
+class: dark forks
+accent: "var(--color-green)"
+```
+
+> Part 2 · The mental model
+
+# The forks
+
+GLR in one picture: fork at real ambiguity, advance in lockstep, die at dead
+ends — and never fork where the oracle proves the table deterministic.
+
+<GLRForks/>
+
+<Notes>
+The mental model for GLR, stepped live over async-arrow ambiguity. The open
+paren is genuinely ambiguous — call expression vs arrow parameters — so the
+stack forks and both interpretations advance in lockstep. The arrow kills the
+call fork: no backtracking, it just dies. At the open brace the table looks
+ambiguous again, but the C oracle proves that state deterministic, so no fork
+is ever created — that is the PR #90 collapse, and why wall time went 5.95x
+to 4.41x. Step with the on-slide buttons.
+</Notes>
+
+---
+
+```yaml
 class: dark
 accent: "var(--color-green)"
 ```
@@ -327,6 +355,7 @@ itself proves the action. Proposed by an agent, admitted by the gates.
 layout: section
 class: dark
 accent: "var(--color-pink)"
+scene: parse-forest
 ```
 
 > 03
