@@ -4,16 +4,18 @@ theme: swiss
 transition: fade
 line-numbers: false
 event: "GopherCon 2026"
+footer: gotreesitter · gophercon 2026
 ---
 
 ```yaml
 layout: title
 accent: "var(--color-pink)"
+footer: gotreesitter.m31labs.dev
 ```
 
 > GopherCon 2026 · Aug 5 · 25 min
 
-# Pure-Go Tree-sitter: **from zero to** *self-hosted infra*
+# Pure-Go Tree-sitter:<br>**from zero to** *self-hosted infra*
 
 Oracles, bench gates, and the story of learning how to trust a runtime an AI
 helped write.
@@ -22,8 +24,6 @@ helped write.
 - 206 grammars
 - byte-exact C parity
 - AI-assisted
-
-<DeckStyle/>
 
 <Notes>
 25 minutes. Three threads: the parser itself, the discipline that let AI build
@@ -103,7 +103,7 @@ compiles. One person plus agents.
 
 ```yaml
 layout: section
-background: "var(--color-ink)"
+class: dark
 accent: "var(--color-pink)"
 ```
 
@@ -219,7 +219,7 @@ BENCH.md. That's the same discipline applied to the human.
 
 ```yaml
 layout: section
-background: "var(--color-ink)"
+class: dark
 accent: "var(--color-pink)"
 ```
 
@@ -295,7 +295,7 @@ throughout.
 ---
 
 ```yaml
-background: "var(--color-ink)"
+class: dark
 accent: "var(--color-green)"
 ```
 
@@ -325,7 +325,7 @@ itself proves the action. Proposed by an agent, admitted by the gates.
 
 ```yaml
 layout: section
-background: "var(--color-ink)"
+class: dark
 accent: "var(--color-pink)"
 ```
 
@@ -463,8 +463,9 @@ Land the three threads as one idea each. Pause on each.
 
 ```yaml
 layout: title
-background: "var(--color-ink)"
+class: dark
 accent: "var(--color-green)"
+footer: gophercon 2026
 ```
 
 > The close

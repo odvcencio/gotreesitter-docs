@@ -1,7 +1,8 @@
 # GoTreeSitter deck design contract
 
 This contract is derived from the supplied “GopherCon GoTreeSitter Deck v2”
-artifact and governs `deck.md`, the GoSX islands, and `public/deck.css`.
+artifact and governs `deck.md`, the GoSX islands, and `deck.css` (auto-loaded
+by gosx-slides after the base theme).
 
 ## Visual System
 

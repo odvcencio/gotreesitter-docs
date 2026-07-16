@@ -23,5 +23,6 @@ Before presenting:
 
 The first serve stages the GoSX browser runtime under `slides/build/`; that
 directory is intentionally ignored. The deck content lives in `deck.md`, the
-visual system in `public/deck.css`, and the two live islands in `Benchmark.gsx`
+visual system in `deck.css` (auto-loaded after the base theme), and the two
+live islands in `Benchmark.gsx`
 and `Citation.gsx`.

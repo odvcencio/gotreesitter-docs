@@ -1,7 +1,8 @@
 /* GoTreeSitter · GopherCon 2026 — deck visual system.
    Implements the "GopherCon GoTreeSitter Deck v2" design contract (DESIGN.md):
    paper & ink, hard-edged print cards, registration-color strips, mono chrome.
-   Loaded by the DeckStyle island on top of the swiss base theme. */
+   Auto-discovered by gosx-slides (deck.css next to deck.md) and inlined after
+   the swiss base theme, so these rules win the cascade. */
 
 :root {
   --color-paper: #efe9db;
@@ -129,19 +130,18 @@ main.deck[data-theme="swiss"] > .slide {
   position: relative;
 }
 
-/* Footer chrome: mono label bottom-left; the framework counter is restyled as
-   the ink number chip bottom-right. */
-main.deck[data-theme="swiss"] > .slide::after {
-  content: "gotreesitter · gophercon 2026";
-  position: absolute;
+
+
+main.deck[data-theme="swiss"] .slide-footer {
   left: var(--space-page-x);
+  right: auto;
   bottom: var(--space-footer);
   color: var(--color-muted);
   font: 600 var(--type-chrome)/1 var(--font-mono);
+  opacity: 1;
 }
 
-main.deck[data-theme="swiss"] > .slide[data-slide="0"]::after { content: "gotreesitter.m31labs.dev"; }
-main.deck[data-theme="swiss"] > .slide.layout-title:last-of-type::after { content: "gophercon 2026"; }
+main.deck[data-theme="swiss"] > .slide.dark .slide-footer { color: var(--color-dark-muted); }
 
 main.deck[data-theme="swiss"] .deck-counter {
   right: var(--space-page-x);
@@ -405,12 +405,6 @@ main.deck[data-theme="swiss"] > .slide.layout-title:last-of-type h1 {
   font-size: var(--type-hero);
 }
 
-/* v2 breaks the hero after "Pure-Go Tree-sitter:"; markdown headings cannot
-   carry a <br>, so the strong run starts on its own line instead. */
-main.deck[data-theme="swiss"] > .slide[data-slide="0"] h1 strong::before {
-  content: "\A";
-  white-space: pre;
-}
 
 /* The 2×2 registration block above the hero. */
 main.deck[data-theme="swiss"] > .slide[data-slide="0"] h1::before,
@@ -477,18 +471,17 @@ main.deck[data-theme="swiss"] > .slide.layout-title:last-of-type h2 {
 
 /* ── Dark slides (declared via slide metadata background) ────────────────── */
 
-main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] { color: var(--color-paper); }
-main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] h1,
-main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] h2,
-main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] h3 { color: var(--color-paper); }
-main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] p { color: var(--color-dark-body); }
-main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] li { color: var(--color-dark-body); }
-main.deck[data-theme="swiss"] > .slide[style*="--color-ink"]::after { color: var(--color-dark-muted); }
+main.deck[data-theme="swiss"] > .slide.dark { background: var(--color-ink); color: var(--color-paper); }
+main.deck[data-theme="swiss"] > .slide.dark h1,
+main.deck[data-theme="swiss"] > .slide.dark h2,
+main.deck[data-theme="swiss"] > .slide.dark h3 { color: var(--color-paper); }
+main.deck[data-theme="swiss"] > .slide.dark p { color: var(--color-dark-body); }
+main.deck[data-theme="swiss"] > .slide.dark li { color: var(--color-dark-body); }
 
-main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] > blockquote:first-of-type { background: var(--color-paper); }
-main.deck[data-theme="swiss"] > .slide[style*="--color-ink"] > blockquote:first-of-type p { color: var(--color-ink); }
+main.deck[data-theme="swiss"] > .slide.dark > blockquote:first-of-type { background: var(--color-paper); }
+main.deck[data-theme="swiss"] > .slide.dark > blockquote:first-of-type p { color: var(--color-ink); }
 
-main.deck[data-theme="swiss"]:has(> .slide.deck-active[style*="--color-ink"]) .deck-counter {
+main.deck[data-theme="swiss"]:has(> .slide.deck-active.dark) .deck-counter {
   border-color: var(--color-paper);
   background: var(--color-paper);
   color: var(--color-ink);
@@ -1058,6 +1051,3 @@ main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ol li:nth-child(3)::be
   main.deck[data-theme="swiss"] > .slide[data-slide="17"] > ul { grid-template-columns: 1fr; }
 }
 
-@media print {
-  main.deck[data-theme="swiss"] > .slide::after { display: block !important; }
-}
