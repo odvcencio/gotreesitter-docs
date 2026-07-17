@@ -78,6 +78,12 @@ meaning "explicitly unstyled" — Markdown does this for `code_fence_content`, s
 between injected child captures come back as `Capture: "none"`. Map it to no style, same as
 uncaptured bytes.
 
+One thing the highlighter does *not* do: gotreesitter has no locals.scm-style scope tracking.
+Upstream's `@local.definition`/`@local.scope` resolution — distinguishing a variable's
+declaration from its uses — has no analogue here, and the `#is? local` predicate is a
+capture-name substring check (`query_predicates.go`), not scope analysis. For scope-aware
+highlighting, run your own pass over the parsed tree.
+
 ## Incremental re-highlighting
 
 `Highlight` parses from scratch each call and releases its internal tree itself. For an editor

@@ -74,6 +74,19 @@ A pattern is a parenthesized S-expression rooted at a node type:
 
 **Anchors** — `.` — require adjacency with no intervening (named) sibling. `.` before the first child pattern anchors it to the parent's first named child; `.` after the last one anchors it to the last; `.` between two sibling patterns requires them to be immediately adjacent, with the matcher backtracking across earlier siblings to find a pair that satisfies it.
 
+```go
+// On "func F(a int, b string, c bool) {}":
+q, _ := gts.NewQuery(`(parameter_list . (parameter_declaration) @first)`, lang)
+// -> 1 match, @first = "a int". The leading `.` pins the capture to the
+//    first named child; without it, all three parameters match.
+
+// `.` counts *named* siblings only, so the anonymous "," between parameters
+// doesn't break adjacency — every consecutive pair matches:
+q, _ = gts.NewQuery(`(parameter_list
+  (parameter_declaration) @a . (parameter_declaration) @b)`, lang)
+// -> 2 matches: ("a int", "b string") and ("b string", "c bool").
+```
+
 **Quantifiers** — `?`, `*`, `+` — suffix a pattern to make it optional, zero-or-more, or one-or-more. `?` is straightforward: the capture is simply missing from the match when the optional node isn't there. `*`/`+` on a *child* pattern are more specific than they look: they collect one **contiguous run** of matching siblings into a single match, stopping at the first sibling that doesn't match — which includes punctuation. Two adjacent comment nodes are a contiguous run and both land in one match:
 
 ```go

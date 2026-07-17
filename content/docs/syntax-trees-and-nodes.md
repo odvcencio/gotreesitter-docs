@@ -50,6 +50,12 @@ with explicit lifecycle methods instead of relying purely on the garbage collect
 workflow gets its own treatment on the [incremental parsing](/docs/incremental-parsing) page. This
 page focuses on reading a tree you already have.
 
+> [!NOTE]
+> gotreesitter parses a materialized `[]byte` (or `[]uint16`); there is no streaming or
+> callback input reader like tree-sitter's `TSInput`. A source backed by a rope or piece table
+> must be flattened to bytes before `Parse`. (`TokenSource` is a *lexing* extension point, not
+> an input reader — see [Parsers in Depth](/docs/parsers-in-depth).)
+
 ## The node model
 
 A `Node` is a span of source text tagged with a grammar symbol. Two methods answer "what is this":
