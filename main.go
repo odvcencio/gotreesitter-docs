@@ -42,6 +42,11 @@ func main() {
 			server.Stylesheet("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap"),
 		)
 		ctx.AddHead(server.Stylesheet(docsapp.PublicAssetURL("docs.css")))
+		ctx.AddHead(gosx.El("link", gosx.Attrs(
+			gosx.Attr("rel", "icon"),
+			gosx.Attr("type", "image/svg+xml"),
+			gosx.Attr("href", docsapp.PublicAssetURL("favicon.svg")),
+		)))
 		return server.HTMLDocument(ctx.Title("GoTreeSitter Docs"), ctx.Head(), body)
 	})
 
