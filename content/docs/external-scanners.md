@@ -2,7 +2,7 @@
 title: External Scanners
 description: When a tree-sitter grammar needs hand-written Go lexing, and the porting contract for writing one that matches C tree-sitter byte-for-byte.
 nav_group: Languages
-order: 3
+order: 4
 ---
 
 External scanners are the escape hatch tree-sitter grammars use when a token cannot be recognized

@@ -2,7 +2,7 @@
 title: Authoring Languages
 description: Add a tree-sitter grammar gotreesitter doesn't ship, from your own Go module, without forking the runtime.
 nav_group: Languages
-order: 2
+order: 3
 ---
 
 This guide is for grammar authors who have a working tree-sitter grammar (a `grammar.js` that
