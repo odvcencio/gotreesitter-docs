@@ -107,8 +107,8 @@ for route in "${routes[@]}"; do
   curl --silent --show-error --fail --output /dev/null "$base$route"
 done
 
-curl --silent --fail "$base/" | grep -q '1.895'
-curl --silent --fail "$base/docs/performance" | grep -q '33,000'
+curl --silent --fail "$base/" | grep -q '5.48×' || fail "landing headline metric (5.48× geomean) missing from /"
+curl --silent --fail "$base/docs/performance" | grep -q '5.48× C' || fail "performance geomean (5.48× C) missing from /docs/performance"
 
 languages_html="$(curl --silent --show-error --fail "$base/docs/languages")"
 lang_search_url="$(grep -oE '/gosx/islands/LangSearch\.json\?v=[0-9a-f]{12}' <<<"$languages_html" | head -n 1)"
