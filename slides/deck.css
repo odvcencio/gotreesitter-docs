@@ -344,8 +344,8 @@ main.deck[data-theme="swiss"] > .slide[data-slide="6"] > ul li,
 main.deck[data-theme="swiss"] > .slide[data-slide="7"] > ul li,
 main.deck[data-theme="swiss"] > .slide[data-slide="8"] > ul li,
 main.deck[data-theme="swiss"] > .slide[data-slide="10"] > ul li,
-main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li,
-main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li {
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li,
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul li {
   max-width: none;
   padding: calc(var(--space-card) + var(--space-strip)) var(--space-md) var(--space-card);
   border: 4px solid var(--color-ink);
@@ -361,8 +361,8 @@ main.deck[data-theme="swiss"] > .slide[data-slide="6"] > ul li::before,
 main.deck[data-theme="swiss"] > .slide[data-slide="7"] > ul li::before,
 main.deck[data-theme="swiss"] > .slide[data-slide="8"] > ul li::before,
 main.deck[data-theme="swiss"] > .slide[data-slide="10"] > ul li::before,
-main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li::before,
-main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li::before {
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li::before,
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul li::before {
   content: "";
   position: absolute;
   inset: 0 0 auto 0;
@@ -379,8 +379,8 @@ main.deck[data-theme="swiss"] > .slide[data-slide="6"] > ul li strong,
 main.deck[data-theme="swiss"] > .slide[data-slide="7"] > ul li strong,
 main.deck[data-theme="swiss"] > .slide[data-slide="8"] > ul li strong,
 main.deck[data-theme="swiss"] > .slide[data-slide="10"] > ul li strong,
-main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li strong,
-main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li strong {
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li strong,
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul li strong {
   display: block;
   margin-bottom: 0.4rem;
   color: var(--color-ink);
@@ -619,20 +619,20 @@ main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li:nth-child(5)::aft
   font: 700 var(--type-h2)/1 var(--font-mono);
 }
 
-/* ── 04 The scale (slide 3) & 17 adoption stats (slide 16): stat blocks ──── */
+/* ── 04 The scale (slide 3) & 18 adoption stats (slide 17): stat blocks ──── */
 
 main.deck[data-theme="swiss"] > .slide[data-slide="3"] > ul,
-main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ol {
+main.deck[data-theme="swiss"] > .slide[data-slide="17"] > ol {
   display: grid;
   gap: var(--space-md) var(--space-grid);
   margin-top: var(--space-lg);
 }
 
 main.deck[data-theme="swiss"] > .slide[data-slide="3"] > ul { grid-template-columns: 1fr 1fr; }
-main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ol { grid-template-columns: repeat(3, 1fr); }
+main.deck[data-theme="swiss"] > .slide[data-slide="17"] > ol { grid-template-columns: repeat(3, 1fr); }
 
 main.deck[data-theme="swiss"] > .slide[data-slide="3"] > ul li,
-main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ol li {
+main.deck[data-theme="swiss"] > .slide[data-slide="17"] > ol li {
   max-width: none;
   padding: var(--space-card) var(--space-md);
   border: 4px solid var(--color-ink);
@@ -646,10 +646,10 @@ main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ol li {
 }
 
 main.deck[data-theme="swiss"] > .slide[data-slide="3"] > ul li::before,
-main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ol li::before { display: none; }
+main.deck[data-theme="swiss"] > .slide[data-slide="17"] > ol li::before { display: none; }
 
 main.deck[data-theme="swiss"] > .slide[data-slide="3"] > ul li strong,
-main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ol li strong {
+main.deck[data-theme="swiss"] > .slide[data-slide="17"] > ol li strong {
   display: block;
   margin-bottom: var(--space-xs);
   color: var(--color-ink);
@@ -833,100 +833,100 @@ main.deck[data-theme="swiss"] > .slide[data-slide="11"] > ol li strong {
   line-height: 1.15;
 }
 
-/* ── 13 The evidence (slide 12): benchmark captions ──────────────────────── */
+/* ── 14 The evidence (slide 13): benchmark captions ──────────────────────── */
 
 /* Tighter vertical rhythm: the bench + captions run tall, and a slide that
    overflows the viewport gets auto-scaled (paper edges on a dark slide). */
-main.deck[data-theme="swiss"] > .slide[data-slide="12"] { padding-top: var(--space-xl); }
-main.deck[data-theme="swiss"] > .slide[data-slide="12"] h1 { margin-bottom: var(--space-md); }
+main.deck[data-theme="swiss"] > .slide[data-slide="13"] { padding-top: var(--space-xl); }
+main.deck[data-theme="swiss"] > .slide[data-slide="13"] h1 { margin-bottom: var(--space-md); }
 
-main.deck[data-theme="swiss"] > .slide[data-slide="12"] > p:nth-of-type(2),
-main.deck[data-theme="swiss"] > .slide[data-slide="12"] > p:nth-of-type(3) {
+main.deck[data-theme="swiss"] > .slide[data-slide="13"] > p:nth-of-type(2),
+main.deck[data-theme="swiss"] > .slide[data-slide="13"] > p:nth-of-type(3) {
   max-width: none;
   margin: var(--space-sm) 0 0;
   color: var(--color-dark-muted);
   font: 600 var(--type-sm)/1.4 var(--font-mono);
 }
 
-main.deck[data-theme="swiss"] > .slide[data-slide="12"] > p:nth-of-type(3) { color: var(--color-green); }
+main.deck[data-theme="swiss"] > .slide[data-slide="13"] > p:nth-of-type(3) { color: var(--color-green); }
 
-/* ── 15 The pieces (slide 14) & 16 the factory (slide 15): product grids ─── */
+/* ── 16 The pieces (slide 15) & 17 the factory (slide 16): product grids ─── */
 
-main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul {
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--space-md);
   margin-top: var(--space-lg);
 }
 
-main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li:nth-child(1)::before { background: var(--color-green); }
-main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li:nth-child(2)::before { background: var(--color-blue); }
-main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li:nth-child(3)::before { background: var(--color-yellow); }
-main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li:nth-child(4)::before { background: var(--color-pink); }
-main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li:nth-child(5)::before { background: var(--color-violet); }
-main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li:nth-child(6)::before { background: var(--color-cyan); }
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(1)::before { background: var(--color-green); }
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(2)::before { background: var(--color-blue); }
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(3)::before { background: var(--color-yellow); }
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(4)::before { background: var(--color-pink); }
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(5)::before { background: var(--color-violet); }
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(6)::before { background: var(--color-cyan); }
 
-main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul li strong,
-main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li strong { font-family: var(--font-mono); }
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li strong,
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul li strong { font-family: var(--font-mono); }
 
-main.deck[data-theme="swiss"] > .slide[data-slide="14"] > blockquote:not(:first-of-type),
+main.deck[data-theme="swiss"] > .slide[data-slide="15"] > blockquote:not(:first-of-type),
 main.deck[data-theme="swiss"] > .slide[data-slide="2"] > blockquote:not(:first-of-type) { border-left-color: var(--color-cyan); }
 
-main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul {
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: var(--space-md);
   margin-top: var(--space-lg);
 }
 
-main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li {
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul li {
   padding: calc(var(--space-sm) + var(--space-strip)) var(--space-sm) var(--space-sm);
   font-size: var(--type-xs);
   line-height: 1.35;
 }
 
-main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li strong { font-size: var(--type-sm); }
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul li strong { font-size: var(--type-sm); }
 
-main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(1)::before { background: var(--color-blue); }
-main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(2)::before { background: var(--color-orange); }
-main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(3)::before { background: var(--color-violet); }
-main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(4)::before { background: var(--color-red); }
-main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(5)::before { background: var(--color-green); }
-main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(6)::before { background: var(--color-yellow); }
-main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(7)::before { background: var(--color-pink); }
-main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul li:nth-child(8)::before { background: var(--color-cyan); }
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul li:nth-child(1)::before { background: var(--color-blue); }
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul li:nth-child(2)::before { background: var(--color-orange); }
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul li:nth-child(3)::before { background: var(--color-violet); }
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul li:nth-child(4)::before { background: var(--color-red); }
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul li:nth-child(5)::before { background: var(--color-green); }
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul li:nth-child(6)::before { background: var(--color-yellow); }
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul li:nth-child(7)::before { background: var(--color-pink); }
+main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul li:nth-child(8)::before { background: var(--color-cyan); }
 
-/* ── 17 The adoption (slide 16): bullets under the stat row ──────────────── */
+/* ── 18 The adoption (slide 17): bullets under the stat row ──────────────── */
 
-main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul { margin-top: var(--space-lg); }
+main.deck[data-theme="swiss"] > .slide[data-slide="17"] > ul { margin-top: var(--space-lg); }
 
-/* ── 18 Agent-native, concretely (slide 17): two balanced columns ────────── */
+/* ── 19 Agent-native, concretely (slide 18): two balanced columns ────────── */
 
-main.deck[data-theme="swiss"] > .slide[data-slide="17"] > ul {
+main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ul {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0 var(--space-3xl);
   margin-top: var(--space-md);
 }
 
-main.deck[data-theme="swiss"] > .slide[data-slide="17"] > ul li { max-width: none; }
+main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ul li { max-width: none; }
 
-/* ── 19 Takeaways (slide 18): numbered step chips ────────────────────────── */
+/* ── 20 Takeaways (slide 19): numbered step chips ────────────────────────── */
 
-main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ol {
+main.deck[data-theme="swiss"] > .slide[data-slide="19"] > ol {
   display: grid;
   gap: var(--space-md);
   margin-top: var(--space-lg);
 }
 
-main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ol li {
+main.deck[data-theme="swiss"] > .slide[data-slide="19"] > ol li {
   max-width: none;
   min-height: var(--size-takeaway-min);
   padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--size-takeaway-indent);
   font-size: var(--type-takeaway);
 }
 
-main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ol li::before {
+main.deck[data-theme="swiss"] > .slide[data-slide="19"] > ol li::before {
   top: 0.45rem;
   width: var(--size-takeaway);
   height: var(--size-takeaway);
@@ -940,8 +940,8 @@ main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ol li::before {
   line-height: 1;
 }
 
-main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ol li:nth-child(2)::before { background: var(--color-yellow); }
-main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ol li:nth-child(3)::before { background: var(--color-cyan); }
+main.deck[data-theme="swiss"] > .slide[data-slide="19"] > ol li:nth-child(2)::before { background: var(--color-yellow); }
+main.deck[data-theme="swiss"] > .slide[data-slide="19"] > ol li:nth-child(3)::before { background: var(--color-cyan); }
 
 /* ── Interactive benchmark island ────────────────────────────────────────── */
 
@@ -1041,13 +1041,99 @@ main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ol li:nth-child(3)::be
 
   main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol,
   main.deck[data-theme="swiss"] > .slide[data-slide="7"] > ul,
-  main.deck[data-theme="swiss"] > .slide[data-slide="14"] > ul { grid-template-columns: 1fr 1fr; }
+  main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul { grid-template-columns: 1fr 1fr; }
 
   main.deck[data-theme="swiss"] > .slide[data-slide="2"] > ol li::after { display: none; }
 
-  main.deck[data-theme="swiss"] > .slide[data-slide="15"] > ul { grid-template-columns: repeat(2, 1fr); }
+  main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ul { grid-template-columns: repeat(2, 1fr); }
 
-  main.deck[data-theme="swiss"] > .slide[data-slide="16"] > ol { grid-template-columns: 1fr; }
-  main.deck[data-theme="swiss"] > .slide[data-slide="17"] > ul { grid-template-columns: 1fr; }
+  main.deck[data-theme="swiss"] > .slide[data-slide="17"] > ol { grid-template-columns: 1fr; }
+  main.deck[data-theme="swiss"] > .slide[data-slide="18"] > ul { grid-template-columns: 1fr; }
 }
 
+
+/* ── 13 The forks (class-keyed: survives future reorders) ─────────────────── */
+
+main.deck[data-theme="swiss"] > .slide.forks h1 { margin-bottom: var(--space-md); }
+main.deck[data-theme="swiss"] > .slide.forks { padding-top: var(--space-xl); }
+main.deck[data-theme="swiss"] > .slide.forks > p { max-width: none; font-size: var(--type-body); }
+
+.glrforks { margin-top: var(--space-sm); font-family: var(--font-mono); }
+
+/* Token lane: the input stream; the active token lights per step. */
+.glr-tokens { display: flex; gap: var(--space-pill-gap); margin-bottom: var(--space-sm); }
+.glr-tok {
+  padding: 0.35rem 0.9rem;
+  border: 3px solid var(--color-dark-border);
+  border-radius: 3px;
+  background: var(--color-dark-surface);
+  color: var(--color-dark-muted);
+  font: 700 var(--type-pill)/1.2 var(--font-mono);
+  transition: background var(--duration-medium) var(--ease-out), color var(--duration-medium) var(--ease-out), border-color var(--duration-medium) var(--ease-out);
+}
+.glrforks.s0 .tk0, .glrforks.s1 .tk1,
+.glrforks.s2 .tk2, .glrforks.s2 .tk3,
+.glrforks.s3 .tk4, .glrforks.s4 .tk5, .glrforks.s5 .tk6 {
+  background: var(--color-yellow);
+  border-color: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* Stack graph. Everything is pre-drawn; phases fade/settle in by step. */
+.glr-svg { width: 100%; height: auto; max-height: 44vh; display: block; margin-inline: auto; }
+.glr-node { fill: var(--color-dark-surface); stroke: var(--color-paper); stroke-width: 3; }
+.glr-edge { stroke: var(--color-paper); stroke-width: 3; }
+.glr-lab { fill: var(--color-dark-muted); font: 600 24px var(--font-mono); }
+.glr-a .glr-node, circle.glr-a { stroke: var(--color-red); }
+.glr-a.glr-edge, line.glr-a { stroke: var(--color-red); }
+text.glr-a { fill: var(--color-red); }
+.glr-b.glr-node, circle.glr-b { stroke: var(--color-yellow); }
+.glr-b.glr-edge, line.glr-b { stroke: var(--color-yellow); }
+text.glr-b { fill: var(--color-yellow); }
+.glr-fork { stroke: var(--color-pink); }
+.glr-die { fill: var(--color-red); font: 700 26px var(--font-mono); }
+.glr-det { fill: var(--color-green); }
+.glr-ghost.glr-node, circle.glr-ghost { stroke: var(--color-dark-muted); stroke-dasharray: 6 6; fill: transparent; }
+.glr-ghost.glr-edge, line.glr-ghost { stroke: var(--color-dark-muted); stroke-dasharray: 6 6; }
+.glr-win.glr-node, circle.glr-win { stroke: var(--color-green); fill: var(--color-green); }
+.glr-win.glr-edge, line.glr-win { stroke: var(--color-green); }
+
+/* Phase visibility: .from-K appears once the root reaches step K. */
+.glr-svg .from-0, .glr-svg .from-1, .glr-svg .from-2, .glr-svg .from-3, .glr-svg .from-4, .glr-svg .from-5 {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity var(--duration-medium) var(--ease-out), transform var(--duration-medium) var(--ease-out);
+}
+.glrforks .from-0,
+.glrforks:is(.s1,.s2,.s3,.s4,.s5) .from-1,
+.glrforks:is(.s2,.s3,.s4,.s5) .from-2,
+.glrforks:is(.s3,.s4,.s5) .from-3,
+.glrforks:is(.s4,.s5) .from-4,
+.glrforks.s5 .from-5 { opacity: 1; transform: none; }
+
+/* The call fork dims once it dies; the ghost fork fades after the collapse. */
+.glrforks:is(.s3,.s4,.s5) .glr-a { opacity: 0.22; }
+.glrforks.s5 .glr-ghost { opacity: 0; }
+
+/* Caption + controls. */
+.glr-foot { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-lg); margin-top: var(--space-xs); }
+.glr-cap { max-width: 62rem; color: var(--color-dark-body); font: 600 var(--type-sm)/1.5 var(--font-mono); }
+.glr-btns { display: flex; gap: var(--space-pill-gap); flex: none; }
+.glr-btn {
+  border: 3px solid var(--color-paper);
+  border-radius: 3px;
+  padding: var(--space-tight) var(--space-sm);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: 700 var(--type-button)/1 var(--font-mono);
+  cursor: pointer;
+}
+.glr-btn:hover { background: var(--color-green); }
+.glr-btn:active { transform: translateY(1px); }
+.glr-btn:focus-visible { outline: 3px solid var(--color-cyan); outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .glr-tok, .glr-svg .from-0, .glr-svg .from-1, .glr-svg .from-2, .glr-svg .from-3, .glr-svg .from-4, .glr-svg .from-5 { transition: none; }
+}
+
+.glr-det { text-anchor: end; font-weight: 700; }

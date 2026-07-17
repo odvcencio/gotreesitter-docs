@@ -10,8 +10,8 @@ distinction matters: the pure-Go runtime is exceptionally fast on editor-style r
 fresh materialized parse is currently slower than the C runtime on the canonical workload and
 across much of the grammar fleet.
 
-The repository's [`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.37.0/BENCH.md)
-is the canonical source for linkable performance claims. This page follows its v0.37.0 receipts.
+The repository's [`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.38.0/BENCH.md)
+is the canonical source for linkable performance claims. This page follows its v0.38.0 receipts.
 
 ## Canonical full parse: the real-code matrix
 
