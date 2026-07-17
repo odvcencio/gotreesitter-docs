@@ -7,7 +7,7 @@ toolchain go1.26.0
 require (
 	github.com/chromedp/cdproto v0.0.0-20260321001828-e3e3800016bc
 	github.com/chromedp/chromedp v0.15.1
-	github.com/odvcencio/gotreesitter v0.38.0
+	github.com/odvcencio/gotreesitter v0.40.0
 	github.com/odvcencio/mdpp v0.2.5
 	m31labs.dev/gosx v0.31.4
 )
