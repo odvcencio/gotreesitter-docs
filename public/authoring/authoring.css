@@ -1,0 +1,93 @@
+/* /authoring route styles. Behavior and markup are owned by the GoSX page
+   and Go-WASM surface (cmd/authoring-wasm); this file only extends the
+   shared design tokens from docs.css (`.panel`/`.panelhd`/`.panelbd`/
+   `.playgrid`/`.tree`/`.mono`/`.hlcredit`/`.ldot`/`.cdot` all come from
+   there). Deliberately self-contained: this page does not load
+   playground.css. */
+
+.ag-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:20px 0 10px}
+.ag-toolbar .tspacer{flex:1}
+.ag-anonlabel{display:inline-flex;align-items:center;gap:6px;font:700 11px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:var(--ink);cursor:pointer}
+.ag-anonlabel input{accent-color:var(--violet);width:13px;height:13px;cursor:pointer}
+
+/* Phase 2: base picker + rename field */
+.ag-baselabel,.ag-namelabel{display:inline-flex;align-items:center;gap:6px;font:700 11px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:var(--ink)}
+.ag-baseselect,.ag-nameinput{font:600 12px 'JetBrains Mono',monospace;border:2px solid var(--ink);border-radius:2px;background:var(--paper);color:var(--ink);padding:4px 6px}
+.ag-nameinput{width:160px;text-transform:none;letter-spacing:normal}
+.ag-baseinfo{margin:0 0 6px}
+.ag-baseinfo:empty{display:none}
+.ag-fidelitynote{margin:0 0 10px}
+.ag-fidelitynote:empty{display:none}
+
+/* Phase 3: export toolbar (download buttons for the current merged grammar) */
+.ag-exporttoolbar{margin:0 0 20px}
+.ag-exportlabel{font:700 11px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:var(--mut)}
+.ag-exportbtn{font:700 12px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.5px;background:var(--paper);color:var(--ink);border:2px solid var(--ink);border-radius:2px;padding:6px 12px;cursor:pointer;box-shadow:var(--shs)}
+.ag-exportbtn:hover:not(:disabled){background:var(--yellow)}
+.ag-exportbtn:disabled{cursor:not-allowed;opacity:.45;box-shadow:none}
+.ag-exportstatus:empty{display:none}
+
+/* editor panes */
+.ag-grid{grid-template-columns:1fr 1fr}
+.ag-editorwrap{position:relative;padding:0;background:#17140f;height:360px;overflow:hidden}
+.ag-src{margin:0;border:0;width:100%;height:100%;padding:16px 18px;font:400 13.5px/1.7 'JetBrains Mono',monospace;white-space:pre;tab-size:2;overflow:auto;box-sizing:border-box;color:#ece7db;background:#17140f;caret-color:#ece7db;resize:none;outline:none;overscroll-behavior:contain}
+.ag-src:focus-visible{outline:3px solid var(--yellow);outline-offset:-3px}
+.ag-src::selection{background:rgba(157,78,221,.45);color:#fff}
+.ag-sample-wrap{height:360px}
+
+/* results row: tree | highlight preview | diagnostics */
+.ag-results{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(260px,.75fr);gap:18px;margin-top:18px;align-items:stretch}
+.ag-treewrap{padding:0;height:360px;display:flex;overflow:hidden}
+.ag-tree{flex:1;overflow:auto;padding:14px 16px;font-size:12.5px;line-height:1.7}
+.ag-tline{white-space:pre;width:fit-content;min-width:100%;padding-right:10px;border-radius:2px}
+.ag-tline:hover{background:#f0eadb}
+.ag-tline .ttype{color:var(--violet);font-weight:700}
+.ag-tline .tfield{color:var(--mut);font-weight:600}
+.ag-tline.ag-anonrow .ttype{color:#8a8375;font-weight:600}
+.ag-tline.ag-err-row{background:#ffe0ec;border:2px solid var(--red);border-radius:2px;margin:2px 0}
+.ag-tline.ag-err-row .ttype{color:var(--red)}
+.ag-tline .tmissing{margin-left:8px;font:700 10px 'JetBrains Mono',monospace;letter-spacing:1px;color:#fff;background:var(--red);border:2px solid var(--ink);border-radius:2px;padding:0 5px}
+.ag-tree-empty{color:var(--mut);font:600 12.5px 'JetBrains Mono',monospace}
+
+/* diagnostics panel */
+.ag-diagpanel{margin:0}
+.ag-diagbd{display:flex;flex-direction:column;gap:10px;min-width:0;height:360px;box-sizing:border-box;overflow:auto}
+.ag-status{display:inline-flex;align-items:center;gap:8px;font:600 12.5px 'JetBrains Mono',monospace;background:var(--card);border:2px solid var(--ink);border-radius:2px;padding:7px 11px;box-shadow:var(--shs)}
+.ag-status-ok{background:#e3f9ec;border-color:var(--green)}
+.ag-err{background:#ffe0ec;border:2px solid var(--red);border-radius:2px;padding:8px 10px;font-size:12px;line-height:1.5;color:var(--ink);white-space:pre-wrap;word-break:break-word}
+
+/* highlight preview pane — plain text with styled spans, no editor chrome */
+.ag-hlpre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12.5px;line-height:1.7;color:var(--ink)}
+.ag-hl{border-radius:2px;font-weight:700}
+.ag-hl-0{color:#a8790a;background:#fff3d1}
+.ag-hl-1{color:#2952b3;background:#e3ecff}
+.ag-hl-2{color:#a3196f;background:#ffe0f0}
+.ag-hl-3{color:#1c8a5c;background:#dcf6e9}
+.ag-hl-4{color:#6b2fc9;background:#efe3ff}
+.ag-hl-5{color:#b5580a;background:#ffe9d1}
+.ag-hl-6{color:#0f8f8f;background:#dbf7f7}
+.ag-hl-7{color:#c22a2a;background:#ffe1e1}
+
+/* conflicts & warnings panel */
+.ag-conflictpanel{margin:18px 0 0}
+.ag-conflictbd{display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
+.ag-conflictlist{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow:auto}
+.ag-conflict{background:var(--card);border:2px solid var(--ink);border-radius:2px;padding:8px 10px;box-shadow:var(--shs)}
+.ag-conflict-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ag-conflict-kind{font:700 11px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.5px;background:var(--ink);color:var(--paper);border-radius:2px;padding:2px 7px}
+.ag-conflict-loc{font:600 12px 'JetBrains Mono',monospace;color:var(--mut)}
+.ag-conflict-res{margin:4px 0 0;font:600 12px 'JetBrains Mono',monospace;color:var(--ink)}
+.ag-conflict-detail{margin:6px 0 0;padding:8px;background:#17140f;color:#ece7db;border-radius:2px;font-size:11px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.ag-warnlist{display:flex;flex-direction:column;gap:6px}
+.ag-warn{background:#fff3d1;border:2px solid var(--yellow);border-radius:2px;padding:6px 9px;font-size:11.5px;line-height:1.5;color:var(--ink)}
+
+.ag-footnote{font-size:13.5px}
+
+@media(max-width:1080px){
+	.ag-results{grid-template-columns:1fr 1fr}
+}
+
+@media(max-width:840px){
+	.ag-editorwrap,.ag-treewrap,.ag-sample-wrap,.ag-diagbd{height:320px}
+	.ag-grid,.ag-results{grid-template-columns:1fr}
+}

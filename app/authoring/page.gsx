@@ -1,0 +1,146 @@
+package authoring
+
+func Page() Node {
+	return <section class="page">
+		<span class="eyebrow">Grammar Authoring</span>
+		<h1 class="h1">Write a grammar. Watch it compile.</h1>
+		<div class="underbar"></div>
+		<p class="lead">
+			Edit a tree-sitter grammar.json below. grammargen — gotreesitter's grammar compiler — compiles it into an LR table and a live Language entirely inside this WebAssembly build, then parses your sample against it. Nothing leaves this device.
+		</p>
+		<Surface
+			name="GotreesitterAuthoring"
+			runtime="go-wasm"
+			wasmPath={data.wasmURL}
+			workerScriptURL={data.workerURL}
+			baseIndexURL={data.baseIndexURL}
+			capabilities="wasm text-input"
+			requiredCapabilities="wasm"
+			id="ag-root"
+			class="ag-surface"
+		>
+			<div class="ag-toolbar">
+				<label class="ag-baselabel" title="Inherit a base grammar; the editor below becomes a delta of the rules you add or override on top of it">
+					base grammar
+					<select id="ag-base" class="ag-baseselect" aria-label="Base grammar">
+						<option value="">blank / full grammar</option>
+					</select>
+				</label>
+				<label class="ag-namelabel" title="Optional: rename the merged grammar. Renaming an inherited base can shift grammargen's few name-keyed compiler behaviors — see the note below when used.">
+					rename
+					<input id="ag-name" type="text" class="ag-nameinput" placeholder="(keep base name)" maxlength="64" aria-label="Rename merged grammar" />
+				</label>
+				<label class="ag-anonlabel" title="Include anonymous nodes (literal tokens) in the rendered tree">
+					<input id="ag-anonymous" type="checkbox" checked />
+					anonymous nodes
+				</label>
+				<span class="tspacer"></span>
+				<span id="ag-node-count" class="hlcredit">waiting for runtime</span>
+			</div>
+			<p id="ag-base-info" class="ag-status ag-baseinfo" role="status"></p>
+			<p id="ag-fidelity-note" class="ag-warn ag-fidelitynote" role="note"></p>
+			<div class="playgrid ag-grid">
+				<div class="panel">
+					<div class="panelhd">
+						<span class="cdot r"></span>
+						<span class="cdot y"></span>
+						<span class="cdot g"></span>
+						<span id="ag-editor-label">grammar.json</span>
+					</div>
+					<div class="panelbd ag-editorwrap">
+						<textarea
+							id="ag-grammar"
+							class="ag-src mono"
+							wrap="off"
+							spellcheck="false"
+							aria-label="Grammar JSON delta"
+							maxlength="65536"
+						>{data.grammar}</textarea>
+					</div>
+				</div>
+				<div class="panel">
+					<div class="panelhd">
+						<span class="ldot c-cyan" style="border-color:var(--paper)"></span>
+						sample source
+					</div>
+					<div class="panelbd ag-editorwrap ag-sample-wrap">
+						<textarea
+							id="ag-source"
+							class="ag-src mono"
+							wrap="off"
+							spellcheck="false"
+							aria-label="Sample source"
+							maxlength="65536"
+						>{data.sample}</textarea>
+					</div>
+				</div>
+			</div>
+			<div class="ag-toolbar ag-exporttoolbar" aria-live="polite">
+				<span class="ag-exportlabel" title="Downloads the current merged (base + delta) grammar, exactly as it last compiled successfully">
+					export merged grammar
+				</span>
+				<button id="ag-export-go" type="button" class="ag-exportbtn" disabled title="Compile a grammar first">
+					.go
+				</button>
+				<button id="ag-export-c" type="button" class="ag-exportbtn" disabled title="Compile a grammar first">
+					parser.c
+				</button>
+				<button id="ag-export-json" type="button" class="ag-exportbtn" disabled title="Compile a grammar first">
+					grammar.json
+				</button>
+				<span class="tspacer"></span>
+				<span id="ag-export-status" class="ag-status ag-exportstatus" role="status"></span>
+			</div>
+			<div class="ag-results" aria-live="polite">
+				<div class="panel">
+					<div class="panelhd">
+						<span class="ldot c-violet" style="border-color:var(--paper)"></span>
+						syntax tree
+					</div>
+					<div class="panelbd ag-treewrap">
+						<div id="ag-tree" class="tree ag-tree mono" role="tree" aria-label="Syntax tree">
+							<p class="ag-tree-empty">Loading the browser grammar compiler…</p>
+						</div>
+					</div>
+				</div>
+				<div class="panel">
+					<div class="panelhd">
+						<span class="ldot c-cyan" style="border-color:var(--paper)"></span>
+						highlight preview
+					</div>
+					<div class="panelbd ag-treewrap">
+						<div id="ag-highlight" class="tree ag-tree mono" aria-label="Highlighted sample source">
+							<p class="ag-tree-empty">Waiting for the grammar to compile…</p>
+						</div>
+					</div>
+				</div>
+				<div class="panel ag-diagpanel">
+					<div class="panelhd">
+						<span class="ldot c-red" style="border-color:var(--paper)"></span>
+						diagnostics
+					</div>
+					<div class="panelbd ag-diagbd">
+						<p id="ag-status" class="ag-status" role="status">Starting gotreesitter grammar compiler…</p>
+						<div id="ag-errors"></div>
+					</div>
+				</div>
+			</div>
+			<div class="panel ag-conflictpanel" aria-live="polite">
+				<div class="panelhd">
+					<span class="ldot c-yellow" style="border-color:var(--paper)"></span>
+					LR conflicts &amp; warnings
+				</div>
+				<div class="panelbd ag-conflictbd">
+					<p id="ag-conflict-summary" class="ag-status" role="status">Waiting for the grammar to compile…</p>
+					<div id="ag-conflicts" class="ag-conflictlist"></div>
+					<div id="ag-warnings" class="ag-warnlist"></div>
+				</div>
+			</div>
+		</Surface>
+		<p class="p mut ag-footnote">
+			Runtime: gotreesitter
+			{data.gtsVersion}
+			grammargen, compiled to standard Go WebAssembly and managed by GoSX. Pick a base grammar to inherit from — the editor becomes a delta of the rules you add or override, merged with the base entirely in this browser before compiling. The compiler runs in a background Web Worker so a heavy grammar cannot stall the tab; if it exceeds a time budget the worker restarts automatically. Grammar JSON and sample source never leave the browser.
+		</p>
+	</section>
+}
