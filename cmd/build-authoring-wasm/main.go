@@ -26,11 +26,58 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/odvcencio/gotreesitter/grammargen"
 )
+
+// baseGrammars is the Phase 2 inheritance base catalog: every entry becomes
+// a public/authoring/bases/<name>.grammar.json asset the browser can fetch
+// and use as an "extends" base (see internal/authoringengine.MergeGrammarJSON
+// and cmd/authoring-wasm's base picker). grammargen exposes ~20 built-in
+// `func XGrammar() *Grammar` constructors (see grep 'func \w+Grammar\(\)
+// \*Grammar' in the grammargen package); this list is a deliberately curated
+// subset, not all of them — measured natively (go1.26, this machine) via
+// GenerateLanguage+GenerateWithReport (CompileWithContext's actual double
+// generation pass):
+//
+//	calc ~1ms, json ~7ms, ini ~7ms, mustache ~10ms  (instant — good demo defaults)
+//	lox ~3.3s combined                              (Phase 1's existing "heavy" example)
+//	go ~4.9s combined                                (headline real-language base)
+//	typescript ~15s combined, javascript ~25s combined (heavy, but selectable)
+//
+// swift (generate alone: 53s), kotlin (>67s and still running), fortran
+// (2m34s combined!), and markdown (16.5s combined, plus its own known
+// heredoc-shaped generation caveats) were measured and excluded: they blow
+// far past any budget a live in-browser Web Worker compile can reasonably
+// offer (cmd/authoring-wasm's hardBudget is 15s), so shipping them as
+// authoring bases would just be a guaranteed-broken "pick this and it never
+// finishes" trap. They still export cleanly as *data* (ExportGrammarJSON
+// does not fail for any of them) — only live in-browser compilation is
+// impractical. Re-evaluate if grammargen's generation performance improves.
+var baseGrammars = []struct {
+	Name  string
+	Build func() *grammargen.Grammar
+}{
+	{"calc", grammargen.CalcGrammar},
+	{"json", grammargen.JSONGrammar},
+	{"ini", grammargen.INIGrammar},
+	{"mustache", grammargen.MustacheGrammar},
+	{"lox", grammargen.LoxGrammar},
+	{"go", grammargen.GoGrammar},
+	{"typescript", grammargen.TypescriptGrammar},
+	{"javascript", grammargen.JavascriptGrammar},
+}
+
+type baseAsset struct {
+	Name      string `json:"name"`
+	URL       string `json:"url"`
+	RuleCount int    `json:"ruleCount"`
+}
 
 func main() {
 	root, err := repositoryRoot()
@@ -42,9 +89,61 @@ func main() {
 		fatal(err)
 	}
 
+	assets, err := writeBaseAssets(outDir)
+	if err != nil {
+		fatal(err)
+	}
+	fmt.Printf("wrote %d base grammar.json assets to %s\n", len(assets), filepath.Join(outDir, "bases"))
+
 	buildWASM(root, filepath.Join(outDir, "authoring.wasm"), "./cmd/authoring-wasm")
 	buildWASM(root, filepath.Join(outDir, "authoring-worker.wasm"), "./cmd/authoring-worker-wasm")
 	writeWorkerBootstrap(filepath.Join(outDir, "authoring-worker.js"), filepath.Join(outDir, "authoring-worker.wasm"))
+}
+
+// writeBaseAssets exports every entry in baseGrammars to
+// <outDir>/bases/<name>.grammar.json via grammargen.ExportGrammarJSON — the
+// same pure, side-effect-free exporter internal/authoringengine.MergeGrammarJSON
+// re-imports at merge time — plus a bases/index.json manifest the browser's
+// base picker fetches to populate its <select>.
+func writeBaseAssets(outDir string) ([]baseAsset, error) {
+	dir := filepath.Join(outDir, "bases")
+	if err := os.RemoveAll(dir); err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, err
+	}
+
+	assets := make([]baseAsset, 0, len(baseGrammars))
+	for _, entry := range baseGrammars {
+		g := entry.Build()
+		if g == nil {
+			return nil, fmt.Errorf("base %q: Build returned a nil grammar", entry.Name)
+		}
+		data, err := grammargen.ExportGrammarJSON(g)
+		if err != nil {
+			return nil, fmt.Errorf("base %q: ExportGrammarJSON: %w", entry.Name, err)
+		}
+		filename := entry.Name + ".grammar.json"
+		if err := os.WriteFile(filepath.Join(dir, filename), data, 0o644); err != nil {
+			return nil, fmt.Errorf("base %q: write asset: %w", entry.Name, err)
+		}
+		assets = append(assets, baseAsset{
+			Name:      entry.Name,
+			URL:       "/authoring/bases/" + filename,
+			RuleCount: len(g.RuleOrder),
+		})
+		fmt.Printf("  base %-12s %5d rules  %8d bytes\n", entry.Name, len(g.RuleOrder), len(data))
+	}
+
+	index, err := json.MarshalIndent(assets, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(filepath.Join(dir, "index.json"), index, 0o644); err != nil {
+		return nil, err
+	}
+	return assets, nil
 }
 
 func buildWASM(root, output, pkg string) {

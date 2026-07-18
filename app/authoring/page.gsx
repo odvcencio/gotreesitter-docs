@@ -13,12 +13,23 @@ func Page() Node {
 			runtime="go-wasm"
 			wasmPath={data.wasmURL}
 			workerScriptURL={data.workerURL}
+			baseIndexURL={data.baseIndexURL}
 			capabilities="wasm text-input"
 			requiredCapabilities="wasm"
 			id="ag-root"
 			class="ag-surface"
 		>
 			<div class="ag-toolbar">
+				<label class="ag-baselabel" title="Inherit a base grammar; the editor below becomes a delta of the rules you add or override on top of it">
+					base grammar
+					<select id="ag-base" class="ag-baseselect" aria-label="Base grammar">
+						<option value="">blank / full grammar</option>
+					</select>
+				</label>
+				<label class="ag-namelabel" title="Optional: rename the merged grammar. Renaming an inherited base can shift grammargen's few name-keyed compiler behaviors — see the note below when used.">
+					rename
+					<input id="ag-name" type="text" class="ag-nameinput" placeholder="(keep base name)" maxlength="64" aria-label="Rename merged grammar" />
+				</label>
 				<label class="ag-anonlabel" title="Include anonymous nodes (literal tokens) in the rendered tree">
 					<input id="ag-anonymous" type="checkbox" checked />
 					anonymous nodes
@@ -26,13 +37,15 @@ func Page() Node {
 				<span class="tspacer"></span>
 				<span id="ag-node-count" class="hlcredit">waiting for runtime</span>
 			</div>
+			<p id="ag-base-info" class="ag-status ag-baseinfo" role="status"></p>
+			<p id="ag-fidelity-note" class="ag-warn ag-fidelitynote" role="note"></p>
 			<div class="playgrid ag-grid">
 				<div class="panel">
 					<div class="panelhd">
 						<span class="cdot r"></span>
 						<span class="cdot y"></span>
 						<span class="cdot g"></span>
-						grammar.json
+						<span id="ag-editor-label">grammar.json</span>
 					</div>
 					<div class="panelbd ag-editorwrap">
 						<textarea
@@ -40,7 +53,7 @@ func Page() Node {
 							class="ag-src mono"
 							wrap="off"
 							spellcheck="false"
-							aria-label="Grammar JSON"
+							aria-label="Grammar JSON delta"
 							maxlength="65536"
 						>{data.grammar}</textarea>
 					</div>
@@ -111,7 +124,7 @@ func Page() Node {
 		<p class="p mut ag-footnote">
 			Runtime: gotreesitter
 			{data.gtsVersion}
-			grammargen, compiled to standard Go WebAssembly and managed by GoSX. The compiler runs in a background Web Worker so a heavy grammar cannot stall the tab; if it exceeds a time budget the worker restarts automatically. Grammar JSON and sample source never leave the browser.
+			grammargen, compiled to standard Go WebAssembly and managed by GoSX. Pick a base grammar to inherit from — the editor becomes a delta of the rules you add or override, merged with the base entirely in this browser before compiling. The compiler runs in a background Web Worker so a heavy grammar cannot stall the tab; if it exceeds a time budget the worker restarts automatically. Grammar JSON and sample source never leave the browser.
 		</p>
 	</section>
 }

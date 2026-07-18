@@ -19,6 +19,12 @@ func TestAuthoringIsGoSXManagedBrowserWASM(t *testing.T) {
 		`id="ag-tree"`,
 		`id="ag-errors"`,
 		`id="ag-status"`,
+		`id="ag-base"`,
+		`id="ag-name"`,
+		`id="ag-base-info"`,
+		`id="ag-fidelity-note"`,
+		`id="ag-editor-label"`,
+		`baseIndexURL={data.baseIndexURL}`,
 		`aria-live="polite"`,
 	} {
 		if !strings.Contains(contents, snippet) {
@@ -42,20 +48,40 @@ func TestAuthoringPrivacyCopyIsExplicit(t *testing.T) {
 	}
 }
 
-// TestAuthoringSeedGrammarIsValidJSON guards against an edit to
-// initialGrammarJSON breaking its JSON syntax; the real import/generate
-// round trip is exercised natively in internal/authoringengine.
-func TestAuthoringSeedGrammarIsValidJSON(t *testing.T) {
+// TestAuthoringSeedDeltaIsValidJSON guards against an edit to
+// initialDeltaJSON breaking its JSON syntax and its "delta on top of
+// defaultBaseName" shape; the real base+delta merge -> import -> generate ->
+// parse round trip (proving the delta-added "power" rule actually reaches
+// the tree) is exercised natively in internal/authoringengine's merge tests
+// and, end to end through the browser worker, by cmd/verify-authoring-browser.
+func TestAuthoringSeedDeltaIsValidJSON(t *testing.T) {
 	var payload map[string]any
-	if err := json.Unmarshal([]byte(initialGrammarJSON), &payload); err != nil {
-		t.Fatalf("initialGrammarJSON is not valid JSON: %v", err)
+	if err := json.Unmarshal([]byte(initialDeltaJSON), &payload); err != nil {
+		t.Fatalf("initialDeltaJSON is not valid JSON: %v", err)
 	}
-	if payload["name"] != "calc" {
-		t.Errorf("initialGrammarJSON name: got %v, want %q", payload["name"], "calc")
+	rules, ok := payload["rules"].(map[string]any)
+	if !ok {
+		t.Fatalf("initialDeltaJSON has no \"rules\" object: %v", payload["rules"])
+	}
+	for _, want := range []string{"expression", "power"} {
+		if _, ok := rules[want]; !ok {
+			t.Errorf("initialDeltaJSON rules: missing %q (got keys %v)", want, rulesKeys(rules))
+		}
+	}
+	if defaultBaseName != "calc" {
+		t.Errorf("defaultBaseName: got %q, want %q", defaultBaseName, "calc")
 	}
 	if strings.TrimSpace(initialSample) == "" {
 		t.Error("initialSample is empty")
 	}
+}
+
+func rulesKeys(rules map[string]any) []string {
+	keys := make([]string, 0, len(rules))
+	for k := range rules {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 func readEmbeddedSource(t *testing.T, name string) string {

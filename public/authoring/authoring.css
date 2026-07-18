@@ -10,6 +10,15 @@
 .ag-anonlabel{display:inline-flex;align-items:center;gap:6px;font:700 11px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:var(--ink);cursor:pointer}
 .ag-anonlabel input{accent-color:var(--violet);width:13px;height:13px;cursor:pointer}
 
+/* Phase 2: base picker + rename field */
+.ag-baselabel,.ag-namelabel{display:inline-flex;align-items:center;gap:6px;font:700 11px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:var(--ink)}
+.ag-baseselect,.ag-nameinput{font:600 12px 'JetBrains Mono',monospace;border:2px solid var(--ink);border-radius:2px;background:var(--paper);color:var(--ink);padding:4px 6px}
+.ag-nameinput{width:160px;text-transform:none;letter-spacing:normal}
+.ag-baseinfo{margin:0 0 6px}
+.ag-baseinfo:empty{display:none}
+.ag-fidelitynote{margin:0 0 10px}
+.ag-fidelitynote:empty{display:none}
+
 /* editor panes */
 .ag-grid{grid-template-columns:1fr 1fr}
 .ag-editorwrap{position:relative;padding:0;background:#17140f;height:360px;overflow:hidden}

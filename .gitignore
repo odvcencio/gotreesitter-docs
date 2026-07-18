@@ -12,3 +12,4 @@ public/playground/grammars/
 public/authoring/authoring.wasm
 public/authoring/authoring-worker.wasm
 public/authoring/authoring-worker.js
+public/authoring/bases/

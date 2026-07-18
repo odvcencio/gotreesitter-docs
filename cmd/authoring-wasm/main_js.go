@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -72,10 +73,34 @@ const (
 	// main thread. onerror already covers most startup failures; this is
 	// the backstop for the rest (e.g. a fetch that hangs without erroring).
 	bootBudget = 20 * time.Second
+
+	// defaultBaseName is selected automatically once bases/index.json loads,
+	// so the very first compile on page load already demonstrates
+	// inheritance (a base + the seed delta — see app/authoring/page.server.go)
+	// rather than requiring a click. calc is grammargen's fastest base
+	// (sub-millisecond native generation — see cmd/build-authoring-wasm's
+	// baseGrammars doc), so this stays instant even before the worker
+	// finishes booting (the local main-thread fallback path, or the worker
+	// once ready, both complete essentially immediately).
+	defaultBaseName = "calc"
 )
+
+// baseAsset mirrors cmd/build-authoring-wasm's baseAsset — one entry from
+// public/authoring/bases/index.json (a pre-generated grammar.json base the
+// author can inherit from; see internal/authoringengine.MergeGrammarJSON).
+type baseAsset struct {
+	Name      string `json:"name"`
+	URL       string `json:"url"`
+	RuleCount int    `json:"ruleCount"`
+}
 
 type authoringProps struct {
 	WorkerScriptURL string `json:"workerScriptURL"`
+	// BaseIndexURL points at public/authoring/bases/index.json. Empty (e.g.
+	// a future embed that ships no base assets) falls back to Phase 0/1's
+	// "blank / full grammar" behavior only — #ag-grammar is the whole
+	// grammar, no base picker is populated.
+	BaseIndexURL string `json:"baseIndexURL"`
 }
 
 type authoringHandle struct {
@@ -130,6 +155,18 @@ type authoringHandle struct {
 	lastSource  string
 	softTimer   *time.Timer
 	hardTimer   *time.Timer
+
+	// Phase 2 inheritance state. baseIndexURL/bases come from
+	// public/authoring/bases/index.json (fetched once, at mount — see
+	// bootstrapBases). baseCache holds fetched base grammar.json bytes keyed
+	// by name so switching back and forth between bases the author already
+	// visited doesn't re-fetch. All three are guarded by stateMu like every
+	// other field above; there is no separate lock because base changes are
+	// rare (a select's change event, not a per-keystroke event) and always
+	// funnel through the same run()/dispatch() path as an ordinary edit.
+	baseIndexURL string
+	bases        []baseAsset
+	baseCache    map[string][]byte
 }
 
 // authoringRequest is one debounced edit waiting to be sent to the worker —
@@ -149,23 +186,30 @@ func main() {
 	select {}
 }
 
-// mountAuthoring wires the grammar-authoring surface: a grammar.json
-// textarea (#ag-grammar), a sample-source textarea (#ag-source), an
-// anonymous-node toggle (#ag-anonymous), and the render sinks
+// mountAuthoring wires the grammar-authoring surface: a base-grammar picker
+// (#ag-base), a grammar.json/delta textarea (#ag-grammar), a sample-source
+// textarea (#ag-source), an anonymous-node toggle (#ag-anonymous), an
+// optional rename field (#ag-name), and the render sinks
 // (#ag-tree/#ag-errors/#ag-status/#ag-node-count/#ag-conflicts/
-// #ag-warnings/#ag-highlight). It needs no bootstrap fetch of its own —
-// grammargen compiles the grammar live from the textarea — but it does spawn
-// the background compiler Worker so the very first (seed) compile already
-// goes through it.
+// #ag-warnings/#ag-highlight/#ag-base-info/#ag-fidelity-note/
+// #ag-editor-label). It spawns the background compiler Worker immediately so
+// the very first (seed) compile already goes through it, and — if
+// BaseIndexURL is configured — fetches public/authoring/bases/index.json to
+// populate the base picker; that fetch's completion is what actually kicks
+// off the first compile (see bootstrapBases), so on a base-enabled page the
+// unconditional h.run() Phase 0/1 called here would be redundant (and would
+// dispatch against #ag-base's not-yet-populated "" value): only used when
+// BaseIndexURL is unset (blank/full-grammar-only mode).
 func mountAuthoring(ctx enginewasm.Context) (enginewasm.Handle, error) {
 	mount := ctx.Mount()
 	if !mount.Truthy() {
 		return nil, fmt.Errorf("authoring surface requires a DOM mount")
 	}
-	h := &authoringHandle{mount: mount}
+	h := &authoringHandle{mount: mount, baseCache: map[string][]byte{}}
 	var props authoringProps
 	if err := ctx.DecodeProps(&props); err == nil {
 		h.workerScriptURL = strings.TrimSpace(props.WorkerScriptURL)
+		h.baseIndexURL = strings.TrimSpace(props.BaseIndexURL)
 	}
 
 	for _, binding := range []struct {
@@ -176,6 +220,7 @@ func mountAuthoring(ctx enginewasm.Context) (enginewasm.Handle, error) {
 		{"#ag-grammar", "input", false},
 		{"#ag-source", "input", false},
 		{"#ag-anonymous", "change", true},
+		{"#ag-name", "input", false},
 	} {
 		target := h.find(binding.selector)
 		if !target.Truthy() {
@@ -193,6 +238,21 @@ func mountAuthoring(ctx enginewasm.Context) (enginewasm.Handle, error) {
 		target.Call("addEventListener", binding.event, fn)
 		h.listeners = append(h.listeners, browserListener{target: target, event: binding.event, fn: fn})
 	}
+
+	// #ag-base gets its own listener (not the generic run()/schedule() loop
+	// above): picking a new base needs to fetch that base's grammar.json
+	// before a merge+compile can run at all — see onBaseChange.
+	baseSelect := h.find("#ag-base")
+	if !baseSelect.Truthy() {
+		return nil, fmt.Errorf("authoring element #ag-base is missing")
+	}
+	baseChangeFn := js.FuncOf(func(js.Value, []js.Value) any {
+		h.onBaseChange()
+		return nil
+	})
+	baseSelect.Call("addEventListener", "change", baseChangeFn)
+	h.listeners = append(h.listeners, browserListener{target: baseSelect, event: "change", fn: baseChangeFn})
+
 	h.mount.Get("dataset").Set("privacyBoundary", "browser-only")
 
 	if h.workerScriptURL == "" {
@@ -200,7 +260,11 @@ func mountAuthoring(ctx enginewasm.Context) (enginewasm.Handle, error) {
 	} else {
 		h.spawnWorker(0)
 	}
-	h.run()
+	if h.baseIndexURL != "" {
+		go h.bootstrapBases()
+	} else {
+		h.run()
+	}
 	return h, nil
 }
 
@@ -254,6 +318,16 @@ func (h *authoringHandle) schedule() {
 // still works without Worker support. It is safe to call directly (mount's
 // first compile, the anonymous-toggle's immediate path, and the debounce
 // timer all do).
+//
+// Phase 2 inheritance: when #ag-base names a base, #ag-grammar is treated as
+// a delta and merged with that base's cached grammar.json — entirely on this
+// thread, entirely in Go, via authoringengine.MergeGrammarJSON — before
+// anything is dispatched. The worker's wire protocol is unchanged from Phase
+// 1: it only ever receives one already-complete grammarJSON string and has
+// no notion of "base" or "delta" (see design doc Phase 2 item 4 — "the
+// merged grammar.json goes to the Phase 1 worker exactly as the full grammar
+// did"). When #ag-base is "" (the "blank / full grammar" option), #ag-grammar
+// is dispatched unmerged, exactly as in Phase 0/1.
 func (h *authoringHandle) run() {
 	h.stateMu.Lock()
 	if h.disposed {
@@ -265,13 +339,206 @@ func (h *authoringHandle) run() {
 	seq := h.runSeq
 	h.stateMu.Unlock()
 
-	grammarJSON := h.find("#ag-grammar").Get("value").String()
+	grammarOrDelta := h.find("#ag-grammar").Get("value").String()
 	source := h.find("#ag-source").Get("value").String()
 	includeAnonymous := true
 	if el := h.find("#ag-anonymous"); el.Truthy() {
 		includeAnonymous = el.Get("checked").Bool()
 	}
-	h.dispatch(seq, grammarJSON, source, includeAnonymous)
+	baseName := ""
+	if el := h.find("#ag-base"); el.Truthy() {
+		baseName = el.Get("value").String()
+	}
+	nameOverride := ""
+	if el := h.find("#ag-name"); el.Truthy() {
+		nameOverride = strings.TrimSpace(el.Get("value").String())
+	}
+
+	if baseName == "" {
+		h.updateFidelityNote("", "")
+		h.dispatch(seq, grammarOrDelta, source, includeAnonymous)
+		return
+	}
+
+	h.stateMu.Lock()
+	baseBytes, ok := h.baseCache[baseName]
+	h.stateMu.Unlock()
+	if !ok {
+		// The base picker's change handler (onBaseChange/loadBaseAndRun) is
+		// still fetching this base; it calls run() again once the fetch
+		// lands. Nothing to dispatch yet.
+		h.text("#ag-status", fmt.Sprintf("Loading base grammar %q…", baseName))
+		return
+	}
+
+	h.updateFidelityNote(baseName, nameOverride)
+	merged, err := authoringengine.MergeGrammarJSON(baseBytes, []byte(grammarOrDelta), nameOverride)
+	if err != nil {
+		if h.current(seq) {
+			h.render("", authoringengine.Result{ImportError: "delta grammar.json: " + err.Error()}, 0, "")
+		}
+		return
+	}
+	h.dispatch(seq, string(merged), source, includeAnonymous)
+}
+
+// bootstrapBases fetches public/authoring/bases/index.json, populates
+// #ag-base with one <option> per entry, and selects defaultBaseName so the
+// very first compile already demonstrates inheritance. Runs once, from a
+// goroutine kicked off by mountAuthoring.
+func (h *authoringHandle) bootstrapBases() {
+	var assets []baseAsset
+	if err := fetchJSON(h.baseIndexURL, &assets); err != nil {
+		h.text("#ag-base-info", "Could not load the base grammar index: "+err.Error())
+		return
+	}
+	h.stateMu.Lock()
+	if h.disposed {
+		h.stateMu.Unlock()
+		return
+	}
+	h.bases = assets
+	h.stateMu.Unlock()
+
+	sel := h.find("#ag-base")
+	if !sel.Truthy() {
+		return
+	}
+	for _, asset := range assets {
+		option := element("option")
+		option.Set("value", asset.Name)
+		option.Set("textContent", fmt.Sprintf("%s (%d rules)", asset.Name, asset.RuleCount))
+		sel.Call("appendChild", option)
+	}
+	h.mount.Get("dataset").Set("baseCount", fmt.Sprint(len(assets)))
+
+	if _, ok := h.findBaseAsset(defaultBaseName); ok {
+		sel.Set("value", defaultBaseName)
+	}
+	h.onBaseChange()
+}
+
+// onBaseChange runs whenever #ag-base's selection changes (including the
+// synthetic call bootstrapBases makes once it has picked defaultBaseName).
+// A base switch always needs an async fetch (or a cache hit) before a
+// merge+compile can happen, so — unlike every other input on this page — it
+// does not go through schedule()/run() directly.
+func (h *authoringHandle) onBaseChange() {
+	sel := h.find("#ag-base")
+	name := ""
+	if sel.Truthy() {
+		name = sel.Get("value").String()
+	}
+	h.updateEditorLabel(name)
+	if name == "" {
+		h.text("#ag-base-info", "")
+		h.updateFidelityNote("", "")
+		h.run()
+		return
+	}
+	h.stateMu.Lock()
+	_, cached := h.baseCache[name]
+	h.stateMu.Unlock()
+	if cached {
+		h.describeCachedBase(name)
+		h.run()
+		return
+	}
+	h.text("#ag-base-info", fmt.Sprintf("Loading base grammar %q…", name))
+	go h.loadBaseAndRun(name)
+}
+
+// loadBaseAndRun fetches (and caches) the named base's grammar.json, then
+// calls run() so the merge+compile that was waiting on it proceeds.
+func (h *authoringHandle) loadBaseAndRun(name string) {
+	asset, ok := h.findBaseAsset(name)
+	if !ok {
+		h.text("#ag-base-info", "Unknown base grammar "+name)
+		return
+	}
+	data, err := fetchBytes(asset.URL)
+	if err != nil {
+		h.text("#ag-base-info", fmt.Sprintf("Could not load base %q: %s", name, err))
+		return
+	}
+	h.stateMu.Lock()
+	disposed := h.disposed
+	if !disposed {
+		if h.baseCache == nil {
+			h.baseCache = map[string][]byte{}
+		}
+		h.baseCache[name] = data
+	}
+	h.stateMu.Unlock()
+	if disposed {
+		return
+	}
+	h.describeCachedBase(name)
+	h.run()
+}
+
+// describeCachedBase updates #ag-base-info from an already-fetched (cached)
+// base's grammar.json — the "Base “go” — 116 rules" line that tells the
+// author what they're inheriting (design Phase 2 item 2).
+func (h *authoringHandle) describeCachedBase(name string) {
+	h.stateMu.Lock()
+	data := h.baseCache[name]
+	h.stateMu.Unlock()
+	baseName, ruleCount, err := authoringengine.GrammarSummary(data)
+	if err != nil {
+		h.text("#ag-base-info", fmt.Sprintf("Base %q loaded but failed to parse: %s", name, err))
+		return
+	}
+	h.text("#ag-base-info", fmt.Sprintf(
+		"Base %q — %d rule%s. The editor below is your delta: add new rules or override any of these; everything else is inherited unchanged.",
+		baseName, ruleCount, plural(ruleCount),
+	))
+}
+
+func (h *authoringHandle) findBaseAsset(name string) (baseAsset, bool) {
+	h.stateMu.Lock()
+	defer h.stateMu.Unlock()
+	for _, asset := range h.bases {
+		if asset.Name == name {
+			return asset, true
+		}
+	}
+	return baseAsset{}, false
+}
+
+// updateEditorLabel relabels the delta/grammar.json panel's heading so it's
+// honest about what #ag-grammar means in the current mode (design Phase 2
+// item 2: "reframe/relabel the existing grammar textarea as the DELTA").
+func (h *authoringHandle) updateEditorLabel(baseName string) {
+	label := h.find("#ag-editor-label")
+	if !label.Truthy() {
+		return
+	}
+	if baseName == "" {
+		label.Set("textContent", "grammar.json")
+	} else {
+		label.Set("textContent", fmt.Sprintf("delta — rules added to / overridden on %q", baseName))
+	}
+}
+
+// updateFidelityNote surfaces design risk #3 (shape-hint fidelity): renaming
+// an inherited base can shift grammargen's few name-keyed compiler behaviors.
+// See internal/authoringengine's MergeGrammarJSON doc for exactly what is and
+// isn't carried through a rename. Empty baseName or an unchanged/empty
+// nameOverride clears the note.
+func (h *authoringHandle) updateFidelityNote(baseName, nameOverride string) {
+	note := h.find("#ag-fidelity-note")
+	if !note.Truthy() {
+		return
+	}
+	if baseName == "" || nameOverride == "" || nameOverride == baseName {
+		note.Set("textContent", "")
+		return
+	}
+	note.Set("textContent", fmt.Sprintf(
+		"Renamed %q → %q: this build carries the base's already-resolved LR-tuning flags into the merged grammar, so most inherited grammars are unaffected — but grammargen has a small number of deeper, name-keyed compiler behaviors this data-only merge can't re-target, so conflict resolution could still shift for edge cases until a Go-side ExtendGrammarJSON exists.",
+		baseName, nameOverride,
+	))
 }
 
 func (h *authoringHandle) dispatch(seq uint64, grammarJSON, source string, includeAnonymous bool) {
@@ -913,4 +1180,86 @@ func styledText(tag, className, value string) js.Value {
 	node.Set("className", className)
 	node.Set("textContent", value)
 	return node
+}
+
+// --- fetch helpers ---
+//
+// cmd/authoring-wasm has no bootstrap fetch of its own through Phase 1
+// (grammargen compiles the hand-typed textarea live; nothing is loaded over
+// the network). Phase 2's base picker needs one — same shape as
+// cmd/playground-wasm's fetchJSON/fetchBytes/await (duplicated here rather
+// than factored into a shared package: each wasm command in this repo is its
+// own small `package main`, and these four functions are a few lines of
+// standard js.Value plumbing, not application logic worth a shared
+// dependency).
+
+func fetchJSON(url string, target any) error {
+	response, err := fetchResponse(url)
+	if err != nil {
+		return err
+	}
+	value, err := await(response.Call("json"))
+	if err != nil {
+		return err
+	}
+	encoded := js.Global().Get("JSON").Call("stringify", value)
+	return json.Unmarshal([]byte(encoded.String()), target)
+}
+
+func fetchBytes(url string) ([]byte, error) {
+	response, err := fetchResponse(url)
+	if err != nil {
+		return nil, err
+	}
+	buffer, err := await(response.Call("arrayBuffer"))
+	if err != nil {
+		return nil, err
+	}
+	array := js.Global().Get("Uint8Array").New(buffer)
+	data := make([]byte, array.Get("byteLength").Int())
+	js.CopyBytesToGo(data, array)
+	return data, nil
+}
+
+func fetchResponse(url string) (js.Value, error) {
+	response, err := await(js.Global().Call("fetch", url))
+	if err != nil {
+		return js.Undefined(), err
+	}
+	if !response.Get("ok").Bool() {
+		return js.Undefined(), fmt.Errorf("GET %s returned HTTP %d", url, response.Get("status").Int())
+	}
+	return response, nil
+}
+
+type promiseResult struct {
+	value js.Value
+	err   error
+}
+
+func await(promise js.Value) (js.Value, error) {
+	done := make(chan promiseResult, 1)
+	var then js.Func
+	var catch js.Func
+	then = js.FuncOf(func(_ js.Value, args []js.Value) any {
+		value := js.Undefined()
+		if len(args) > 0 {
+			value = args[0]
+		}
+		done <- promiseResult{value: value}
+		return nil
+	})
+	catch = js.FuncOf(func(_ js.Value, args []js.Value) any {
+		message := "promise rejected"
+		if len(args) > 0 {
+			message = args[0].Call("toString").String()
+		}
+		done <- promiseResult{err: fmt.Errorf("%s", message)}
+		return nil
+	})
+	promise.Call("then", then).Call("catch", catch)
+	result := <-done
+	then.Release()
+	catch.Release()
+	return result.value, result.err
 }

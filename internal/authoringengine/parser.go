@@ -24,8 +24,18 @@ import (
 )
 
 const (
-	// MaxGrammarBytes caps the grammar.json textarea.
-	MaxGrammarBytes = 64 << 10
+	// MaxGrammarBytes caps the grammarJSON string CompileWithContext accepts.
+	// Through Phase 1 this was exactly the hand-typed grammar.json textarea,
+	// so 64 KiB was a generous ceiling for a human-authored document. Phase 2
+	// (grammar inheritance, internal/authoringengine/merge.go) changed what
+	// arrives here: cmd/authoring-wasm now sends the *merged* base+delta
+	// grammar.json, and a real-language base alone can already approach that
+	// size — grammargen.ExportGrammarJSON(grammargen.TypescriptGrammar())
+	// alone is ~265 KiB. 1 MiB comfortably covers every base shipped under
+	// public/authoring/bases/ (TypeScript is the largest at ~265 KiB) plus a
+	// substantial hand-typed delta on top, while still bounding worst-case
+	// pathological input.
+	MaxGrammarBytes = 1 << 20
 	MaxSourceBytes  = 64 << 10
 	MaxTreeRows     = 1200
 	// MaxHighlightSpans caps the highlight overlay so a pathological grammar
