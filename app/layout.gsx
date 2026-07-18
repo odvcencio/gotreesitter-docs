@@ -28,6 +28,7 @@ func Layout() Node {
 				· 206/206 curated parity
 			</span>
 			<a class="ghlink" href="/playground" data-gosx-link="true">Playground</a>
+			<a class="ghlink" href="/authoring" data-gosx-link="true">Authoring</a>
 			<a
 				class="ghlink"
 				href="https://github.com/odvcencio/gotreesitter"

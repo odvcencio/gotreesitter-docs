@@ -1,0 +1,46 @@
+/* /authoring route styles. Behavior and markup are owned by the GoSX page
+   and Go-WASM surface (cmd/authoring-wasm); this file only extends the
+   shared design tokens from docs.css (`.panel`/`.panelhd`/`.panelbd`/
+   `.playgrid`/`.tree`/`.mono`/`.hlcredit`/`.ldot`/`.cdot` all come from
+   there). Deliberately self-contained: this page does not load
+   playground.css. */
+
+.ag-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:20px 0 10px}
+.ag-toolbar .tspacer{flex:1}
+.ag-anonlabel{display:inline-flex;align-items:center;gap:6px;font:700 11px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:var(--ink);cursor:pointer}
+.ag-anonlabel input{accent-color:var(--violet);width:13px;height:13px;cursor:pointer}
+
+/* editor panes */
+.ag-grid{grid-template-columns:1fr 1fr}
+.ag-editorwrap{position:relative;padding:0;background:#17140f;height:360px;overflow:hidden}
+.ag-src{margin:0;border:0;width:100%;height:100%;padding:16px 18px;font:400 13.5px/1.7 'JetBrains Mono',monospace;white-space:pre;tab-size:2;overflow:auto;box-sizing:border-box;color:#ece7db;background:#17140f;caret-color:#ece7db;resize:none;outline:none;overscroll-behavior:contain}
+.ag-src:focus-visible{outline:3px solid var(--yellow);outline-offset:-3px}
+.ag-src::selection{background:rgba(157,78,221,.45);color:#fff}
+.ag-sample-wrap{height:360px}
+
+/* results row */
+.ag-results{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);gap:18px;margin-top:18px;align-items:stretch}
+.ag-treewrap{padding:0;height:360px;display:flex;overflow:hidden}
+.ag-tree{flex:1;overflow:auto;padding:14px 16px;font-size:12.5px;line-height:1.7}
+.ag-tline{white-space:pre;width:fit-content;min-width:100%;padding-right:10px;border-radius:2px}
+.ag-tline:hover{background:#f0eadb}
+.ag-tline .ttype{color:var(--violet);font-weight:700}
+.ag-tline .tfield{color:var(--mut);font-weight:600}
+.ag-tline.ag-anonrow .ttype{color:#8a8375;font-weight:600}
+.ag-tline.ag-err-row{background:#ffe0ec;border:2px solid var(--red);border-radius:2px;margin:2px 0}
+.ag-tline.ag-err-row .ttype{color:var(--red)}
+.ag-tline .tmissing{margin-left:8px;font:700 10px 'JetBrains Mono',monospace;letter-spacing:1px;color:#fff;background:var(--red);border:2px solid var(--ink);border-radius:2px;padding:0 5px}
+.ag-tree-empty{color:var(--mut);font:600 12.5px 'JetBrains Mono',monospace}
+
+/* diagnostics panel */
+.ag-diagpanel{margin:0}
+.ag-diagbd{display:flex;flex-direction:column;gap:10px;min-width:0;height:360px;box-sizing:border-box;overflow:auto}
+.ag-status{display:inline-flex;align-items:center;gap:8px;font:600 12.5px 'JetBrains Mono',monospace;background:var(--card);border:2px solid var(--ink);border-radius:2px;padding:7px 11px;box-shadow:var(--shs)}
+.ag-err{background:#ffe0ec;border:2px solid var(--red);border-radius:2px;padding:8px 10px;font-size:12px;line-height:1.5;color:var(--ink);white-space:pre-wrap;word-break:break-word}
+
+.ag-footnote{font-size:13.5px}
+
+@media(max-width:840px){
+	.ag-editorwrap,.ag-treewrap,.ag-sample-wrap,.ag-diagbd{height:320px}
+	.ag-grid,.ag-results{grid-template-columns:1fr}
+}

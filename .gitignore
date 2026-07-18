@@ -9,3 +9,4 @@ node_modules/
 app/.canopy/
 public/playground/runtime.wasm
 public/playground/grammars/
+public/authoring/authoring.wasm
