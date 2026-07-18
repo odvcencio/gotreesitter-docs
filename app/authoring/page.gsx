@@ -12,6 +12,7 @@ func Page() Node {
 			name="GotreesitterAuthoring"
 			runtime="go-wasm"
 			wasmPath={data.wasmURL}
+			workerScriptURL={data.workerURL}
 			capabilities="wasm text-input"
 			requiredCapabilities="wasm"
 			id="ag-root"
@@ -73,6 +74,17 @@ func Page() Node {
 						</div>
 					</div>
 				</div>
+				<div class="panel">
+					<div class="panelhd">
+						<span class="ldot c-cyan" style="border-color:var(--paper)"></span>
+						highlight preview
+					</div>
+					<div class="panelbd ag-treewrap">
+						<div id="ag-highlight" class="tree ag-tree mono" aria-label="Highlighted sample source">
+							<p class="ag-tree-empty">Waiting for the grammar to compile…</p>
+						</div>
+					</div>
+				</div>
 				<div class="panel ag-diagpanel">
 					<div class="panelhd">
 						<span class="ldot c-red" style="border-color:var(--paper)"></span>
@@ -84,11 +96,22 @@ func Page() Node {
 					</div>
 				</div>
 			</div>
+			<div class="panel ag-conflictpanel" aria-live="polite">
+				<div class="panelhd">
+					<span class="ldot c-yellow" style="border-color:var(--paper)"></span>
+					LR conflicts &amp; warnings
+				</div>
+				<div class="panelbd ag-conflictbd">
+					<p id="ag-conflict-summary" class="ag-status" role="status">Waiting for the grammar to compile…</p>
+					<div id="ag-conflicts" class="ag-conflictlist"></div>
+					<div id="ag-warnings" class="ag-warnlist"></div>
+				</div>
+			</div>
 		</Surface>
 		<p class="p mut ag-footnote">
 			Runtime: gotreesitter
 			{data.gtsVersion}
-			grammargen, compiled to standard Go WebAssembly and managed by GoSX. This is a Phase 0 spike: the compiler runs on the main thread, so a pathological grammar can stall the tab — keep grammars small for now. Grammar JSON and sample source never leave the browser.
+			grammargen, compiled to standard Go WebAssembly and managed by GoSX. The compiler runs in a background Web Worker so a heavy grammar cannot stall the tab; if it exceeds a time budget the worker restarts automatically. Grammar JSON and sample source never leave the browser.
 		</p>
 	</section>
 }

@@ -258,5 +258,10 @@ func loadAuthoring(_ *route.RouteContext, _ route.FilePage) (any, error) {
 		"sample":     initialSample,
 		"gtsVersion": docsapp.PlaygroundGTSVersion(),
 		"wasmURL":    docsapp.PublicAssetURL("authoring/authoring.wasm"),
+		// workerURL points at the generated Web Worker bootstrap
+		// (cmd/build-authoring-wasm writes it alongside authoring-worker.wasm)
+		// that actually runs the compile+parse+diagnose+highlight loop off
+		// the main thread. See cmd/authoring-wasm/main_js.go's package doc.
+		"workerURL": docsapp.PublicAssetURL("authoring/authoring-worker.js"),
 	}, nil
 }

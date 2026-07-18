@@ -1,6 +1,11 @@
 package authoringengine
 
-import "testing"
+import (
+	"context"
+	"strings"
+	"testing"
+	"time"
+)
 
 // calcGrammarJSON is grammargen.CalcGrammar() exported through
 // ExportGrammarJSON — the same seed embedded in app/authoring/page.server.go
@@ -260,6 +265,99 @@ func TestCompileSeedGrammar(t *testing.T) {
 	}
 	if !foundNumber {
 		t.Error("tree rows do not contain a number node")
+	}
+}
+
+// trivialGrammarJSON has no ambiguity at all — a single fixed-string rule —
+// so it is the "0 conflicts" control case for TestCompileConflictsAndHighlights.
+const trivialGrammarJSON = `{
+  "name": "trivial",
+  "rules": {
+    "program": {
+      "type": "STRING",
+      "value": "hello"
+    }
+  },
+  "extras": [],
+  "conflicts": [],
+  "externals": [],
+  "inline": [],
+  "supertypes": []
+}`
+
+func TestCompileConflictsAndHighlights(t *testing.T) {
+	result := Compile(calcGrammarJSON, "1 + 2 * (3 - 4)", true)
+	if result.GenerateError != "" {
+		t.Fatalf("GenerateError: %s", result.GenerateError)
+	}
+	// Calc's precedence/associativity annotations resolve every state where
+	// the LR builder finds more than one candidate action; grammargen still
+	// reports each one as a diagnosable conflict (this is exactly the
+	// "author sees exactly what's ambiguous" payoff — even a well-formed
+	// grammar has real conflicts, all auto-resolved).
+	if len(result.Conflicts) == 0 {
+		t.Fatal("expected calc's precedence-resolved shift/reduce conflicts to be reported")
+	}
+	for _, c := range result.Conflicts {
+		if c.Kind != "shift/reduce" && c.Kind != "reduce/reduce" {
+			t.Errorf("conflict Kind: got %q, want shift/reduce or reduce/reduce", c.Kind)
+		}
+		if c.Resolution == "" {
+			t.Error("conflict Resolution is empty")
+		}
+		if c.Description == "" {
+			t.Error("conflict Description is empty")
+		}
+	}
+
+	if len(result.Highlights) == 0 {
+		t.Fatalf("expected highlight spans for the operators in %q (notice: %q)", "1 + 2 * (3 - 4)", result.HighlightNotice)
+	}
+	for _, h := range result.Highlights {
+		if h.EndByte <= h.StartByte {
+			t.Errorf("highlight span has non-positive width: %+v", h)
+		}
+		if h.Capture == "" {
+			t.Error("highlight span has empty Capture")
+		}
+	}
+}
+
+func TestCompileTrivialGrammarHasNoConflicts(t *testing.T) {
+	result := Compile(trivialGrammarJSON, "hello", true)
+	if result.ImportError != "" || result.GenerateError != "" || result.ParseError != "" {
+		t.Fatalf("unexpected errors: import=%q generate=%q parse=%q", result.ImportError, result.GenerateError, result.ParseError)
+	}
+	if len(result.Conflicts) != 0 {
+		t.Errorf("expected 0 conflicts for an unambiguous grammar, got %d", len(result.Conflicts))
+	}
+}
+
+func TestCompileWithContextCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	result := CompileWithContext(ctx, calcGrammarJSON, "1+2", true)
+	if !result.TimedOut {
+		t.Error("expected TimedOut=true for a pre-cancelled context")
+	}
+	if result.GenerateError == "" {
+		t.Error("expected a GenerateError describing the cancellation")
+	}
+	if result.ImportError != "" {
+		t.Errorf("ImportError should be empty (import happens before the context is consulted): %q", result.ImportError)
+	}
+}
+
+func TestCompileWithContextDeadlineExceeded(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
+	defer cancel()
+	time.Sleep(2 * time.Millisecond)
+	result := CompileWithContext(ctx, calcGrammarJSON, "1+2", true)
+	if !result.TimedOut {
+		t.Error("expected TimedOut=true once the deadline has already passed")
+	}
+	if !strings.Contains(result.GenerateError, "time budget") {
+		t.Errorf("GenerateError should mention the time budget: %q", result.GenerateError)
 	}
 }
 
