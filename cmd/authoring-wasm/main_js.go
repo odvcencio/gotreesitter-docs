@@ -55,18 +55,45 @@ const (
 	// computational loop cannot be preempted mid-flight by anything short of
 	// terminating the Worker outright.
 	//
-	// Sized off a measured worst case, not a guess: authoringengine.diagnose
-	// runs a second full LR generation pass (no cancellable+diagnostics
-	// combo exists in the pinned grammargen release — see its doc), so a
-	// genuinely heavy grammar pays for generation twice. Natively,
-	// grammargen.LoxGrammar() — the design doc's canonical "expensive"
-	// grammar — costs ~824ms+864ms (~1.7s combined); Go/wasm typically runs
-	// 2-4x slower, so a legitimate (not pathological) heavy grammar can
-	// reasonably take several seconds. softBudget should fire well before
-	// that to reassure the author it hasn't hung; hardBudget must stay well
-	// above it so LoxGrammar-scale grammars don't get spuriously killed.
-	softBudget = 4 * time.Second
-	hardBudget = 15 * time.Second
+	// Pre-deploy hardening pass (2026-07): sized off a REAL worker-side
+	// (wasm) measurement, not native numbers or a guess — the previous
+	// hardBudget (15s) was set from grammargen.LoxGrammar()'s native
+	// generate+diagnose cost (~1.7s combined) times a rule-of-thumb "Go/wasm
+	// runs 2-4x slower" multiplier, which undersold the real cost badly
+	// enough that the headline "inherit Go" base itself tripped the watchdog
+	// under ordinary host load. cmd/verify-authoring-browser (run against a
+	// real headless-Chrome worker, through the full gosx build --prod
+	// pipeline, on a moderately loaded dev machine — load average ~5-6 on 20
+	// cores, not idle) measured the Go base's own self-reported
+	// generate+diagnose+parse time (authoringengine.CompileWithContext,
+	// which pays for LR generation twice — see authoringengine's diagnose
+	// doc) at 12.4s-14.5s across five independent compiles, zero crashes.
+	// hardBudget is set to comfortably exceed that (~2.4-2.8x the observed
+	// range) so a normal-load Go compile never trips the kill, while still
+	// bounding a genuinely pathological custom grammar to a reasonable wait
+	// before the terminate+respawn backstop (onHardTimeout) kicks in.
+	//
+	// The same measurement pass is why typescript/javascript are NOT in
+	// public/authoring/bases/index.json even though grammargen ships
+	// TypescriptGrammar/JavascriptGrammar: typescript's worker-side compile
+	// crashed the Worker's own Go runtime outright ("Go program has already
+	// exited" — almost certainly the wasm linear-memory arena being
+	// exhausted, not a mere timeout) in two independent, isolated
+	// (fresh-page) measurements; javascript did not crash but was still
+	// running past 180s (no completion, no timeout, no crash — just far
+	// outside any interactive budget) in an isolated measurement. Raising
+	// hardBudget cannot fix either: one is a crash, and the other would
+	// require a multi-minute budget that defeats the watchdog's purpose as a
+	// backstop for pathological CUSTOM grammars too. See
+	// cmd/build-authoring-wasm's baseGrammars doc for the full base-by-base
+	// decision.
+	//
+	// softBudget fires a "still working" status well before hardBudget so a
+	// legitimately heavy compile (Go, lox) shows signs of life instead of
+	// looking frozen; 2-3s is early enough to reassure the author without
+	// being noisy on every merely-non-instant grammar.
+	softBudget = 3 * time.Second
+	hardBudget = 35 * time.Second
 	// bootBudget bounds how long a newly spawned worker has to send its
 	// "ready" ping (importScripts + fetch + WebAssembly.instantiate +
 	// go.run for a ~17MB binary) before a pending request falls back to the
@@ -833,7 +860,7 @@ func (h *authoringHandle) onSoftTimeout(seq uint64) {
 	if !active {
 		return
 	}
-	h.text("#ag-status", "Still compiling in the background worker… this grammar may be complex.")
+	h.text("#ag-status", "Compiling a heavy grammar in the background worker… still making progress, this can take several seconds for a real-language base like Go.")
 }
 
 // onHardTimeout is the real safety net for risk #1: if the worker hasn't

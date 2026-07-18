@@ -41,24 +41,47 @@ import (
 // and cmd/authoring-wasm's base picker). grammargen exposes ~20 built-in
 // `func XGrammar() *Grammar` constructors (see grep 'func \w+Grammar\(\)
 // \*Grammar' in the grammargen package); this list is a deliberately curated
-// subset, not all of them — measured natively (go1.26, this machine) via
-// GenerateLanguage+GenerateWithReport (CompileWithContext's actual double
-// generation pass):
+// subset, not all of them.
+//
+// Native (go1.26, this machine) via GenerateLanguage+GenerateWithReport
+// (CompileWithContext's actual double generation pass):
 //
 //	calc ~1ms, json ~7ms, ini ~7ms, mustache ~10ms  (instant — good demo defaults)
 //	lox ~3.3s combined                              (Phase 1's existing "heavy" example)
 //	go ~4.9s combined                                (headline real-language base)
-//	typescript ~15s combined, javascript ~25s combined (heavy, but selectable)
+//	typescript ~15s combined, javascript ~25s combined
 //
 // swift (generate alone: 53s), kotlin (>67s and still running), fortran
 // (2m34s combined!), and markdown (16.5s combined, plus its own known
-// heredoc-shaped generation caveats) were measured and excluded: they blow
-// far past any budget a live in-browser Web Worker compile can reasonably
-// offer (cmd/authoring-wasm's hardBudget is 15s), so shipping them as
-// authoring bases would just be a guaranteed-broken "pick this and it never
-// finishes" trap. They still export cleanly as *data* (ExportGrammarJSON
-// does not fail for any of them) — only live in-browser compilation is
-// impractical. Re-evaluate if grammargen's generation performance improves.
+// heredoc-shaped generation caveats) were measured natively and excluded on
+// that basis alone: they blow far past any budget a live in-browser Web
+// Worker compile can reasonably offer, so shipping them as authoring bases
+// would just be a guaranteed-broken "pick this and it never finishes" trap.
+//
+// Pre-deploy hardening pass (2026-07) added typescript and javascript to
+// that exclusion list too, on REAL worker-side (wasm, not native) evidence —
+// see cmd/verify-authoring-browser's AUTHORING_MEASURE_BASES diagnostic pass
+// and cmd/authoring-wasm's hardBudget doc for the full methodology. Their
+// native numbers alone (~15s/~25s) looked "heavy, but selectable"; measured
+// through an actual headless-Chrome Web Worker they were worse than slow:
+//
+//	typescript: crashed the Worker's own Go runtime outright ("Go program
+//	  has already exited") in two independent, isolated measurements — almost
+//	  certainly the wasm linear-memory arena being exhausted building its
+//	  229-rule LR table, not a mere timeout. No hardBudget value fixes a
+//	  crash.
+//	javascript: did not crash, but was still compiling (no completion, no
+//	  timeout, no error) past 180s in an isolated measurement — reflecting
+//	  its native ~25s cost times a wasm/host-load multiplier far beyond
+//	  typescript's own, despite javascript having fewer rules (142 vs 229;
+//	  the two grammars are related but not nested in cost). Fitting it would
+//	  require a multi-minute hardBudget, which would defeat the watchdog's
+//	  purpose as a backstop for pathological CUSTOM grammars too.
+//
+// Both still export cleanly as *data* (ExportGrammarJSON does not fail for
+// either) — only live in-browser compilation is impractical. Re-evaluate all
+// six excluded grammars if grammargen's generation performance (or its
+// wasm/GC behavior specifically) improves.
 var baseGrammars = []struct {
 	Name  string
 	Build func() *grammargen.Grammar
@@ -69,8 +92,6 @@ var baseGrammars = []struct {
 	{"mustache", grammargen.MustacheGrammar},
 	{"lox", grammargen.LoxGrammar},
 	{"go", grammargen.GoGrammar},
-	{"typescript", grammargen.TypescriptGrammar},
-	{"javascript", grammargen.JavascriptGrammar},
 }
 
 type baseAsset struct {

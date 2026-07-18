@@ -30,11 +30,14 @@ const (
 	// (grammar inheritance, internal/authoringengine/merge.go) changed what
 	// arrives here: cmd/authoring-wasm now sends the *merged* base+delta
 	// grammar.json, and a real-language base alone can already approach that
-	// size — grammargen.ExportGrammarJSON(grammargen.TypescriptGrammar())
-	// alone is ~265 KiB. 1 MiB comfortably covers every base shipped under
-	// public/authoring/bases/ (TypeScript is the largest at ~265 KiB) plus a
-	// substantial hand-typed delta on top, while still bounding worst-case
-	// pathological input.
+	// size — grammargen.ExportGrammarJSON(grammargen.GoGrammar()), the
+	// largest base actually shipped under public/authoring/bases/ (see
+	// cmd/build-authoring-wasm's baseGrammars doc — typescript/javascript
+	// were measured and excluded from that catalog on worker-side wasm
+	// compile-time/stability grounds, not size), is ~195 KiB alone. 1 MiB
+	// comfortably covers that plus a substantial hand-typed delta on top —
+	// or a blank/full-grammar-mode paste of a base this catalog doesn't ship
+	// — while still bounding worst-case pathological input.
 	MaxGrammarBytes = 1 << 20
 	MaxSourceBytes  = 64 << 10
 	MaxTreeRows     = 1200

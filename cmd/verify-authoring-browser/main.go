@@ -47,15 +47,32 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/chromedp/chromedp"
 	"github.com/odvcencio/gotreesitter/grammargen"
 )
+
+// perBaseHardeningBudget bounds the pre-deploy hardening regression checks
+// (checkGoBaseNoRespawns/checkAllBasesWithinBudget — task items 2-3 of the
+// worker-watchdog-vs-shipped-bases hardening pass). It must stay
+// comfortably above cmd/authoring-wasm's hardBudget (35s at time of
+// writing — see that constant's doc for the measured go/typescript/
+// javascript worker-side wasm compile numbers both hardBudget and this
+// constant, and the final public/authoring/bases/index.json base list, were
+// reconciled against) plus worker boot + scheduling slack, so a
+// legitimately-successful compile that finishes within hardBudget is never
+// reported as a false failure here. Kept independent of hardBudget (not
+// computed from it) because this binary cannot read a wasm build's
+// constants at runtime — same intentionally-duplicated-knowledge pattern
+// already used by checkGoBase's own historical widened deadline.
+const perBaseHardeningBudget = 60 * time.Second
 
 // ambiguousGrammarJSON has no precedence/associativity annotations at all —
 // "expr -> expr '+' expr | NUMBER" — so grammargen's LR builder cannot avoid
@@ -143,6 +160,27 @@ func main() {
 }
 `
 
+// typescriptSample/javascriptSample are minimal-but-real samples for the
+// pre-deploy hardening timing measurement (see timing.go's measureBaseCompile
+// doc and this file's checkAllBasesWithinBudget call): unlike
+// checkAllBasesWithinBudget's own budget sweep (which uses an empty sample —
+// generation succeeding is all that check needs), the one-off diagnostic
+// measurement pass wants a real elapsed number, and render()'s status text
+// only carries one when the sample at least parses (with or without
+// recoverable error nodes — see parseElapsedFromStatus's doc for exactly
+// which two render() branches include it).
+const typescriptSample = `function add(a: number, b: number): number {
+  return a + b;
+}
+const x: number = add(1, 2);
+`
+
+const javascriptSample = `function add(a, b) {
+  return a + b;
+}
+const x = add(1, 2);
+`
+
 func main() {
 	base := strings.TrimRight(os.Getenv("AUTHORING_BASE_URL"), "/")
 	if base == "" {
@@ -169,7 +207,12 @@ func main() {
 	// per export, plus the go-base export-reuse timing check, plus (see
 	// checkGoBase's doc) a widened 240s allowance for the go base itself
 	// under real host load.
-	ctx, cancelTimeout := context.WithTimeout(ctx, 480*time.Second)
+	// 480s -> 900s: the pre-deploy hardening pass (checkGoBaseNoRespawns,
+	// checkAllBasesWithinBudget — see perBaseHardeningBudget's doc) compiles
+	// the go base several more times and sweeps every shipped base, and the
+	// optional AUTHORING_MEASURE_BASES diagnostic pass can run with a much
+	// larger per-base budget still.
+	ctx, cancelTimeout := context.WithTimeout(ctx, 900*time.Second)
 	defer cancelTimeout()
 
 	downloadDir, err := os.MkdirTemp("", "authoring-export-downloads-")
@@ -231,7 +274,94 @@ func main() {
 	// of re-running LR-table generation.
 	checkGoBaseExportReusesCache(ctx, downloads)
 
+	// Optional diagnostic measurement pass (task item 1 of the pre-deploy
+	// hardening work): reports the REAL worker-side (wasm) compile time for
+	// go/typescript/javascript with a large per-base budget so a base whose
+	// compile exceeds the CURRENT (possibly too-tight) hardBudget still gets
+	// measured cleanly instead of getting stuck in a repeated kill/respawn
+	// loop that never yields a clean number. Gated behind an env var since
+	// it is slow and not needed on every run — see timing.go's measureAndReport.
+	//
+	// Each base gets a FRESH page navigation first: a heavy enough grammar
+	// (observed: typescript) can exhaust the wasm linear memory arena badly
+	// enough to hard-crash the worker's Go runtime outright ("Go program has
+	// already exited") rather than merely running long — cmd/authoring-wasm's
+	// onerror handler marks the worker permanently broken with no
+	// auto-respawn in that case, so every subsequent request on the same
+	// page silently falls back to the (single-threaded, tab-freezing) main
+	// thread instead of the worker. Reloading isolates each measurement so
+	// one base's crash can't contaminate the next.
+	if os.Getenv("AUTHORING_MEASURE_BASES") == "1" {
+		measureBudget := 240 * time.Second
+		if raw := os.Getenv("AUTHORING_MEASURE_BUDGET_SECONDS"); raw != "" {
+			if secs, err := strconv.Atoi(raw); err == nil && secs > 0 {
+				measureBudget = time.Duration(secs) * time.Second
+			}
+		}
+		fmt.Println("--- diagnostic base timing measurement (AUTHORING_MEASURE_BASES=1) ---")
+		for _, b := range []struct{ name, sample string }{
+			{"go", goSample},
+			{"typescript", typescriptSample},
+			{"javascript", javascriptSample},
+		} {
+			if err := chromedp.Run(ctx,
+				chromedp.Navigate(base+"/authoring"),
+				chromedp.WaitVisible("#ag-grammar", chromedp.ByQuery),
+			); err != nil {
+				fatal(err)
+			}
+			if err := waitForText(ctx, "#ag-status", "Compiled"); err != nil {
+				fatal(err)
+			}
+			// typescript/javascript are excluded from
+			// public/authoring/bases/index.json as of the pre-deploy
+			// hardening pass (see cmd/build-authoring-wasm's baseGrammars
+			// doc) — this loop stays name-driven (rather than being deleted)
+			// so a future re-measurement (baseGrammars temporarily restored
+			// for testing) doesn't need code changes here too; it just skips
+			// whatever this build doesn't currently ship.
+			shipped := false
+			for _, name := range listBaseOptions(ctx) {
+				if name == b.name {
+					shipped = true
+					break
+				}
+			}
+			if !shipped {
+				fmt.Printf("diagnostic: base %-12s skipped (not present in this build's bases/index.json)\n", b.name)
+				continue
+			}
+			measureAndReport(ctx, "diagnostic", b.name, b.sample, measureBudget)
+		}
+		fmt.Println("--- end diagnostic base timing measurement ---")
+
+		// Reset to a fresh page before the permanent hardening checks below:
+		// a base that never finished above (see the crash/never-completes
+		// doc just above) can leave the Worker still crunching in the
+		// background even though this measurement gave up waiting for it —
+		// starting the next checks against that same page could see a
+		// stale/still-busy worker rather than a clean one.
+		if err := chromedp.Run(ctx,
+			chromedp.Navigate(base+"/authoring"),
+			chromedp.WaitVisible("#ag-grammar", chromedp.ByQuery),
+		); err != nil {
+			fatal(err)
+		}
+		if err := waitForText(ctx, "#ag-status", "Compiled"); err != nil {
+			fatal(err)
+		}
+	}
+
+	// Pre-deploy hardening (task items 2-3): the headline "inherit Go" demo
+	// must never flap (kill+respawn) under normal conditions, and every base
+	// actually shipped in bases/index.json must compile within budget with
+	// zero watchdog respawns — see perBaseHardeningBudget's doc for the
+	// reconciled numbers.
+	checkGoBaseNoRespawns(ctx, 3, perBaseHardeningBudget)
+	checkAllBasesWithinBudget(ctx, perBaseHardeningBudget)
+
 	fmt.Println("authoring Phase 2+3 verified: base picker, base+delta merge (twice, on two different bases), blank/full-grammar mode, conflict diagnostics, highlight preview, a real-language (go) base, and all three export formats (with cache reuse on the go base) all proved in-browser through the worker")
+	fmt.Println("pre-deploy hardening verified: go base compiled 3/3 times with zero watchdog respawns, and every shipped base compiled within budget with zero respawns")
 }
 
 // checkBasePickerPopulated asserts design item (a): the base picker is
@@ -244,8 +374,13 @@ func checkBasePickerPopulated(ctx context.Context) {
 	)); err != nil {
 		fatal(err)
 	}
-	// blank + at least calc/json/ini/mustache/lox/go/typescript/javascript.
-	const wantMinOptions = 9
+	// blank + at least calc/json/ini/mustache/lox/go. typescript/javascript
+	// are deliberately NOT in this list — see cmd/build-authoring-wasm's
+	// baseGrammars doc for why the pre-deploy hardening pass excluded them
+	// (a worker crash and a compile far outside any interactive budget,
+	// respectively — not merely "heavy but selectable" as their native-only
+	// numbers once suggested).
+	const wantMinOptions = 7
 	if optionCount < wantMinOptions {
 		fatal(fmt.Errorf("#ag-base has %d <option>s, want at least %d (blank + shipped bases)", optionCount, wantMinOptions))
 	}
@@ -579,26 +714,87 @@ func probeMainThreadUntil(ctx context.Context, started time.Time, timeout time.D
 }
 
 func setValueAndDispatchInput(ctx context.Context, selector, value string) error {
-	return chromedp.Run(ctx,
-		chromedp.SetValue(selector, value, chromedp.ByQuery),
-		chromedp.EvaluateAsDevTools(
-			fmt.Sprintf(`document.querySelector(%q).dispatchEvent(new Event('input', {bubbles:true}))`, selector),
-			nil,
-		),
-	)
+	return setFieldAndDispatch(ctx, selector, value, "input")
 }
 
 // selectAndDispatchChange sets a <select>'s value and dispatches a "change"
 // event — cmd/authoring-wasm's #ag-base listener is bound to "change", not
 // "input" (see mountAuthoring), unlike every other field on this page.
 func selectAndDispatchChange(ctx context.Context, selector, value string) error {
-	return chromedp.Run(ctx,
-		chromedp.SetValue(selector, value, chromedp.ByQuery),
-		chromedp.EvaluateAsDevTools(
-			fmt.Sprintf(`document.querySelector(%q).dispatchEvent(new Event('change', {bubbles:true}))`, selector),
-			nil,
-		),
-	)
+	return setFieldAndDispatch(ctx, selector, value, "change")
+}
+
+// setFieldAndDispatch sets selector's .value to value and dispatches
+// eventName in ONE atomic Runtime.Evaluate round trip (a plain
+// document.querySelector script, not chromedp.SetValue's DOM-domain
+// node-based JavascriptAttribute helper — see below for why), then confirms
+// the write via the same script's own return value, retrying up to 3 times
+// on failure/mismatch.
+//
+// Originally this used chromedp.SetValue (DOM.querySelector + a cached
+// cdp.Node + Runtime.callFunctionOn against that node's backend node ID).
+// Under heavy host load, in this pre-deploy hardening pass's own
+// long-running, many-request sessions (see
+// checkGoBaseNoRespawns/checkAllBasesWithinBudget), that intermittently
+// failed its own internal set-then-read-back check ("could not set value on
+// node N") — reproducibly right after a render() call that replaces
+// hundreds of DOM nodes at once (cmd/authoring-wasm's renderConflicts,
+// rebuilding up to 200 conflict rows on every compile), consistent with a
+// cached backend node ID going stale across that churn even though the
+// selector itself still resolves fine. A bare retry of chromedp.SetValue
+// isn't safe either way: it fires eventName as a side effect (see
+// chromedp's js/setAttribute.js), so retrying an attempt that actually
+// landed would double-dispatch it — sending the Worker two overlapping
+// compile requests instead of one is a real, different bug (each pays real
+// CPU/memory before the older one's best-effort cancellation — see
+// cmd/authoring-worker-wasm's inflightCancel doc — actually takes effect).
+//
+// Doing the whole set+dispatch+readback as a single fresh
+// document.querySelector(...) call every time (matching the pattern this
+// file already used for the event-dispatch half, see git history) sidesteps
+// the stale-node-ID class of failure entirely: there is no persistent Node
+// reference to go stale. value is embedded via encoding/json (not %q) since
+// it can be arbitrary author-shaped content (grammarJSON, sample source),
+// and JSON string syntax is always a valid JS string literal.
+func setFieldAndDispatch(ctx context.Context, selector, value, eventName string) error {
+	encodedValue, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Errorf("setFieldAndDispatch %s: encode value: %w", selector, err)
+	}
+	script := fmt.Sprintf(`(function(){
+		var el = document.querySelector(%s);
+		if (!el) { throw new Error("selector not found: " + %s); }
+		el.value = %s;
+		el.dispatchEvent(new Event(%s, {bubbles:true}));
+		return el.value;
+	})()`, mustJSON(selector), mustJSON(selector), string(encodedValue), mustJSON(eventName))
+
+	var lastErr error
+	for attempt := 1; attempt <= 3; attempt++ {
+		var got string
+		if err := chromedp.Run(ctx, chromedp.EvaluateAsDevTools(script, &got)); err != nil {
+			lastErr = err
+		} else if got != value {
+			lastErr = fmt.Errorf("set value but read back %q, want %q", got, value)
+		} else {
+			return nil
+		}
+		if attempt < 3 {
+			time.Sleep(250 * time.Millisecond)
+		}
+	}
+	return fmt.Errorf("setFieldAndDispatch %s: after 3 attempts: %w", selector, lastErr)
+}
+
+// mustJSON is a tiny helper for embedding a Go string as a JS string
+// literal via encoding/json (see setFieldAndDispatch's doc) — panics only if
+// json.Marshal itself fails on a plain string, which cannot happen.
+func mustJSON(s string) string {
+	b, err := json.Marshal(s)
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
 }
 
 func attribute(ctx context.Context, selector, name string) (string, error) {
