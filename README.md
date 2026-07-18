@@ -97,7 +97,7 @@ This documentation site is available under the [MIT License](LICENSE).
 
 ## Performance claims
 
-User-visible numbers must match gotreesitter's release-pinned
-[`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.40.0/BENCH.md). In particular, the
+User-visible numbers must match gotreesitter's current
+[`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md). In particular, the
 withdrawn 1.54 ms no-tree diagnostic must never be presented as materialized full-parse
 performance.

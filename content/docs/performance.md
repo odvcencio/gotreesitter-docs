@@ -10,32 +10,31 @@ distinction matters: the pure-Go runtime is exceptionally fast on editor-style r
 fresh materialized parse is currently slower than the C runtime on the canonical workload and
 across much of the grammar fleet.
 
-The repository's [`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.40.0/BENCH.md)
-is the canonical source for linkable performance claims. This page follows its v0.39.0 receipts,
-the authenticated cross-suite baseline as of this writing. v0.40.0 lands a batch of byte-identical
-performance work — build-time PGO, forest-index allocation pooling, GLR comparator
-copy-elimination, and forest-reducer pooling (a cumulative ~30% wall-clock reduction on
-forest-path grammars) — but a re-measured receipt for that work has not been published yet, so the
-numbers below remain the v0.39.0 figures.
+The repository's current [`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md)
+is the canonical source for linkable performance claims. This page follows the authenticated
+v0.40.0 production receipt at tag target `1935a42c`, published to `BENCH.md` after the immutable
+v0.40.0 tag was cut.
 
 ## Canonical full parse: the real-code matrix
 
 The full-parse headline is measured on four immutable snapshots of clean, human-authored Go that
 exercise genuine GLR forking (12–18 live stacks), against one fingerprinted static C oracle
-(upstream tree-sitter v0.25.1, `-O2`, statically linked). The first complete publication receipt
-(2026-07-14, pinned quiet host, ten process-isolated samples per backend and fixture, exact
-deep-tree identity admitted before timing):
+(upstream tree-sitter v0.25.1, `-O2`, statically linked). The current complete publication receipt
+uses a pinned quiet host, process-isolated samples per backend and fixture, and exact deep-tree
+identity admitted before timing:
 
 | Fixture | Go median | static C median | Go / C |
 |---|---:|---:|---:|
-| `rewrite.go` (5.1 KB) | 5.556 ms | 1.197 ms | 4.64× |
-| `query_compile.go` (20 KB) | 31.525 ms | 5.469 ms | 5.76× |
-| `language.go` (41 KB) | 30.106 ms | 5.809 ms | 5.18× |
-| `grammargen/lr.go` (236 KB) | 376.938 ms | 57.867 ms | 6.51× |
+| `rewrite.go` (5.1 KB) | 4.9456765 ms | 1.206203075 ms | 4.100202× |
+| `query_compile.go` (20 KB) | 27.9760085 ms | 5.439447625 ms | 5.143171× |
+| `language.go` (41 KB) | 27.1806765 ms | 5.80478855 ms | 4.682458× |
+| `grammargen/lr.go` (236 KB) | 331.409954 ms | 59.0925574 ms | 5.608320× |
 
-The canonical equal-fixture geomean is **5.48× C**. Optimization work since that receipt lands
-behind exact-tree and work-count gates and is recorded in the changelog; the published ratio only
-moves with a complete new publication receipt from the same locked pipeline.
+The canonical equal-fixture geomean is **4.851050× C**. The fixed-suite sum is **5.472406× C**
+(391.5123155 ms Go versus 71.54299665 ms static C), and the worst fixture is
+`grammargen/lr.go` at **5.608320× C**. The geomean is only **0.716%** better than v0.39.0's
+4.886056× result, below the project's reproducible 2% performance-win threshold. This is an
+authenticated baseline refresh, not a banked performance win.
 
 An earlier **1.895× C** headline was withdrawn: it measured a generated 500-function Go file that
 never forks (a straight-LR control, not representative code) against a C baseline built from a

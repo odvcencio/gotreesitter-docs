@@ -204,7 +204,7 @@ measured a no-tree diagnostic path — so the numbers were withdrawn.
 - **Withdrawn** The published `1.54 ms` full parse and `1.895x` C ratio —
   parser-core diagnostics, not a materialized parse.
 - **Replaced** A locked matrix of real, human-authored Go files against the
-  fingerprinted C oracle: `5.48x` geomean, every receipt in `BENCH.md`.
+  fingerprinted C oracle: `4.851050x` geomean, every receipt in `BENCH.md`.
 
 Honest numbers are a testing mechanism. If the benchmark can lie, the agent
 will optimize the lie.

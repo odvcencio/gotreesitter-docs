@@ -72,7 +72,7 @@ No C toolchain to install or pin in CI, no per-platform shared library to vendor
 static binary per target instead of a matrix of cgo cross-compiles. `go test -race` also sees
 the whole call path, since there's no C frontier for the race detector to lose visibility across.
 
-On raw parsing throughput, gotreesitter's canonical real-code full-parse geomean is **5.48× C**
+On raw parsing throughput, gotreesitter's canonical real-code full-parse geomean is **4.851050× C**
 — slower, not faster, on that workload; see [Performance](/docs/performance) for the full
 methodology and fleet distribution. Where gotreesitter does win outright is allocations on the
 incremental path: reparsing after a small edit is zero-allocation, discussed in
