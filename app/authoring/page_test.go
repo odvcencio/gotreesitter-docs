@@ -24,6 +24,10 @@ func TestAuthoringIsGoSXManagedBrowserWASM(t *testing.T) {
 		`id="ag-base-info"`,
 		`id="ag-fidelity-note"`,
 		`id="ag-editor-label"`,
+		`id="ag-export-go"`,
+		`id="ag-export-c"`,
+		`id="ag-export-json"`,
+		`id="ag-export-status"`,
 		`baseIndexURL={data.baseIndexURL}`,
 		`aria-live="polite"`,
 	} {

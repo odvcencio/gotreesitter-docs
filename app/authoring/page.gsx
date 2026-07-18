@@ -75,6 +75,22 @@ func Page() Node {
 					</div>
 				</div>
 			</div>
+			<div class="ag-toolbar ag-exporttoolbar" aria-live="polite">
+				<span class="ag-exportlabel" title="Downloads the current merged (base + delta) grammar, exactly as it last compiled successfully">
+					export merged grammar
+				</span>
+				<button id="ag-export-go" type="button" class="ag-exportbtn" disabled title="Compile a grammar first">
+					.go
+				</button>
+				<button id="ag-export-c" type="button" class="ag-exportbtn" disabled title="Compile a grammar first">
+					parser.c
+				</button>
+				<button id="ag-export-json" type="button" class="ag-exportbtn" disabled title="Compile a grammar first">
+					grammar.json
+				</button>
+				<span class="tspacer"></span>
+				<span id="ag-export-status" class="ag-status ag-exportstatus" role="status"></span>
+			</div>
 			<div class="ag-results" aria-live="polite">
 				<div class="panel">
 					<div class="panelhd">

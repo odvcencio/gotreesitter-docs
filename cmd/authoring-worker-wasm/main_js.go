@@ -11,18 +11,38 @@
 //
 // Wire protocol (structured-clone JS objects over postMessage):
 //
-//	request  {seq, grammarJSON, source, includeAnonymous}
-//	response {seq, grammarName, importError, generateError, parseError,
-//	          timedOut, hasErrors, nodeCount, elapsedMs,
-//	          treeRows:[{class,depth,level,field,type,range,missing}],
-//	          conflicts:[{kind,state,lookahead,resolution,description}],
-//	          conflictTotal, warnings:[string],
-//	          highlights:[{startByte,endByte,capture}], highlightNotice}
+//	compile request   {seq, grammarJSON, source, includeAnonymous}
+//	compile response  {seq, grammarName, importError, generateError, parseError,
+//	                   timedOut, hasErrors, nodeCount, elapsedMs,
+//	                   treeRows:[{class,depth,level,field,type,range,missing}],
+//	                   conflicts:[{kind,state,lookahead,resolution,description}],
+//	                   conflictTotal, warnings:[string],
+//	                   highlights:[{startByte,endByte,capture}], highlightNotice}
 //
-// The main thread tags every request with a monotonically increasing seq
-// and drops any response whose seq is not its latest — this program does
-// not need to know that; it just answers requests in the order it receives
-// them and lets the caller decide what's stale.
+//	export request     {op:"export", seq, format:"go"|"c"|"json", grammarJSON, name, pkg}
+//	export response    {op:"export", seq, format, filename, content, error}
+//
+// A message with op=="export" is Phase 3's addition; every other message
+// (op absent, the shape every Phase 1/2 caller already sends) is a compile
+// request, unchanged. The main thread tags every compile request with a
+// monotonically increasing seq and drops any compile response whose seq is
+// not its latest — this program does not need to know that; it just answers
+// requests in the order it receives them and lets the caller decide what's
+// stale. Export requests are independent, user-button-triggered actions
+// (not superseded by a newer one the way an edit supersedes an in-flight
+// compile), so they are not seq-gated on this side either — see
+// cmd/authoring-wasm's onExportClick.
+//
+// Export caching (the "do NOT recompile from scratch on export" requirement):
+// every successful compile response also updates a package-level cache of
+// the exact (grammarJSON, *grammargen.Grammar, *gts.Language) triple that
+// compile produced (see updateCache). An export request whose grammarJSON
+// matches the cache reuses it directly — for a heavy base like Go this is
+// the difference between an export completing near-instantly and re-paying
+// the full LR-table generation cost. Only a genuine cache miss (the author
+// edited the grammar and clicked export before the next debounced compile
+// landed, or no compile has completed yet) falls back to compiling on
+// demand via authoringengine.ImportAndGenerateWithContext.
 package main
 
 import (
@@ -31,7 +51,9 @@ import (
 	"syscall/js"
 	"time"
 
+	gts "github.com/odvcencio/gotreesitter"
 	"github.com/odvcencio/gotreesitter-docs/internal/authoringengine"
+	"github.com/odvcencio/gotreesitter/grammargen"
 )
 
 // generationBudget bounds grammargen.GenerateLanguageWithContext. It is
@@ -53,6 +75,20 @@ var (
 	inflightCancel context.CancelFunc
 )
 
+// cache holds the (grammarJSON, *grammargen.Grammar, *gts.Language) triple
+// from the most recent successful compile — see the package doc's "Export
+// caching" section. cacheSeq guards against a superseded compile goroutine
+// finishing late and clobbering a newer cache entry with stale data: it is
+// monotonic, so an update only takes effect if its seq is not older than
+// whatever is already cached.
+var (
+	cacheMu          sync.Mutex
+	cacheSeq         float64
+	cacheGrammarJSON string
+	cacheGrammar     *grammargen.Grammar
+	cacheLanguage    *gts.Language
+)
+
 func main() {
 	self := js.Global()
 	self.Set("onmessage", js.FuncOf(handleMessage))
@@ -68,6 +104,17 @@ func handleMessage(_ js.Value, args []js.Value) any {
 	if !data.Truthy() {
 		return nil
 	}
+
+	if jsString(data, "op") == "export" {
+		// Independent of the compile pipeline below: does not touch
+		// inflightCancel (an export must not cancel an in-flight compile,
+		// nor vice versa) and runs in its own goroutine so a cache-miss
+		// on-demand compile-for-export can't block a concurrent compile
+		// request's response.
+		go respondExport(data)
+		return nil
+	}
+
 	seq := data.Get("seq").Float()
 	grammarJSON := jsString(data, "grammarJSON")
 	source := jsString(data, "source")
@@ -95,9 +142,94 @@ func handleMessage(_ js.Value, args []js.Value) any {
 func respond(ctx context.Context, cancel context.CancelFunc, seq float64, grammarJSON, source string, includeAnonymous bool) {
 	defer cancel()
 	started := time.Now()
-	result := authoringengine.CompileWithContext(ctx, grammarJSON, source, includeAnonymous)
+	result, grammar, lang := authoringengine.CompileWithContextArtifacts(ctx, grammarJSON, source, includeAnonymous)
+	if grammar != nil && lang != nil {
+		updateCache(seq, grammarJSON, grammar, lang)
+	}
 	elapsedMs := float64(time.Since(started)) / float64(time.Millisecond)
 	js.Global().Call("postMessage", encodeResult(seq, elapsedMs, result))
+}
+
+// updateCache records the (grammarJSON, grammar, lang) triple from a
+// successful compile, unless a newer compile (higher seq) already holds the
+// cache — see the package doc's "Export caching" section.
+func updateCache(seq float64, grammarJSON string, grammar *grammargen.Grammar, lang *gts.Language) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	if seq < cacheSeq {
+		return
+	}
+	cacheSeq = seq
+	cacheGrammarJSON = grammarJSON
+	cacheGrammar = grammar
+	cacheLanguage = lang
+}
+
+// cachedArtifacts returns the cached (grammar, lang) pair only if it was
+// produced by compiling exactly grammarJSON — i.e. the cache is still
+// current for what the author has authored right now. Any mismatch (nothing
+// cached yet, or the author edited since the last successful compile) is
+// treated as a cache miss so respondExport falls back to compiling on
+// demand rather than exporting a different grammar than the one requested.
+func cachedArtifacts(grammarJSON string) (*grammargen.Grammar, *gts.Language) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	if cacheGrammar == nil || cacheLanguage == nil || cacheGrammarJSON != grammarJSON {
+		return nil, nil
+	}
+	return cacheGrammar, cacheLanguage
+}
+
+// respondExport handles one {op:"export", ...} request — see the package
+// doc's wire protocol and "Export caching" sections.
+func respondExport(data js.Value) {
+	seq := data.Get("seq").Float()
+	format := jsString(data, "format")
+	grammarJSON := jsString(data, "grammarJSON")
+	name := jsString(data, "name")
+	pkg := jsString(data, "pkg")
+
+	grammar, lang := cachedArtifacts(grammarJSON)
+	if grammar == nil {
+		// Cache miss: compile on demand. This is the one export path that
+		// can re-pay LR-table generation — expected only when the author
+		// clicked export before the debounced compile of their latest edit
+		// landed, or before any compile has completed at all.
+		ctx, cancel := context.WithTimeout(context.Background(), generationBudget)
+		compiled, compiledLang, err := authoringengine.ImportAndGenerateWithContext(ctx, grammarJSON)
+		cancel()
+		if err != nil {
+			js.Global().Call("postMessage", encodeExportError(seq, format, err.Error()))
+			return
+		}
+		grammar, lang = compiled, compiledLang
+		updateCache(seq, grammarJSON, grammar, lang)
+	}
+
+	filename, content, err := authoringengine.ExportGrammar(grammar, lang, authoringengine.ExportFormat(format), name, pkg)
+	if err != nil {
+		js.Global().Call("postMessage", encodeExportError(seq, format, err.Error()))
+		return
+	}
+	js.Global().Call("postMessage", js.ValueOf(map[string]any{
+		"op":       "export",
+		"seq":      seq,
+		"format":   format,
+		"filename": filename,
+		"content":  content,
+		"error":    "",
+	}))
+}
+
+func encodeExportError(seq float64, format, message string) js.Value {
+	return js.ValueOf(map[string]any{
+		"op":       "export",
+		"seq":      seq,
+		"format":   format,
+		"filename": "",
+		"content":  "",
+		"error":    message,
+	})
 }
 
 func jsString(obj js.Value, key string) string {

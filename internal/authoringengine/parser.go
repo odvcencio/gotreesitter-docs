@@ -135,11 +135,32 @@ func Compile(grammarJSON, source string, includeAnonymous bool) Result {
 // so in practice they finish in comparable time. See cmd/authoring-worker-wasm
 // for why this is a best-effort, not a hard guarantee, on a single-threaded
 // Go/wasm target.
-func CompileWithContext(ctx context.Context, grammarJSON, source string, includeAnonymous bool) (result Result) {
+func CompileWithContext(ctx context.Context, grammarJSON, source string, includeAnonymous bool) Result {
+	result, _, _ := CompileWithContextArtifacts(ctx, grammarJSON, source, includeAnonymous)
+	return result
+}
+
+// CompileWithContextArtifacts is CompileWithContext, but also returns the
+// compiled *grammargen.Grammar and *gts.Language on success — the same
+// artifacts CompileWithContext computes internally and would otherwise
+// discard. Phase 3 (export) needs them: cmd/authoring-worker-wasm caches
+// whatever this returns so a subsequent export request can render .go/
+// parser.c/grammar.json directly from the cached artifacts instead of
+// re-running LR-table generation (grammargen.GenerateC and grammargen.EmitC
+// both accept an already-built *gts.Language — see ExportGrammar).
+//
+// grammar/lang are non-nil whenever generation itself succeeded, even if a
+// later step (parsing the sample source) failed — an author's grammar can be
+// perfectly valid and exportable while their sample source has a typo, so
+// export readiness is gated on GenerateError/ImportError/TimedOut, not on
+// ParseError. Both are nil if ImportGrammarJSON or generation failed, or if
+// this function panicked before generation completed.
+func CompileWithContextArtifacts(ctx context.Context, grammarJSON, source string, includeAnonymous bool) (result Result, grammar *grammargen.Grammar, lang *gts.Language) {
 	result.TreeRows = []TreeRow{}
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			result.GenerateError = fmt.Sprintf("grammar compiler panicked: %v", recovered)
+			grammar, lang = nil, nil
 		}
 	}()
 	if ctx == nil {
@@ -148,21 +169,21 @@ func CompileWithContext(ctx context.Context, grammarJSON, source string, include
 
 	if len(grammarJSON) > MaxGrammarBytes {
 		result.ImportError = "grammar.json must be 64 KiB or smaller"
-		return result
+		return result, nil, nil
 	}
 	if len(source) > MaxSourceBytes {
 		result.ParseError = "sample source must be 64 KiB or smaller"
-		return result
+		return result, nil, nil
 	}
 
 	g, err := grammargen.ImportGrammarJSON([]byte(grammarJSON))
 	if err != nil {
 		result.ImportError = err.Error()
-		return result
+		return result, nil, nil
 	}
 	result.GrammarName = g.Name
 
-	lang, err := grammargen.GenerateLanguageWithContext(ctx, g)
+	compiledLang, err := grammargen.GenerateLanguageWithContext(ctx, g)
 	if err != nil {
 		if isContextErr(err) {
 			result.TimedOut = true
@@ -170,12 +191,13 @@ func CompileWithContext(ctx context.Context, grammarJSON, source string, include
 		} else {
 			result.GenerateError = err.Error()
 		}
-		return result
+		return result, nil, nil
 	}
-	if lang == nil {
+	if compiledLang == nil {
 		result.GenerateError = "grammar compiled to a nil language"
-		return result
+		return result, nil, nil
 	}
+	grammar, lang = g, compiledLang
 
 	result.Conflicts, result.ConflictTotal, result.Warnings = diagnose(g)
 	result.Highlights, result.HighlightNotice = computeHighlights(g, lang, source)
@@ -184,16 +206,16 @@ func CompileWithContext(ctx context.Context, grammarJSON, source string, include
 	tree, err := parser.Parse([]byte(source))
 	if err != nil {
 		result.ParseError = err.Error()
-		return result
+		return result, grammar, lang
 	}
 	if tree == nil || tree.RootNode() == nil {
 		result.ParseError = "parser returned no syntax tree"
-		return result
+		return result, grammar, lang
 	}
 	defer tree.Release()
 
 	appendTreeRows(tree.RootNode(), lang, includeAnonymous, 0, "", &result)
-	return result
+	return result, grammar, lang
 }
 
 // isContextErr reports whether err is (or wraps) a context cancellation or

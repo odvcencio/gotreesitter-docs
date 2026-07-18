@@ -145,16 +145,19 @@ type authoringHandle struct {
 	workerGen uint64
 
 	// inFlightSeq is the seq currently posted to the worker awaiting a
-	// response (0 = idle). lastSource is the sample text sent alongside it,
-	// snapshotted so the highlight renderer uses exactly the bytes the
-	// worker computed byte offsets against, even if the textarea has since
-	// been edited again (that edit would have already produced a newer,
-	// non-matching runSeq, so this response would be dropped as stale
-	// before lastSource is ever read for it).
-	inFlightSeq uint64
-	lastSource  string
-	softTimer   *time.Timer
-	hardTimer   *time.Timer
+	// response (0 = idle). lastSource/lastGrammarJSON are the sample text
+	// and the (possibly base+delta merged) grammar.json sent alongside it,
+	// snapshotted so the highlight renderer — and, for lastGrammarJSON,
+	// render's export-readiness bookkeeping (see canExport) — use exactly
+	// the bytes the worker actually compiled, even if the textarea has
+	// since been edited again (that edit would have already produced a
+	// newer, non-matching runSeq, so this response would be dropped as
+	// stale before either field is ever read for it).
+	inFlightSeq     uint64
+	lastSource      string
+	lastGrammarJSON string
+	softTimer       *time.Timer
+	hardTimer       *time.Timer
 
 	// Phase 2 inheritance state. baseIndexURL/bases come from
 	// public/authoring/bases/index.json (fetched once, at mount — see
@@ -167,6 +170,24 @@ type authoringHandle struct {
 	baseIndexURL string
 	bases        []baseAsset
 	baseCache    map[string][]byte
+
+	// Phase 3 export state. lastGrammarJSON/lastSource above already
+	// snapshot the request each response corresponds to; canExport/
+	// exportGrammarJSON/exportName are the subset of that identified as
+	// "the most recent SUCCESSFUL compile" — see render's success branch —
+	// which is what onExportClick actually sends to the worker/local
+	// fallback. exportBusy tracks per-format in-flight export requests so a
+	// double-click can't fire two overlapping downloads for the same
+	// format, and exportSeq is a monotonically increasing id included on
+	// the wire purely for protocol symmetry with compile's seq (export
+	// responses are not superseded/dropped the way a stale compile response
+	// is — every button click's own response is honored whenever it
+	// arrives).
+	canExport         bool
+	exportGrammarJSON string
+	exportName        string
+	exportSeq         uint64
+	exportBusy        map[string]bool
 }
 
 // authoringRequest is one debounced edit waiting to be sent to the worker —
@@ -205,7 +226,7 @@ func mountAuthoring(ctx enginewasm.Context) (enginewasm.Handle, error) {
 	if !mount.Truthy() {
 		return nil, fmt.Errorf("authoring surface requires a DOM mount")
 	}
-	h := &authoringHandle{mount: mount, baseCache: map[string][]byte{}}
+	h := &authoringHandle{mount: mount, baseCache: map[string][]byte{}, exportBusy: map[string]bool{}}
 	var props authoringProps
 	if err := ctx.DecodeProps(&props); err == nil {
 		h.workerScriptURL = strings.TrimSpace(props.WorkerScriptURL)
@@ -252,6 +273,11 @@ func mountAuthoring(ctx enginewasm.Context) (enginewasm.Handle, error) {
 	})
 	baseSelect.Call("addEventListener", "change", baseChangeFn)
 	h.listeners = append(h.listeners, browserListener{target: baseSelect, event: "change", fn: baseChangeFn})
+
+	if err := h.bindExportButtons(); err != nil {
+		return nil, err
+	}
+	h.updateExportButtons(false) // no successful compile yet
 
 	h.mount.Get("dataset").Set("privacyBoundary", "browser-only")
 
@@ -375,7 +401,9 @@ func (h *authoringHandle) run() {
 	merged, err := authoringengine.MergeGrammarJSON(baseBytes, []byte(grammarOrDelta), nameOverride)
 	if err != nil {
 		if h.current(seq) {
-			h.render("", authoringengine.Result{ImportError: "delta grammar.json: " + err.Error()}, 0, "")
+			// The merge itself failed before anything was ever dispatched —
+			// there is no grammarJSON to remember as exportable.
+			h.render("", "", authoringengine.Result{ImportError: "delta grammar.json: " + err.Error()}, 0, "")
 		}
 		return
 	}
@@ -573,6 +601,7 @@ func (h *authoringHandle) postToWorker(req *authoringRequest) {
 	h.stateMu.Lock()
 	h.inFlightSeq = req.seq
 	h.lastSource = req.source
+	h.lastGrammarJSON = req.grammarJSON
 	worker := h.worker
 	h.stateMu.Unlock()
 
@@ -598,7 +627,7 @@ func (h *authoringHandle) runLocalFallback(seq uint64, grammarJSON, source strin
 	started := time.Now()
 	result := authoringengine.CompileWithContext(context.Background(), grammarJSON, source, includeAnonymous)
 	if h.current(seq) {
-		h.render(source, result, time.Since(started), "main-thread")
+		h.render(grammarJSON, source, result, time.Since(started), "main-thread")
 	}
 }
 
@@ -718,6 +747,11 @@ func (h *authoringHandle) handleWorkerMessage(gen uint64, args []js.Value) {
 	}
 	h.stateMu.Unlock()
 
+	if jsString(data, "op") == "export" {
+		h.handleExportResponse(data)
+		return
+	}
+
 	if data.Get("ready").Truthy() {
 		h.stateMu.Lock()
 		h.workerReady = true
@@ -760,13 +794,14 @@ func (h *authoringHandle) handleWorkerMessage(gen uint64, args []js.Value) {
 		h.disarmWatchdogLocked()
 	}
 	source := h.lastSource
+	grammarJSON := h.lastGrammarJSON
 	h.stateMu.Unlock()
 	if stale {
 		return
 	}
 
 	result, elapsedMs := decodeWorkerResult(data)
-	h.render(source, result, time.Duration(elapsedMs*float64(time.Millisecond)), "worker")
+	h.render(grammarJSON, source, result, time.Duration(elapsedMs*float64(time.Millisecond)), "worker")
 }
 
 // armWatchdog (re)starts the soft/hard timers for seq, replacing whatever
@@ -860,11 +895,31 @@ func (h *authoringHandle) fail(message string) {
 // cmd/verify-authoring-browser asserts on it to prove the seed grammar
 // really did compile through the background Worker rather than silently
 // falling back.
-func (h *authoringHandle) render(source string, result authoringengine.Result, elapsed time.Duration, via string) {
+//
+// grammarJSON is the exact (possibly base+delta merged) grammar.json that
+// produced result — it is what onExportClick later sends back to the
+// worker/local fallback for a Phase 3 export. render is where export
+// readiness (canExport/exportGrammarJSON/exportName, and the button
+// disabled state that reflects them) is decided: a compile only counts as
+// "exportable" once generation itself succeeded — see
+// CompileWithContextArtifacts's doc for why ParseError alone does not
+// disqualify it (an author's grammar can be valid while their sample source
+// has a typo) but ImportError/GenerateError/TimedOut do.
+func (h *authoringHandle) render(grammarJSON, source string, result authoringengine.Result, elapsed time.Duration, via string) {
 	if via != "" {
 		h.mount.Get("dataset").Set("compileVia", via)
 	}
 	h.text("#ag-node-count", fmt.Sprintf("%d nodes", result.NodeCount))
+
+	exportable := grammarJSON != "" && result.ImportError == "" && result.GenerateError == "" && !result.TimedOut
+	h.stateMu.Lock()
+	h.canExport = exportable
+	if exportable {
+		h.exportGrammarJSON = grammarJSON
+		h.exportName = result.GrammarName
+	}
+	h.stateMu.Unlock()
+	h.updateExportButtons(exportable)
 
 	tree := h.find("#ag-tree")
 	tree.Set("textContent", "")
@@ -1058,6 +1113,235 @@ func plural(n int) string {
 		return ""
 	}
 	return "s"
+}
+
+// --- Phase 3: export ---
+//
+// The three download buttons (#ag-export-go/#ag-export-c/#ag-export-json)
+// export the most recently SUCCESSFULLY compiled merged grammar — see
+// render's export-readiness bookkeeping (canExport/exportGrammarJSON/
+// exportName) — as one of grammargen's three pure export formats
+// (authoringengine.ExportGrammar), reusing the worker's cached compile
+// whenever possible (see cmd/authoring-worker-wasm's package doc) so a
+// heavy base like Go does not re-pay LR-table generation just to download a
+// file.
+
+// bindExportButtons wires the three export buttons to onExportClick.
+// Mirrors mountAuthoring's other bindings: a missing element is a mount-time
+// error, since the page markup and this engine must agree on ids.
+func (h *authoringHandle) bindExportButtons() error {
+	for _, spec := range []struct {
+		selector string
+		format   string
+	}{
+		{"#ag-export-go", "go"},
+		{"#ag-export-c", "c"},
+		{"#ag-export-json", "json"},
+	} {
+		target := h.find(spec.selector)
+		if !target.Truthy() {
+			return fmt.Errorf("authoring element %s is missing", spec.selector)
+		}
+		format := spec.format
+		fn := js.FuncOf(func(js.Value, []js.Value) any {
+			h.onExportClick(format)
+			return nil
+		})
+		target.Call("addEventListener", "click", fn)
+		h.listeners = append(h.listeners, browserListener{target: target, event: "click", fn: fn})
+	}
+	return nil
+}
+
+// updateExportButtons reflects overall export readiness (enabled: has a
+// successful compile happened, and did the LATEST one succeed) across all
+// three export buttons, while leaving any individually busy button (its own
+// in-flight export request — see setExportBusy) disabled regardless.
+func (h *authoringHandle) updateExportButtons(enabled bool) {
+	for _, id := range []string{"#ag-export-go", "#ag-export-c", "#ag-export-json"} {
+		btn := h.find(id)
+		if !btn.Truthy() {
+			continue
+		}
+		format := strings.TrimPrefix(id, "#ag-export-")
+		h.stateMu.Lock()
+		busy := h.exportBusy[format]
+		h.stateMu.Unlock()
+		switch {
+		case busy:
+			btn.Set("disabled", true)
+			btn.Set("title", "Generating…")
+		case enabled:
+			btn.Call("removeAttribute", "disabled")
+			btn.Set("title", "")
+		default:
+			btn.Set("disabled", true)
+			btn.Set("title", "Compile a grammar first")
+		}
+	}
+}
+
+// setExportBusy toggles one button's own in-flight state (independent of
+// overall canExport) so a double-click on the same button cannot fire two
+// overlapping export requests, then re-renders every button's disabled
+// state (a busy button's own overlay always wins regardless of enabled).
+func (h *authoringHandle) setExportBusy(format string, busy bool) {
+	h.stateMu.Lock()
+	if busy {
+		h.exportBusy[format] = true
+	} else {
+		delete(h.exportBusy, format)
+	}
+	canExport := h.canExport
+	h.stateMu.Unlock()
+	h.updateExportButtons(canExport)
+}
+
+// onExportClick handles a click on one of the three export buttons. It
+// exports h.exportGrammarJSON/h.exportName — the grammar from the most
+// recent SUCCESSFUL compile (see render), not necessarily whatever is
+// currently unsaved in the editors: the button is disabled whenever the
+// latest compile failed, so by the time a click can land, exportGrammarJSON
+// is known-good.
+//
+// The filename comes from whatever is currently typed in #ag-name (even if
+// not yet recompiled — renaming is a purely cosmetic, instant thing an
+// author would expect reflected in a download filename right away) and
+// falls back to exportName (the grammar's own compiled name, itself already
+// reflecting any previously-applied rename) when #ag-name is empty.
+//
+// If the background Worker is not currently ready, this exports via the
+// same main-thread fallback compile path runLocalFallback uses for ordinary
+// compiles, rather than queuing and waiting for the worker to finish
+// booting — an export is a one-off user action, not a debounced stream of
+// edits, so immediate best-effort service is preferable to an indefinite
+// wait.
+func (h *authoringHandle) onExportClick(format string) {
+	h.stateMu.Lock()
+	ready := h.canExport
+	grammarJSON := h.exportGrammarJSON
+	name := h.exportName
+	busy := h.exportBusy[format]
+	h.exportSeq++
+	seq := h.exportSeq
+	useWorker := !h.workerBroken && h.worker.Truthy() && h.workerReady
+	worker := h.worker
+	h.stateMu.Unlock()
+
+	if busy {
+		return
+	}
+	if !ready || grammarJSON == "" {
+		h.text("#ag-export-status", "Compile a grammar first.")
+		return
+	}
+	if el := h.find("#ag-name"); el.Truthy() {
+		if override := strings.TrimSpace(el.Get("value").String()); override != "" {
+			name = override
+		}
+	}
+
+	h.setExportBusy(format, true)
+	h.text("#ag-export-status", fmt.Sprintf("Generating %s…", exportLabel(format)))
+
+	if !useWorker {
+		go h.runExportLocalFallback(format, grammarJSON, name)
+		return
+	}
+	worker.Call("postMessage", js.ValueOf(map[string]any{
+		"op":          "export",
+		"seq":         float64(seq),
+		"format":      format,
+		"grammarJSON": grammarJSON,
+		"name":        name,
+		"pkg":         "",
+	}))
+}
+
+// runExportLocalFallback mirrors runLocalFallback for exports: used only
+// when the background Worker is unavailable, so — unlike the worker's own
+// cache (see cmd/authoring-worker-wasm's package doc) — there is nothing to
+// reuse here; it always compiles grammarJSON fresh via
+// authoringengine.ImportAndGenerateWithContext. This is an accepted
+// limitation of the already-degraded no-Worker path, not a Phase 3 gap: a
+// browser without Worker support (or a crashed worker) already pays the
+// full compile cost on every edit, not just on export.
+func (h *authoringHandle) runExportLocalFallback(format, grammarJSON, name string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	grammar, lang, err := authoringengine.ImportAndGenerateWithContext(ctx, grammarJSON)
+	if err != nil {
+		h.finishExport(format, "", "", err.Error())
+		return
+	}
+	filename, content, err := authoringengine.ExportGrammar(grammar, lang, authoringengine.ExportFormat(format), name, "")
+	if err != nil {
+		h.finishExport(format, "", "", err.Error())
+		return
+	}
+	h.finishExport(format, filename, content, "")
+}
+
+// handleExportResponse handles one {op:"export", ...} message from the
+// worker — see cmd/authoring-worker-wasm's package doc for the wire shape.
+// The response's own seq is not used for staleness gating the way a compile
+// response's is (see the authoringHandle.exportSeq doc): every export
+// request is an independent, self-contained user action whose result is
+// always honored whenever it arrives, not superseded by a later one.
+func (h *authoringHandle) handleExportResponse(data js.Value) {
+	format := jsString(data, "format")
+	errMsg := jsString(data, "error")
+	filename := jsString(data, "filename")
+	content := jsString(data, "content")
+	h.finishExport(format, filename, content, errMsg)
+}
+
+// finishExport is the single landing point for every export outcome
+// (worker response or local fallback): it clears the button's busy state
+// and either triggers the browser download or reports the failure.
+func (h *authoringHandle) finishExport(format, filename, content, errMsg string) {
+	h.setExportBusy(format, false)
+	if errMsg != "" {
+		h.text("#ag-export-status", fmt.Sprintf("%s export failed: %s", exportLabel(format), errMsg))
+		return
+	}
+	triggerDownload(filename, content)
+	h.text("#ag-export-status", fmt.Sprintf("Downloaded %s", filename))
+}
+
+// triggerDownload performs a client-side Blob + object URL + <a download>
+// click — the standard way to save generated content to disk without a
+// server round trip. filename/content never touch the network; the only
+// thing that leaves this tab is whatever the browser's own download
+// mechanism writes to the user's own disk.
+func triggerDownload(filename, content string) {
+	blobParts := js.Global().Get("Array").New(1)
+	blobParts.SetIndex(0, content)
+	blob := js.Global().Get("Blob").New(blobParts, js.ValueOf(map[string]any{"type": "application/octet-stream"}))
+	url := js.Global().Get("URL").Call("createObjectURL", blob)
+
+	a := element("a")
+	a.Set("href", url)
+	a.Set("download", filename)
+	a.Get("style").Set("display", "none")
+	doc := js.Global().Get("document")
+	doc.Get("body").Call("appendChild", a)
+	a.Call("click")
+	doc.Get("body").Call("removeChild", a)
+	js.Global().Get("URL").Call("revokeObjectURL", url)
+}
+
+func exportLabel(format string) string {
+	switch format {
+	case "go":
+		return ".go"
+	case "c":
+		return "parser.c"
+	case "json":
+		return "grammar.json"
+	default:
+		return format
+	}
 }
 
 // decodeWorkerResult reconstructs an authoringengine.Result from a worker

@@ -19,6 +19,14 @@
 .ag-fidelitynote{margin:0 0 10px}
 .ag-fidelitynote:empty{display:none}
 
+/* Phase 3: export toolbar (download buttons for the current merged grammar) */
+.ag-exporttoolbar{margin:0 0 20px}
+.ag-exportlabel{font:700 11px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:var(--mut)}
+.ag-exportbtn{font:700 12px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.5px;background:var(--paper);color:var(--ink);border:2px solid var(--ink);border-radius:2px;padding:6px 12px;cursor:pointer;box-shadow:var(--shs)}
+.ag-exportbtn:hover:not(:disabled){background:var(--yellow)}
+.ag-exportbtn:disabled{cursor:not-allowed;opacity:.45;box-shadow:none}
+.ag-exportstatus:empty{display:none}
+
 /* editor panes */
 .ag-grid{grid-template-columns:1fr 1fr}
 .ag-editorwrap{position:relative;padding:0;background:#17140f;height:360px;overflow:hidden}
