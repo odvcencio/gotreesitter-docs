@@ -89,7 +89,7 @@ mapping the name to gotreesitter's existing `grammars.XLanguage()` entry for tha
 
 > [!NOTE] Availability
 > `compat/smacker` lands in gotreesitter's module — once released, there's no separate `go get`,
-> just the one import swap above. It is not in `v0.40.0`; until the release that carries it is
+> just the one import swap above. It is not in `v0.42.0`; until the release that carries it is
 > tagged, pin the module to the revision that includes `compat/smacker` (or track `main`). See
 > [Getting Started](/docs/getting-started) if you're setting up gotreesitter for the first time
 > rather than migrating an existing smacker integration.

@@ -13,7 +13,15 @@ across much of the grammar fleet.
 The repository's current [`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md)
 is the canonical source for linkable performance claims. This page follows the authenticated
 v0.40.0 production receipt at tag target `1935a42c`, published to `BENCH.md` after the immutable
-v0.40.0 tag was cut.
+v0.40.0 tag was cut. This site now runs on gotreesitter v0.42.0. v0.41.0 and v0.42.0 add a
+build-tagged, diagnostic-only compact-scheduler tier (fresh-full compact parsing, selected-store
+query execution, and PGO profile refreshes) plus a return of several grammars — including
+BibTeX, CSS, SCSS, Yuck, Bash, C#, Agda, Ledger, Authzed, Make, TLA+, Faust, CMake, Erlang, and
+Common Lisp — to explicit-only forest routing after full-corpus recertification found their
+automatic routes slower or divergent from the production parser; none of that changes the public
+`Parser.Parse` code path these numbers describe. `BENCH.md` still names v0.40.0's **4.851050x C**
+equal-fixture geomean as the current authenticated production-code baseline, so the numbers below
+remain the v0.40.0 figures pending a v0.41.0/v0.42.0 receipt refresh.
 
 ## Canonical full parse: the real-code matrix
 
