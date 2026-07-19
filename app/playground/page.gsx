@@ -41,10 +41,11 @@ func Page() Node {
 						source
 						<span id="pg-language-label" class="hlcredit">go</span>
 					</div>
-					<div class="panelbd pg-editorwrap pg-server-editor">
+					<div class="panelbd pg-editorwrap">
+						<pre id="pg-hl" class="pg-hlpre mono" aria-hidden="true">{data.source}</pre>
 						<textarea
 							id="pg-source"
-							class="pg-src mono pg-src-server"
+							class="pg-src mono"
 							wrap="off"
 							spellcheck="false"
 							aria-label="Source code"
