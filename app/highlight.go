@@ -160,6 +160,16 @@ var bashTk = &tkClassifier{
 		"simple_expansion":     "tk-str",
 		"command_substitution": "tk-str",
 		"number":               "tk-num",
+		// command_name colors the invoked program itself (go, bash, cd, ...).
+		// Without this, a bare command with no string/number/comment token —
+		// e.g. "go get github.com/odvcencio/gotreesitter" or "bash
+		// script.sh arg" (getting-started.md, contributing.md) — classifies
+		// zero spans under the table above and silently falls back to plain
+		// text even though it parsed as real bash. This is confirmed real
+		// tree-sitter-bash structure (bash's grammar always wraps a
+		// command's first word in a command_name node), not a heuristic
+		// guess.
+		"command_name": "tk-fn",
 	},
 	keywords: kwSet(
 		"if", "then", "else", "elif", "fi", "for", "in", "do", "done",
@@ -182,6 +192,31 @@ var jsonTk = &tkClassifier{
 	},
 }
 
+// schemeTk backs content/docs/*.md's ```scheme fences, which are tree-sitter
+// *query* examples (queries.md, code-navigation.md, language-injection.md's
+// `.scm` tags/highlights/injections samples) rather than general-purpose
+// Scheme programs — gotreesitter has no dedicated tree-sitter-query grammar,
+// so DetectLanguageByName("scheme") is the closest real grammar available,
+// and it parses query syntax cleanly (confirmed directly: `(node field:
+// (child) @capture)` round-trips as nested Scheme `list`/`symbol` nodes with
+// no ERROR besides the `#pred?` predicate token, which Scheme's own `#`
+// reader syntax doesn't cover — see classifySchemeSymbol below).
+//
+// classify() skips classifyGeneric entirely once a language has *any*
+// registered tkClassifier (see classify's `cls == nil` branch), so this
+// table must carry its own literal/comment/string mappings rather than
+// relying on classifyGeneric's substring-on-"string" fallback the way an
+// unregistered language would.
+var schemeTk = &tkClassifier{
+	exact: map[string]string{
+		"comment":   "tk-cm",
+		"string":    "tk-str",
+		"character": "tk-str",
+		"number":    "tk-num",
+		"boolean":   "tk-kw",
+	},
+}
+
 // tkClassifiers maps a canonical gotreesitter grammar name (grammars.LangEntry.Name)
 // to its classifier table. Any language absent here still gets real,
 // tree-sitter-driven highlighting through classifyGeneric.
@@ -193,6 +228,7 @@ var tkClassifiers = map[string]*tkClassifier{
 	"tsx":        tsTk,
 	"bash":       bashTk,
 	"json":       jsonTk,
+	"scheme":     schemeTk,
 }
 
 // highlightSource parses code with the gotreesitter grammar named by lang
@@ -264,6 +300,11 @@ func classify(n *gts.Node, lang *gts.Language, src []byte, cls *tkClassifier) st
 			return class
 		}
 	}
+	if cls == schemeTk {
+		if class := classifySchemeSymbol(n, lang, nodeType, src); class != "" {
+			return class
+		}
+	}
 	if class := classifyCall(n, lang, nodeType, cls); class != "" {
 		return class
 	}
@@ -320,6 +361,63 @@ func classifyCall(n *gts.Node, lang *gts.Language, nodeType string, cls *tkClass
 		}
 	}
 	return ""
+}
+
+// classifySchemeSymbol classifies tree-sitter *query* syntax parsed through
+// the Scheme grammar (see schemeTk's doc comment) — recognizing the parts of
+// query syntax that Scheme's own reader either has no node type for (a bare
+// `symbol`) or turns into an `ERROR` token (`#pred?`/`#directive!`, since
+// Scheme's `#` reader syntax only covers `#t`/`#f`/`#\char`/etc, not
+// arbitrary `#name` identifiers) — confirmed directly against every example
+// in content/docs/queries.md, code-navigation.md, and language-injection.md.
+func classifySchemeSymbol(n *gts.Node, lang *gts.Language, nodeType string, src []byte) string {
+	text := n.Text(src)
+	if nodeType == "ERROR" && strings.HasPrefix(text, "#") {
+		// Predicate/directive name: #eq?, #match?, #set!, #any-of?, ...
+		return "tk-kw"
+	}
+	if nodeType != "symbol" {
+		return ""
+	}
+	switch {
+	case text == ".":
+		return "tk-op" // adjacency anchor
+	case text == "_":
+		return "tk-op" // any-node wildcard
+	case strings.HasPrefix(text, "@"):
+		return "tk-fn" // capture name, e.g. @func.name
+	case strings.HasPrefix(text, "!"):
+		return "tk-op" // negated field, e.g. !result
+	case strings.HasSuffix(text, ":"):
+		return "tk-op" // field constraint label, e.g. name:
+	}
+	if isQueryTypePosition(n, lang) {
+		return "tk-ty" // grammar node-type name, e.g. function_declaration
+	}
+	return ""
+}
+
+// isQueryTypePosition reports whether n is the node-type symbol immediately
+// following a pattern's opening `(` or `[` — the first child of its parent
+// `list` node, right after the opener. That position is always a grammar
+// node-type name in tree-sitter query syntax (`(function_declaration ...)`,
+// `[(function_declaration) (method_declaration)]`), never a capture, field
+// label, or predicate.
+func isQueryTypePosition(n *gts.Node, lang *gts.Language) bool {
+	parent := n.Parent()
+	if parent == nil || parent.Type(lang) != "list" || parent.ChildCount() < 2 {
+		return false
+	}
+	opener := parent.Child(0)
+	if opener == nil {
+		return false
+	}
+	switch opener.Type(lang) {
+	case "(", "[":
+	default:
+		return false
+	}
+	return parent.Child(1) == n
 }
 
 // classifyGeneric is the fallback for any of gotreesitter's 206 grammars
