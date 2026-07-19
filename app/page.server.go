@@ -1,6 +1,9 @@
 package docs
 
-import "m31labs.dev/gosx/route"
+import (
+	"m31labs.dev/gosx"
+	"m31labs.dev/gosx/route"
+)
 
 func init() {
 	RegisterStaticDocsPage(
@@ -13,10 +16,38 @@ func init() {
 						"features":   landingFeatures,
 						"langTeaser": landingLangTeaser,
 					},
+					Funcs: map[string]any{
+						"heroCode": heroCodeNode,
+					},
 				}
 			},
 		},
 	)
+}
+
+// heroSnippet is the hero `.codebody` sample on the landing page
+// (app/page.gsx) — the same parse/walk/print shape used throughout the
+// docs' own README-style examples.
+const heroSnippet = `lang := grammars.GoLanguage()
+parser := gotreesitter.NewParser(lang)
+tree, err := parser.Parse(src)
+if err != nil { panic(err) }
+defer tree.Release()
+fmt.Println(tree.RootNode().SExpr(lang))
+
+// (source_file (function_declaration ...))`
+
+// heroCodeNode runs heroSnippet through the same gotreesitter-backed
+// highlighter every markdown ```go fence uses (highlightSource, in
+// highlight.go → renderCodeBlock's convention in render_blocks.go), so the
+// hero sample gets real `tk-*` syntax highlighting instead of the plain,
+// unhighlighted literal it used to be. Falls back to plain text — never a
+// render error — if highlighting can't classify anything.
+func heroCodeNode() gosx.Node {
+	if highlighted, ok := highlightSource("go", heroSnippet); ok {
+		return gosx.RawHTML(highlighted)
+	}
+	return gosx.Text(heroSnippet)
 }
 
 // landingFeatures backs the "A whole parsing toolkit" `.grid3` on the

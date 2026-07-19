@@ -54,9 +54,7 @@ func Page() Node {
 					<span class="cfile mono">main.go</span>
 					<span class="clang">go</span>
 				</div>
-				<pre class="codebody">
-					{"lang := grammars.GoLanguage()\nparser := gotreesitter.NewParser(lang)\ntree, err := parser.Parse(src)\nif err != nil { panic(err) }\ndefer tree.Release()\nfmt.Println(tree.RootNode().SExpr(lang))\n\n// (source_file (function_declaration ...))"}
-				</pre>
+				<pre class="codebody">{heroCode()}</pre>
 			</div>
 		</div>
 		<h2 class="h2">
