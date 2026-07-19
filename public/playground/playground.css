@@ -33,9 +33,6 @@
 .pg-src:focus-visible{outline:3px solid var(--yellow);outline-offset:-3px}
 .pg-src::selection{background:rgba(157,78,221,.45);color:transparent}
 .pg-src:disabled{cursor:wait}
-.pg-server-editor{height:460px}
-.pg-src-server{color:#ece7db;background:#17140f;caret-color:#ece7db;position:static}
-.pg-src-server::selection{background:rgba(157,78,221,.45);color:#fff}
 .pg-loading{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:rgba(23,20,15,.88);color:#ece7db;font:600 13px/1.6 'JetBrains Mono',monospace;white-space:pre-line}
 .pg-loading[hidden]{display:none}
 .pg-loading.err{color:#ff9db1}

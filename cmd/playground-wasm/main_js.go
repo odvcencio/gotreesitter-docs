@@ -99,6 +99,33 @@ func mountPlayground(ctx enginewasm.Context) (enginewasm.Handle, error) {
 		target.Call("addEventListener", binding.event, fn)
 		h.listeners = append(h.listeners, browserListener{target: target, event: binding.event, fn: fn})
 	}
+	// #pg-source gets two extra, non-debounced listeners on top of the
+	// schedule()-driven "input" binding registered above:
+	//   - a plain-text mirror into #pg-hl on every keystroke, so the
+	//     transparent-text textarea (see .pg-src in playground.css) never
+	//     shows an invisible character during the 180ms debounce window
+	//     before the real, classified highlight (h.renderHighlight) lands.
+	//   - a scroll listener keeping #pg-hl's scroll position locked to
+	//     #pg-source's, since the highlight overlay sits behind the
+	//     (invisible-text) textarea the visitor actually scrolls.
+	source := h.find("#pg-source")
+	if !source.Truthy() {
+		return nil, fmt.Errorf("playground element #pg-source is missing")
+	}
+	mirrorFn := js.FuncOf(func(js.Value, []js.Value) any {
+		h.mirrorPlainSource()
+		return nil
+	})
+	source.Call("addEventListener", "input", mirrorFn)
+	h.listeners = append(h.listeners, browserListener{target: source, event: "input", fn: mirrorFn})
+
+	scrollFn := js.FuncOf(func(js.Value, []js.Value) any {
+		h.syncHighlightScroll()
+		return nil
+	})
+	source.Call("addEventListener", "scroll", scrollFn)
+	h.listeners = append(h.listeners, browserListener{target: source, event: "scroll", fn: scrollFn})
+
 	h.mount.Get("dataset").Set("privacyBoundary", "browser-only")
 	go h.bootstrap(props.GrammarIndexURL)
 	return h, nil
@@ -217,8 +244,9 @@ func (h *playgroundHandle) runAsync(seq uint64) {
 	h.text("#pg-status", "Parsing locally…")
 	started := time.Now()
 	result := playgroundengine.ParseLanguage(source, query, languageName, language, includeAnonymous)
+	highlightSpans, _ := playgroundengine.ComputeHighlight(source, languageName, language)
 	if h.current(seq) {
-		h.render(languageName, result, time.Since(started))
+		h.render(languageName, source, result, highlightSpans, time.Since(started))
 	}
 }
 
@@ -297,10 +325,11 @@ func (h *playgroundHandle) fail(message string) {
 	errors.Call("appendChild", box)
 }
 
-func (h *playgroundHandle) render(language string, result playgroundengine.Result, elapsed time.Duration) {
+func (h *playgroundHandle) render(language, source string, result playgroundengine.Result, highlightSpans []playgroundengine.HighlightSpan, elapsed time.Duration) {
 	h.text("#pg-language-label", language)
 	h.text("#pg-node-count", fmt.Sprintf("%d nodes", result.NodeCount))
 	h.text("#pg-capture-count", fmt.Sprintf("%d captures", len(result.Captures)))
+	h.renderHighlight(source, highlightSpans)
 
 	tree := h.find("#pg-tree")
 	tree.Set("textContent", "")
@@ -360,6 +389,75 @@ func (h *playgroundHandle) render(language string, result playgroundengine.Resul
 		status = fmt.Sprintf("Parsed locally with diagnostics in %s.", elapsed.Round(100*time.Microsecond))
 	}
 	h.text("#pg-status", status)
+}
+
+// renderHighlight fills #pg-hl — the highlight overlay <pre> sitting behind
+// the transparent-text #pg-source textarea (see .pg-hlpre/.pg-src in
+// playground.css) — with source, interleaving tk-* styled spans in byte
+// order. An empty highlightSpans (no highlight query for this grammar, or a
+// source with nothing a mapped capture matched — see
+// playgroundengine.ComputeHighlight) still renders the full plain source as
+// one unstyled text node, so the overlay never falls out of sync with what
+// the visitor is actually typing: "real highlighting or none," but the text
+// itself is always there.
+func (h *playgroundHandle) renderHighlight(source string, spans []playgroundengine.HighlightSpan) {
+	container := h.find("#pg-hl")
+	if !container.Truthy() {
+		return
+	}
+	container.Set("textContent", "")
+	src := []byte(source)
+	cursor := 0
+	for _, span := range spans {
+		start, end := span.StartByte, span.EndByte
+		if start < cursor {
+			start = cursor
+		}
+		if end > len(src) {
+			end = len(src)
+		}
+		if start > len(src) {
+			start = len(src)
+		}
+		if end <= start {
+			continue
+		}
+		if start > cursor {
+			container.Call("appendChild", textNode(string(src[cursor:start])))
+		}
+		container.Call("appendChild", styledText("span", span.Class, string(src[start:end])))
+		cursor = end
+	}
+	if cursor < len(src) {
+		container.Call("appendChild", textNode(string(src[cursor:])))
+	}
+}
+
+// mirrorPlainSource copies #pg-source's current value into #pg-hl verbatim,
+// unstyled. It runs synchronously on every "input" event (see
+// mountPlayground's dedicated #pg-source listener), ahead of the 180ms
+// debounced reparse+rehighlight (h.schedule -> h.run -> h.renderHighlight),
+// so a keystroke is never invisible against the transparent-text textarea
+// while waiting for the debounce to fire.
+func (h *playgroundHandle) mirrorPlainSource() {
+	container := h.find("#pg-hl")
+	if !container.Truthy() {
+		return
+	}
+	container.Set("textContent", h.find("#pg-source").Get("value").String())
+}
+
+// syncHighlightScroll mirrors #pg-source's scroll position onto #pg-hl so
+// the highlight overlay tracks the (invisible-text) textarea the visitor is
+// actually scrolling.
+func (h *playgroundHandle) syncHighlightScroll() {
+	container := h.find("#pg-hl")
+	source := h.find("#pg-source")
+	if !container.Truthy() || !source.Truthy() {
+		return
+	}
+	container.Set("scrollTop", source.Get("scrollTop"))
+	container.Set("scrollLeft", source.Get("scrollLeft"))
 }
 
 func (h *playgroundHandle) find(selector string) js.Value {
