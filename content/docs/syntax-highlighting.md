@@ -5,23 +5,23 @@ nav_group: Using the Parser
 order: 5
 ---
 
-A `Highlighter` bundles a parser, a compiled highlight query, and a language into one call:
-give it source bytes, get back a sorted, non-overlapping list of `HighlightRange` values — byte
+A `Highlighter` bundles a parser, a compiled highlight query, and a language into one call: give
+it source bytes, and get back a sorted, non-overlapping list of `HighlightRange` values — byte
 spans tagged with capture names like `"keyword"` or `"function.name"`. Your editor (or HTML
 renderer, or terminal pager) maps those capture names to styles; the highlighter deliberately
 knows nothing about colors or themes.
 
 This is the same query-driven model as upstream tree-sitter's
-[syntax highlighting](https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html),
-with one practical difference in packaging: upstream distributes highlight queries as
+[syntax highlighting](https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html), with
+one practical packaging difference: upstream distributes highlight queries as
 `queries/highlights.scm` files that a consumer must locate and load, while gotreesitter embeds
 the highlight query for every one of its 206 built-in grammars directly in the `grammars`
-registry. There is no `.scm` file to find, ship, or version-match — `LangEntry.HighlightQuery`
-is a string that's already there.
+registry. There is no `.scm` file to find, ship, or version-match — `LangEntry.HighlightQuery` is
+a string that is already there.
 
-If you haven't met the query language yet, read [Queries](/docs/queries) first — a highlight
-query is an ordinary query whose capture names happen to be style-ish
-(`@keyword`, `@string`, `@function.name`), and everything on that page applies here.
+If you have not met the query language yet, read [Queries](/docs/queries) first — a highlight
+query is an ordinary query whose capture names happen to be style-ish (`@keyword`, `@string`,
+`@function.name`), and everything on that page applies here.
 
 ## Quick start
 
@@ -40,14 +40,14 @@ for _, r := range ranges {
 }
 ```
 
-Three things worth noticing. `DetectLanguage` (see [Languages](/docs/languages)) picks the
+Three things are worth noticing. `DetectLanguage` (see [Languages](/docs/languages)) picks the
 grammar from the file extension and hands back a `*LangEntry`; its `Language` field is a lazy
-loader function — `entry.Language()` invokes it, compiling nothing until the first call.
+loader function — `entry.Language()` invokes it, and it compiles nothing until the first call.
 `entry.HighlightQuery` is the embedded highlight query, with inheritance already resolved: a
-language that declares `InheritHighlights` (TypeScript inherits JavaScript's query, for
-instance) gets the composed result automatically. And because the input is Markdown with a
-fenced Go block, the output includes a `{Capture: "keyword"}` range over the fenced `for` —
-nested-language highlighting is wired up out of the box (more on that below).
+language that declares `InheritHighlights` (TypeScript inherits JavaScript's query, for instance)
+gets the composed result automatically. Because the input is Markdown with a fenced Go block, the
+output includes a `{Capture: "keyword"}` range over the fenced `for` — nested-language
+highlighting works out of the box (more on that below).
 
 ## The output contract
 
@@ -61,28 +61,28 @@ type HighlightRange struct {
 ```
 
 - **`Capture`** is the raw query capture name with the `@` stripped — `"keyword"`,
-  `"function.name"`, `"string"`. No mapping or normalization is applied; capture-name-to-style
-  is entirely the consumer's job, same as upstream's theme layer.
+  `"function.name"`, `"string"`. No mapping or normalization is applied; mapping capture names to
+  styles is entirely the consumer's job, same as upstream's theme layer.
 - **Ranges come back sorted by `StartByte` and de-overlapped.** When two captures cover
-  overlapping spans, the inner (narrower) capture wins for the overlapping bytes; adjacent
-  ranges with the same capture are coalesced into one. You can walk the slice front to back
-  and emit spans without an interval tree on your side.
-- **`PatternIndex` is not meaningful in the output.** Overlap resolution consults pattern
-  order internally (later patterns override earlier ones for identical ranges), but the field
-  is zeroed in the ranges you receive — don't build logic on it.
+  overlapping spans, the inner (narrower) capture wins for the overlapping bytes; adjacent ranges
+  with the same capture are coalesced into one. You can walk the slice front to back and emit
+  spans with no interval tree on your side.
+- **`PatternIndex` is not meaningful in the output.** Overlap resolution consults pattern order
+  internally (later patterns override earlier ones for identical ranges), but the field is zeroed
+  in the ranges you receive — do not build logic on it.
 
-Bytes not covered by any range are unstyled source: whitespace, plain identifiers the query
-doesn't capture, and anything else the grammar's highlight query ignores. One convention to
-know: the embedded queries follow nvim-treesitter's, where some capture regions as `@none`,
-meaning "explicitly unstyled" — Markdown does this for `code_fence_content`, so fence bytes
-between injected child captures come back as `Capture: "none"`. Map it to no style, same as
-uncaptured bytes.
+Bytes not covered by any range are unstyled source: whitespace, plain identifiers the query does
+not capture, and anything else the grammar's highlight query ignores. One convention to know: the
+embedded queries follow nvim-treesitter's, where some capture regions as `@none`, meaning
+"explicitly unstyled" — Markdown does this for `code_fence_content`, so fence bytes between
+injected child captures come back as `Capture: "none"`. Map it to no style, same as uncaptured
+bytes.
 
 One thing the highlighter does *not* do: gotreesitter has no locals.scm-style scope tracking.
-Upstream's `@local.definition`/`@local.scope` resolution — distinguishing a variable's
-declaration from its uses — has no analogue here, and the `#is? local` predicate is a
-capture-name substring check (`query_predicates.go`), not scope analysis. For scope-aware
-highlighting, run your own pass over the parsed tree.
+Upstream's `@local.definition`/`@local.scope` resolution — distinguishing a variable's declaration
+from its uses — has no analogue here, and the `#is? local` predicate is a capture-name substring
+check (`query_predicates.go`), not scope analysis. For scope-aware highlighting, run your own pass
+over the parsed tree.
 
 ## Incremental re-highlighting
 
@@ -93,12 +93,12 @@ edit-first contract as [incremental parsing](/docs/incremental-parsing):
 1. First pass: you need a tree to be incremental *against*. `HighlightIncremental(source, nil)`
    works — a nil old tree falls back to a full parse, and you get the tree back along with the
    ranges.
-2. On each edit: record it on the old tree first with `oldTree.Edit(gts.InputEdit{...})`,
-   exactly as the [incremental parsing](/docs/incremental-parsing) page describes.
-3. Call `hl.HighlightIncremental(newSource, oldTree)`. You get the **full** new range set for
-   the whole document (not a delta) plus the new tree.
-4. You own the returned tree: keep it for the next call, and `Release()` the old one when the
-   returned tree is a different object.
+2. On each edit: record it on the old tree first with `oldTree.Edit(gts.InputEdit{...})`, exactly
+   as the [incremental parsing](/docs/incremental-parsing) page describes.
+3. Call `hl.HighlightIncremental(newSource, oldTree)`. You get the **full** new range set for the
+   whole document (not a delta) plus the new tree.
+4. You own the returned tree: keep it for the next call, and call `Release()` on the old one when
+   the returned tree is a different object.
 
 ```go
 newRanges, newTree := hl.HighlightIncremental(newSrc, oldTree)
@@ -108,24 +108,24 @@ if newTree != oldTree {
 oldTree, ranges = newTree, newRanges // carry forward for the next edit
 ```
 
-The parse underneath reuses unchanged subtrees, so the expensive half of re-highlighting
-scales with the edit, not the file. The range extraction itself still runs over the whole
-tree — if you want to restyle only the changed region, intersect the returned ranges with
+The parse underneath reuses unchanged subtrees, so the expensive half of re-highlighting scales
+with the edit, not the file. The range extraction itself still runs over the whole tree — if you
+want to restyle only the changed region, intersect the returned ranges with
 `gts.DiffChangedRanges(oldTree, newTree)` yourself.
 
 For UTF-16-based callers (LSP, JavaScript interop), the whole surface has mirrors:
 `HighlightUTF16([]uint16)`, `HighlightUTF16Bytes([]byte, UTF16ByteOrder)`, and
 `HighlightIncrementalUTF16` / `HighlightIncrementalUTF16Bytes`, all returning
-`UTF16HighlightRange` — the same contract with code-unit offsets plus `StartPoint`/`EndPoint`
-in UTF-16 columns.
+`UTF16HighlightRange` — the same contract with code-unit offsets plus `StartPoint`/`EndPoint` in
+UTF-16 columns.
 
 ## Custom token sources
 
-A few languages in the registry lex through a hand-written `TokenSource` instead of the
-grammar's DFA (Go itself uses a `go/scanner` bridge). The registry exposes this as
+A few languages in the registry lex through a hand-written `TokenSource` instead of the grammar's
+DFA (Go itself uses a `go/scanner` bridge). The registry exposes this as
 `LangEntry.TokenSourceFactory`, a two-argument `func([]byte, *Language) TokenSource`; the
-highlighter option takes a one-argument factory, so adapt with a closure — and only when the
-entry actually has one:
+highlighter option takes a one-argument factory, so adapt with a closure — and only when the entry
+actually has one:
 
 ```go
 opts := []gts.HighlighterOption{}
@@ -137,25 +137,24 @@ if entry.TokenSourceFactory != nil {
 hl, err := gts.NewHighlighter(lang, entry.HighlightQuery, opts...)
 ```
 
-Skipping this for a language that needs it doesn't fail loudly — it parses with the DFA path
-and can produce subtly different trees, so wire it whenever you build highlighters from
-registry entries generically.
+Skipping this for a language that needs it does not fail loudly — it parses with the DFA path and
+can produce subtly different trees, so wire it whenever you build highlighters from registry
+entries generically.
 
 ## Nested highlighting: code fences and injections
 
 When you build a `Highlighter` for a language that has an injection spec registered,
 `NewHighlighter` wires nested highlighting automatically — no flag to pass. The lookup keys on
-`Language.Name`, and the one built-in registration is Markdown: fenced code blocks are
-detected, the fence's info string (the `go` after the opening backticks) is normalized through
-an alias table
-(`golang` → `go`, `js` → `javascript`, `ts` → `typescript`, `py` → `python`, `sh` → `bash`,
-`yml` → `yaml`, and so on), and the fence body is highlighted with the child language's own
-embedded query. The child ranges land in the same output slice as the parent's, already
+`Language.Name`, and the one built-in registration is Markdown: fenced code blocks are detected,
+the fence's info string (the `go` after the opening backticks) is normalized through an alias
+table (`golang` → `go`, `js` → `javascript`, `ts` → `typescript`, `py` → `python`, `sh` → `bash`,
+`yml` → `yaml`, and similar mappings), and the fence body is highlighted with the child language's
+own embedded query. The child ranges land in the same output slice as the parent's, already
 de-overlapped.
 
-One honest asterisk: the Markdown fence registration lives behind `//go:build !grammar_subset`.
-If you compile with the `grammar_subset` build tag (the reduced-registry build), no injection
-spec is registered and Markdown highlights as plain Markdown — fences included, un-nested.
+One honest asterisk: the Markdown fence registration lives behind `//go:build !grammar_subset`. If
+you compile with the `grammar_subset` build tag (the reduced-registry build), no injection spec is
+registered and Markdown highlights as plain Markdown — fences included, un-nested.
 
 You can register your own spec for any parent language, process-wide:
 
@@ -174,15 +173,15 @@ gts.RegisterHighlighterInjection("mytemplate", gts.HighlighterInjectionSpec{
 ```
 
 The spec's query must capture the embedded region as `@injection.content`, and name the child
-language either dynamically (an `@injection.language` capture whose text is the language hint)
-or statically (`#set! injection.language "sql"` in the pattern). An optional
-`@injection.start` capture marks where content actually begins. Registration is global — it
-applies to every `Highlighter` subsequently constructed for that parent language — and a spec
-whose query doesn't compile against the parent grammar surfaces as an error from
-`NewHighlighter`, not a silent no-op.
+language either dynamically (an `@injection.language` capture whose text is the language hint) or
+statically (`#set! injection.language "sql"` in the pattern). An optional `@injection.start`
+capture marks where content actually begins. Registration is global — it applies to every
+`Highlighter` subsequently constructed for that parent language — and a spec whose query does not
+compile against the parent grammar surfaces as an error from `NewHighlighter`, not a silent
+no-op.
 
-This mechanism handles the highlighter's own nesting needs. If you need the actual *parse
-trees* of embedded regions — not just styled ranges — that's the injection parser's job; see
+This mechanism handles the highlighter's own nesting needs. If you need the actual *parse trees*
+of embedded regions, not just styled ranges, that is the injection parser's job — see
 [Language Injection](/docs/language-injection).
 
 ## Compile-checked example
@@ -214,15 +213,15 @@ func main() {
 }
 ```
 
-The output includes Markdown's own captures for the heading and fence punctuation, and — from
-the injected Go highlighter — a `keyword` range over `for`, exactly as if the fence body had
-been highlighted as a standalone Go file.
+The output includes Markdown's own captures for the heading and fence punctuation, and — from the
+injected Go highlighter — a `keyword` range over `for`, exactly as if the fence body had been
+highlighted as a standalone Go file.
 
 ## Next steps
 
 - [Code Navigation](/docs/code-navigation) — the `Tagger`, this API's symbol-extraction
   sibling: definitions and references instead of styled ranges.
-- [Language Injection](/docs/language-injection) — full parse trees for embedded languages,
+- [Language Injection](/docs/language-injection) — full syntax trees for embedded languages,
   not just nested highlight ranges.
 - [Incremental Parsing](/docs/incremental-parsing) — the `InputEdit` contract
   `HighlightIncremental` builds on.

@@ -7,14 +7,14 @@ order: 1
 
 [Getting Started](/docs/getting-started) shows the shortest path to a language: call
 `grammars.GoLanguage()`, hand it to `gts.NewParser`, and parse. This page is the deep reference
-behind that call — the registry those `XLanguage()` functions live in, what a `*gotreesitter.Language`
-actually is, how to load one you didn't compile in, and the full list of the 206 grammars gotreesitter
-ships.
+behind that call — the registry those `XLanguage()` functions live in, what a
+`*gotreesitter.Language` actually is, how to load one you did not compile in, and the full list of
+the 206 grammars gotreesitter ships.
 
 ## Loading a built-in language
 
-Every embedded grammar has a matching `XLanguage() *gotreesitter.Language` function in the `grammars`
-package — `GoLanguage()`, `PythonLanguage()`, `RustLanguage()`, and so on for all 206:
+Every embedded grammar has a matching `XLanguage() *gotreesitter.Language` function in the
+`grammars` package — `GoLanguage()`, `PythonLanguage()`, `RustLanguage()`, and so on for all 206:
 
 ```go
 import (
@@ -32,19 +32,20 @@ if err != nil {
 fmt.Println(tree.RootNode().Type(lang)) // "source_file"
 ```
 
-The function name doesn't always spell the grammar name literally: the `c_sharp` grammar's loader
-is `CSharpLanguage()`, Go naming over a literal mirror. Unsure of the exact identifier? Don't
-guess — resolve a `LangEntry` from the registry (next section) and call its `Language` field
-instead of hardcoding a function name.
+The function name does not always spell the grammar name literally: the `c_sharp` grammar's
+loader is `CSharpLanguage()`, following Go naming instead of a literal mirror. If you are not sure
+of the exact identifier, do not guess — resolve a `LangEntry` from the registry (next section) and
+call its `Language` field instead of hardcoding a function name.
 
-Each `XLanguage()` call is cheap after the first: the blob is decompressed once and cached, so
-calling `grammars.GoLanguage()` from multiple goroutines or in a loop doesn't repeat the work.
+Each `XLanguage()` call is cheap after the first: the loader decompresses the blob once and caches
+it, so calling `grammars.GoLanguage()` from multiple goroutines or in a loop does not repeat the
+work.
 
 ## The registry: `LangEntry` and `AllLanguages`
 
 The `grammars` package keeps every built-in grammar in an internal registry, exposed read-only
 through `grammars.AllLanguages() []LangEntry`. Calling it is metadata-only — it does **not**
-decompress any blob or build any parse table, so it's safe to call on every request, not just at
+decompress any blob or build any parse table, so it is safe to call on every request, not just at
 startup:
 
 ```go
@@ -72,16 +73,16 @@ for _, e := range entries {
 | `Quality` | `ParseQuality` | Reserved for a `full` / `partial` / `none` classification. Every registered entry has it unset (`""`) today — nothing populates it yet, despite the field's doc comment. For a real classification, call `grammars.AuditParseSupport()` instead. |
 
 `AuditParseSupport() []ParseSupport` answers *how* a language will actually parse — DFA lexer,
-hand-written token source, or blocked on a missing external scanner — not just that it's
-registered. It loads each grammar (so, unlike `AllLanguages`, it isn't free) and reports a
+hand-written token source, or blocked on a missing external scanner — not just that it is
+registered. It loads each grammar (so, unlike `AllLanguages`, it is not free) and reports a
 `Backend` (`dfa`, `dfa-partial`, `token_source`, `unsupported`) plus a `Reason` for each.
 
 ## Finding a language for a file
 
 `DetectLanguage(filename) *LangEntry` — covered in [Getting Started](/docs/getting-started) — is
-the one you'll use most: exact filename first (`Dockerfile`, `.bashrc`), then registered
-extensions longest-suffix-first, then a large table of extended extensions. Three more functions
-round out the toolkit for the cases `DetectLanguage` doesn't cover:
+the function you will use most: it checks exact filenames first (`Dockerfile`, `.bashrc`), then
+registered extensions longest-suffix-first, then a large table of extended extensions. Three more
+functions round out the toolkit for cases `DetectLanguage` does not cover:
 
 ```go
 entry := grammars.DetectLanguageByName("golang")           // linguist alias -> "go"
@@ -91,14 +92,14 @@ name  := grammars.DisplayName(entry)                        // "Go" / "Python", 
 
 `DetectLanguageByName` accepts linguist's canonical names and common aliases — `"C++"`, `"cpp"`,
 `"Go"`, `"golang"`, `"F#"`, `"fsharp"` all resolve — as well as any of gotreesitter's own grammar
-names, and (for extensions registered via `RegisterExtension`) their markdown fence aliases.
-`DisplayName` is the inverse direction for UI: the human title for a grammar name, falling back to
-title-casing the name itself when there's no curated entry.
+names, and (for extensions registered through `RegisterExtension`) their markdown fence aliases.
+`DisplayName` runs the inverse direction for UI: it returns the human title for a grammar name,
+falling back to title-casing the name itself when no curated entry exists.
 
 ## Loading a language dynamically
 
-Everything above assumes the grammar you want is already compiled into your binary. When it
-isn't — you're building a plugin system, serving grammars to WASM on demand, or shipping a grammar
+Everything above assumes the grammar you want is already compiled into your binary. When it is
+not — you are building a plugin system, serving grammars to WASM on demand, or shipping a grammar
 your own module generated — load a blob at runtime instead:
 
 ```go
@@ -111,20 +112,20 @@ tree, err := gts.NewParser(lang).Parse([]byte("x = 1\n"))
 ```
 
 `grammars.BlobByName(name string) []byte` returns the same compressed bytes the registry decodes
-internally — useful for shipping a grammar to a browser-side WASM module or another process, since
-every built-in today is blob-backed (`ts2go_blob` or `grammargen_blob`; no built-in is the no-blob
-`grammargen` source).
+internally. This is useful for shipping a grammar to a browser-side WASM module or another
+process, since every built-in today is blob-backed (`ts2go_blob` or `grammargen_blob`; no
+built-in uses the no-blob `grammargen` source).
 
 There are two `LoadLanguage` functions, and the difference matters:
 
-- **`gotreesitter.LoadLanguage(data []byte) (*Language, error)`** (root package) just deserializes
-  the blob — the only function needed to load a pre-compiled grammar with no other dependency, no
-  `grammargen` import, no registry.
-- **`grammars.LoadLanguage(name string, data []byte) (*gotreesitter.Language, error)`** does the
-  same deserialization, then attaches any external scanner and external-lex-state table registered
-  under `name`. Use this one whenever the language has an external scanner — see
-  [External Scanners](/docs/external-scanners) — or you'll get a `Language` that silently can't
-  recognize its context-sensitive tokens.
+- **`gotreesitter.LoadLanguage(data []byte) (*Language, error)`** (root package) only
+  deserializes the blob. It is the only function you need to load a pre-compiled grammar, with no
+  other dependency, no `grammargen` import, and no registry.
+- **`grammars.LoadLanguage(name string, data []byte) (*gotreesitter.Language, error)`** runs the
+  same deserialization, then attaches any external scanner and external-lex-state table
+  registered under `name`. Use this one whenever the language has an external scanner — see
+  [External Scanners](/docs/external-scanners) — or you will get a `Language` that silently
+  cannot recognize its context-sensitive tokens.
 
 Both run the same post-load repair pass (`InferGeneratedRepeatAuxMetadata`); only the `grammars`
 loader also attaches scanners. Pick one door and load through it consistently.
@@ -134,32 +135,33 @@ first place — is the subject of [Authoring Languages](/docs/authoring-language
 
 ## Why `Type`, `SExpr`, and field lookups take a `*Language`
 
-[Syntax Trees and Nodes](/docs/syntax-trees-and-nodes) covers the `Node` API in full; the short
-version of *why* four of its methods — `Type(lang)`, `SExpr(lang)`, `ChildByFieldName(name, lang)`,
-`FieldNameForChild(i, lang)` — need a language argument is a registry detail worth knowing here.
+[Syntax Trees and Nodes](/docs/syntax-trees-and-nodes) covers the `Node` API in full. Here is the
+short version of *why* four of its methods — `Type(lang)`, `SExpr(lang)`,
+`ChildByFieldName(name, lang)`, `FieldNameForChild(i, lang)` — need a language argument, a
+registry detail worth knowing here.
 
 A `Node` never stores its type or field names as strings. It stores a `Symbol` — a `uint16` — and,
 per child, a `FieldID`, also a `uint16`. The strings live once, in the `*Language` that produced
 them: `Language.SymbolNames []string` and `Language.FieldNames []string`, indexed by those IDs.
-`Type(lang)` is exactly `lang.SymbolNames[node.Symbol()]`, unescaped for display. This isn't an
-arbitrary API choice: `Node` is a fixed 104-byte struct with a size ratchet enforced by a test
-(`TestNodeLayoutSizeBudget` in `tree_test.go`), and a syntax tree can hold millions of nodes — an
-8-byte `*Language` pointer on every single one would be pure overhead for information the tree
+`Type(lang)` resolves to exactly `lang.SymbolNames[node.Symbol()]`, unescaped for display. This is
+not an arbitrary API choice: `Node` is a fixed 104-byte struct with a size ratchet enforced by a
+test (`TestNodeLayoutSizeBudget` in `tree_test.go`), and a syntax tree can hold millions of nodes.
+An 8-byte `*Language` pointer on every single one would be pure overhead for information the tree
 already carries once, on `Tree.Language()`. The header has fallen from 152 bytes through several
 memory releases, but millions of pointer-rich Go nodes still cost more than C's compact subtrees;
 the [Performance](/docs/performance) page records the current memory receipts.
 
 In practice you rarely thread `lang` by hand past the initial parse: `tree.Language()` returns the
 same `*Language` the tree was parsed with, so `root.Type(tree.Language())` works from any node
-descended from that tree without keeping your own reference around.
+descended from that tree, with no need to keep your own reference around.
 
 ## Recovery election isn't a `LangEntry` field — check the `Language`
 
 [Recovery and Correctness](/docs/recovery-and-correctness) covers gotreesitter's C-faithful
-recovery election model in full: a language only gets the byte-exact recovery path once it's both
-capability-checked and explicitly certified. That status is **not** exposed on `LangEntry` — there
-is no `Elected bool` you can read off `AllLanguages()`. It lives on the loaded `*Language` itself,
-as `CRecoveryCostCompetitionCapable` and `CRecoveryCostCompetitionEnabledByDefault`:
+recovery election model in full: a language only gets the byte-exact recovery path once it is
+both capability-checked and explicitly certified. That status is **not** exposed on `LangEntry` —
+there is no `Elected bool` you can read off `AllLanguages()`. It lives on the loaded `*Language`
+itself, as `CRecoveryCostCompetitionCapable` and `CRecoveryCostCompetitionEnabledByDefault`:
 
 ```go
 entry := grammars.DetectLanguageByName("rust")
@@ -167,16 +169,16 @@ lang := entry.Language()
 fmt.Println(lang.CRecoveryCostCompetitionEnabledByDefault) // true: rust is elected
 ```
 
-Querying this across every registered language (`entry.Language().CRecoveryCostCompetitionEnabledByDefault`
-for each of the 206) is how this page's own catalog numbers below were checked: **124 of 206**
+Checking this across every registered language (`entry.Language().CRecoveryCostCompetitionEnabledByDefault`
+for each of the 206) is how this page's own catalog numbers below were verified: **124 of 206**
 languages are certified today, matching the project's public "\~124 elected" figure exactly. The
 other 82 use the resync recovery path described on the Recovery and Correctness page — safe and
 non-hanging, just not certified byte-identical to C on damaged input.
 
 ## The full catalog
 
-Generated by calling `grammars.AllLanguages()` and printing every `Name`, sorted — not hand-typed,
-so it stays honest as the set grows. The scan behind it:
+This list comes from calling `grammars.AllLanguages()` and printing every `Name`, sorted — not
+hand-typed, so it stays honest as the set grows. Here is the scan behind it:
 
 | | |
 |---|---|
@@ -225,10 +227,11 @@ crystal            fish               jq                 org                squi
 css                foam               jsdoc              pascal             ssh_config
 ```
 
-That's grammar *names* — the registry key and the argument to `DetectLanguageByName`. Several map
-to more than one extension (`javascript` covers `.js`, `.mjs`, `.cjs`); a few read differently from
-the file type's common name (`c_sharp` for `.cs`, `embedded_template` for ERB). When in doubt,
-resolve by filename with `DetectLanguage` instead of guessing the registry name from the extension.
+That list holds grammar *names* — the registry key and the argument to `DetectLanguageByName`.
+Several map to more than one extension (`javascript` covers `.js`, `.mjs`, `.cjs`); a few read
+differently from the file type's common name (`c_sharp` for `.cs`, `embedded_template` for ERB).
+When in doubt, resolve by filename with `DetectLanguage` instead of guessing the registry name
+from the extension.
 
 ## Next steps
 
