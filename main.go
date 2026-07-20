@@ -47,6 +47,13 @@ func main() {
 			gosx.Attr("type", "image/svg+xml"),
 			gosx.Attr("href", docsapp.PublicAssetURL("favicon.svg")),
 		)))
+		// Cloudflare Web Analytics (RUM) — cookieless, privacy-friendly beacon.
+		// Loaded from the site head; the module script defers automatically.
+		ctx.AddHead(gosx.El("script", gosx.Attrs(
+			gosx.Attr("type", "module"),
+			gosx.Attr("src", "https://static.cloudflareinsights.com/beacon.min.js"),
+			gosx.Attr("data-cf-beacon", `{"token": "0282fc84c88d4a37820b398987f22b2d"}`),
+		)))
 		return server.HTMLDocument(ctx.Title("GoTreeSitter Docs"), ctx.Head(), body)
 	})
 
