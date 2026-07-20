@@ -11,11 +11,10 @@ as a fork.
 
 Historical context, because it shaped this document: a downstream project (pawnkit, a Pawn
 toolchain) once forked this repo and renamed the module just to add one line to a then-unexported
-language-name switch that controlled the GLR forest fast path. That gap was closed in v0.20.8
-(#134): forest opt-in is now a public `Language.WantsForest` field, a
-`grammargen.Grammar.WantsForest` flag, and a declarative `"gotreesitter"` object in `grammar.json`.
-Everything in this document works from your own module against an unmodified
-`github.com/odvcencio/gotreesitter`.
+language-name switch that controlled the GLR forest fast path. That gap closed in v0.20.8 (#134):
+forest opt-in is now a public `Language.WantsForest` field, a `grammargen.Grammar.WantsForest`
+flag, and a declarative `"gotreesitter"` object in `grammar.json`. Everything in this document
+works from your own module against an unmodified `github.com/odvcencio/gotreesitter`.
 
 The in-tree workflow (the project README's "Adding a language" section) is for grammars that join
 the [206-grammar catalog](/docs/languages) shipped inside this repo. You do not need it for a
@@ -38,7 +37,7 @@ grammar.json ──ImportGrammarJSON──▶ *grammargen.Grammar (IR)
                                               taproot.ParseFromBlob
 ```
 
-The relevant functions, all public:
+The relevant functions are all public:
 
 | Function | Where | Purpose |
 |---|---|---|
@@ -59,8 +58,8 @@ The relevant functions, all public:
 `grammar.js` — is the canonical input; it has no `require()` calls or helper functions to
 interpret.
 
-Writing a good `grammar.js` in the first place — rule design, precedence strategy, what belongs
-in `extras` — is upstream tree-sitter's craft, and their docs own it:
+Writing a good `grammar.js` in the first place — rule design, precedence strategy, and what
+belongs in `extras` — is upstream tree-sitter's craft, and their docs own it:
 [the grammar DSL](https://tree-sitter.github.io/tree-sitter/creating-parsers/2-the-grammar-dsl.html)
 and [writing the grammar](https://tree-sitter.github.io/tree-sitter/creating-parsers/3-writing-the-grammar.html).
 This page documents the gotreesitter pipeline that consumes the result.
@@ -123,7 +122,7 @@ func Grammar() *grammargen.Grammar {
 
 ## Step 2 — generate and parse
 
-A complete program: compile the grammar, write the blob, parse a sample.
+Here is a complete program: it compiles the grammar, writes the blob, and parses a sample.
 
 ```go
 package main
@@ -165,8 +164,8 @@ func main() {
 }
 ```
 
-Generation for a small grammar is milliseconds; for large imported grammars it can be seconds to
-minutes (see "Known limits" below). That's why you generate the blob once, at build time, and ship
+Generation for a small grammar takes milliseconds; for large imported grammars it can take
+seconds to minutes (see "Known limits" below). Generate the blob once, at build time, and ship
 the blob.
 
 The same generation is available from the CLI, including a `grammar.json` front-end and an
@@ -189,7 +188,7 @@ go run ./cmd/grammargen doctor -json src/grammar.json -sample testdata/example.k
 
 Three doors, cheapest first.
 
-**Registry-free, grammargen-free** (recommended for DSL tools) — only the runtime is linked, not
+**Registry-free, grammargen-free** (recommended for DSL tools) — this links only the runtime, not
 the 206-grammar registry:
 
 ```go
@@ -200,7 +199,7 @@ lang, err := gts.LoadLanguage(kvconfBlob) // load_language.go
 tree, err := gts.NewParser(lang).Parse(src)
 ```
 
-Or with `taproot/walk`, which adds caching and a CST walker but still no registry:
+Or use `taproot/walk`, which adds caching and a CST walker but still needs no registry:
 
 ```go
 root, w, err := walk.ParseFromBlob("kvconf", kvconfBlob, src)
@@ -228,7 +227,7 @@ functions on the [Languages](/docs/languages) page.
 ## Distributing a language as its own Go module
 
 This is the pawnkit counterfactual: what the fork should have been — a small module that depends
-on gotreesitter and registers itself. Module layout:
+on gotreesitter and registers itself. Here is the module layout:
 
 ```
 github.com/pawnkit/gotreesitter-pawn/
@@ -295,7 +294,7 @@ func init() {
 
 After `import _ "github.com/pawnkit/gotreesitter-pawn"`, everything the registry powers works:
 `grammars.DetectLanguage("gamemodes/x.pwn")`, `grammars.DetectLanguageByName("pawn")`, markdown
-fence highlighting via the aliases, `grammars.AllLanguages()` listing.
+fence highlighting through the aliases, and `grammars.AllLanguages()` listing.
 
 Semantics worth knowing (all from `grammars/registry.go`, and covered in more depth on
 [Languages](/docs/languages)):
@@ -310,8 +309,8 @@ Semantics worth knowing (all from `grammars/registry.go`, and covered in more de
   need those, call `grammars.Register` directly with a full `grammars.LangEntry` — all of those
   are public fields, including `TokenSourceFactory func(src []byte, lang *gotreesitter.Language)
   gotreesitter.TokenSource` for hand-written token sources.
-- **Runtime language gating.** If the process sets `GOTREESITTER_GRAMMAR_SET` (comma-separated
-  allow-list; empty/unset = allow all, see `grammars/language_set_runtime.go`), `Register`
+- **Runtime language gating.** If the process sets `GOTREESITTER_GRAMMAR_SET` (a comma-separated
+  allow-list; empty/unset means allow all — see `grammars/language_set_runtime.go`), `Register`
   silently drops languages not in the set. If your language can be deployed into environments that
   use this variable, document that users must include your name. The `grammar_set_core` build tag
   applies a compile-time allow-list the same way.
@@ -331,41 +330,42 @@ tooling ignores:
 
 `ImportGrammarJSON` copies `wantsForest` into `grammargen.Grammar.WantsForest`; generation copies
 it into `gotreesitter.Language.WantsForest`; the field is gob-serialized, so it survives the blob
-round trip. `ExportGrammarJSON` writes the object back only when set, so standard grammars' JSON is
-unchanged. Equivalently in code: set `g.WantsForest = true` on the IR, or `lang.WantsForest = true`
-on a loaded Language. `ExtendGrammar` inherits the flag from its base.
+round trip. `ExportGrammarJSON` writes the object back only when set, so standard grammars' JSON
+stays unchanged. Equivalently in code: set `g.WantsForest = true` on the IR, or
+`lang.WantsForest = true` on a loaded Language. `ExtendGrammar` inherits the flag from its base.
 
 **What it does.** `WantsForest` opts the language into the GSS-forest GLR fast path
 (`glr_forest.go`): a graph-structured-stack parse that coalesces equivalent stack tops instead of
 forking full stacks. Built-in languages get this through a curated, byte-parity-certified default
-map (`builtinForestDefaults`); your language cannot be in that map without a PR — `WantsForest` is
+map (`builtinForestDefaults`); your language cannot join that map without a PR — `WantsForest` is
 the supported alternative.
 
-**When to enable it.** Ambiguity-heavy grammars: many declared `conflicts`, heavy GLR forking, deep
-expression nesting where production GLR blows up on stack-equivalence checks (bash was the
-motivating case). For a mostly deterministic LR grammar it buys little.
+**When to enable it.** Enable it for ambiguity-heavy grammars: many declared `conflicts`, heavy
+GLR forking, and deep expression nesting where the production GLR blows up on
+stack-equivalence checks (bash was the motivating case). For a mostly deterministic LR grammar it
+buys little.
 
-**Risk profile, honestly.** The forest path declines (falls back to the production parser) on any
-failure or truncation, so you cannot get a hard failure from enabling it. What you can get is a
-*clean but different* tree on ambiguous inputs, because your grammar bypasses the byte-range parity
-certification built-ins undergo — that trade is explicitly yours (see the `Language.WantsForest`
-doc comment in `language.go`). Error-bearing inputs decline to the production parser unless the
-language is in the internal forest-recovery list, which is name-keyed and not consumer-extensible
-today. `GOT_GLR_FOREST=0` disables the forest globally at runtime; `gotreesitter.SetGLRForestEnabled`
-toggles it in tests.
+**Risk profile, stated honestly.** The forest path declines (falls back to the production parser)
+on any failure or truncation, so you cannot get a hard failure from enabling it. What you can get
+is a *clean but different* tree on ambiguous inputs, because your grammar bypasses the
+byte-range parity certification built-ins undergo — that trade is explicitly yours (see the
+`Language.WantsForest` doc comment in `language.go`). Error-bearing inputs decline to the
+production parser unless the language is in the internal forest-recovery list, which is
+name-keyed and not consumer-extensible today. `GOT_GLR_FOREST=0` disables the forest globally at
+runtime; `gotreesitter.SetGLRForestEnabled` toggles it in tests.
 
-Verify before shipping: parse your corpus twice, `WantsForest` on and off, and diff the
-S-expressions.
+Verify before shipping: parse your corpus twice, once with `WantsForest` on and once off, and
+diff the S-expressions.
 
 ## External scanners
 
 If your grammar has an `externals` array, the generated Language carries `ExternalSymbols` and a
-precise `ExternalLexStates` validity table automatically, but token recognition itself needs a Go
-implementation of the `gotreesitter.ExternalScanner` interface attached to
-`Language.ExternalScanner` (both public). Without one, external tokens are only synthesized in a
+precise `ExternalLexStates` validity table automatically. Token recognition itself still needs a
+Go implementation of the `gotreesitter.ExternalScanner` interface attached to
+`Language.ExternalScanner` (both public). Without one, external tokens are synthesized only in a
 narrow automatic-semicolon-style fallback, and parse quality is "partial" at best (`ParseQuality`
-on [Languages](/docs/languages)). When to write one, and how: see
-[External Scanners](/docs/external-scanners).
+on [Languages](/docs/languages)). See [External Scanners](/docs/external-scanners) for when to
+write one and how.
 
 ## What still requires an upstream PR
 
@@ -378,12 +378,13 @@ For the core flow — compile, load, register, parse, forest opt-in, external sc
   (`registerTokenSourceFactory` in `grammars/token_source_factory_registry.go`) is unexported. Out
   of tree, set `LangEntry.TokenSourceFactory` on your own `grammars.Register` entry and call
   `Parser.ParseWithTokenSource(src, entry.TokenSourceFactory(src, lang))` — the same mechanism the
-  repo's own tools use (e.g. `grep/compile.go`).
+  repo's own tools use (for example `grep/compile.go`).
 - **Import shape hints.** `applyImportGrammarShapeHints` in `grammargen/import_grammarjson.go`
   switches on the grammar *name* to apply per-language generation hints (`BinaryRepeatMode`,
-  `ExactPrefixStates`, etc.). The good news: every one of those hints is also a public field on
-  `grammargen.Grammar`, so you can set them yourself after `ImportGrammarJSON` returns. A PR is
-  only needed to make a hint automatic for everyone importing your grammar by name.
+  `ExactPrefixStates`, and similar settings). The good news: every one of those hints is also a
+  public field on `grammargen.Grammar`, so you can set them yourself after `ImportGrammarJSON`
+  returns. A PR is needed only to make a hint automatic for everyone importing your grammar by
+  name.
 - **Forest error-recovery default.** `languageWantsForestRecover` (`glr_forest.go`) is a name
   switch over byte-verified built-ins.
 - **C-recovery parity certification defaults.**
@@ -396,44 +397,45 @@ For the core flow — compile, load, register, parse, forest opt-in, external sc
 Verified against `grammargen/lr.go` and `grammargen/assemble.go`:
 
 - **Runtime state IDs are `uint32`.** `StateID` was widened from `uint16` specifically for large
-  grammars (COBOL generates \~67k states). The only hard cap on state count is `uint32` max
-  (`lr.go`, "Cap at uint32 max").
+  grammars (COBOL generates about 67,000 states). The only hard cap on state count is `uint32`
+  max (`lr.go`, "Cap at uint32 max").
 - **The precise external-scanner LR(1) builder has a 20,000-state budget**
   (`preciseStateBudget`, override with `GOT_LR_PRECISE_EXTERNAL_STATE_BUDGET`). Exceeding it — or
   exceeding 65,535 item sets on that path — is *not* an error: generation transparently rebuilds
   with the DeRemer/Pennello LALR pipeline. You lose LR(1) precision (possible parse differences in
   scanner-adjacent states), not the build. Grammars with more than 5,000 productions skip the
-  precise builder outright, as do grammars with 24+ external tokens unless
+  precise builder outright, as do grammars with 24 or more external tokens, unless
   `Grammar.PreferPreciseExternalLexStates` is set.
 - **LALR LR0 budgets are opt-in and fail hard.** `GOT_LALR_LR0_STATE_BUDGET` /
-  `GOT_LALR_LR0_CORE_BUDGET` (unset = unlimited) abort generation with `build LR tables: LALR LR0
-  state budget exceeded (...)`. Use them in CI to catch a grammar change that explodes the
+  `GOT_LALR_LR0_CORE_BUDGET` (unset means unlimited) abort generation with `build LR tables: LALR
+  LR0 state budget exceeded (...)`. Use them in CI to catch a grammar change that explodes the
   automaton, rather than discovering it as a multi-minute build.
 - **Parse-action group indexes are `uint16`, and overflow is a hard generation error.**
   `checkUint16Index` (`grammargen/assemble.go`) guards every `uint16` table slot grammargen
   writes — parse-action group indices, field-map and supertype-map offsets, reserved-word set IDs,
   external-lex-state row indices, and parse-table state IDs — and fails generation with the
   grammar name, the field, and the offending count rather than silently wrapping a value and
-  corrupting the table. Semantic deduplication in `buildParseTables` keeps even Markdown (50k+
-  productions, 78k+ raw action groups before dedup) under the 65,535 limit; if your grammar somehow
-  still exceeds it, you get an error, not a corrupt blob.
-- **No built-in generation timeout.** Pathological grammars can take a long time; wrap generation
+  corrupting the table. Semantic deduplication in `buildParseTables` keeps even Markdown (50,000+
+  productions, 78,000+ raw action groups before dedup) under the 65,535 limit; if your grammar
+  somehow still exceeds it, you get an error, not a corrupt blob.
+- **No built-in generation timeout.** Pathological grammars can take a long time. Wrap generation
   with `grammargen.GenerateLanguageAndBlobWithContext(ctx, g)` and a deadline.
 
-Scale reality check: pawnkit's real tree-sitter-pawn parser is 6,818 states, 333 symbols, 128
-tokens, 5 external tokens — comfortably inside every budget above. You need a COBOL-class grammar
-before state budgets are your problem.
+Scale reality check: pawnkit's real tree-sitter-pawn parser has 6,818 states, 333 symbols, 128
+tokens, and 5 external tokens — comfortably inside every budget above. You need a COBOL-class
+grammar before state budgets become your problem.
 
 ## Blob provenance discipline
 
-Hard-learned; treat as policy.
+This is hard-learned; treat it as policy.
 
-- A blob is `gob`+`gzip` of the `Language` struct. Gob tolerates field drift silently: fields added
-  since the blob was written decode as zero values, removed fields are skipped. A stale blob
-  usually still *loads* — and then misparses or loses features (a pre-0.20.8 blob has
-  `WantsForest == false` forever; older blobs lack `ZeroWidthTokens`, `ConflictPolicies`, ...).
-  `Language.CompatibleWithRuntime()` only checks the tree-sitter ABI version (`LanguageVersion`, 0
-  = unknown = compatible); it does **not** detect engine/blob skew.
+- A blob is `gob`+`gzip` of the `Language` struct. Gob tolerates field drift silently: fields
+  added since the blob was written decode as zero values, and removed fields are skipped. A
+  stale blob usually still *loads* — and then misparses or loses features (a pre-0.20.8 blob has
+  `WantsForest == false` forever; older blobs lack `ZeroWidthTokens`, `ConflictPolicies`, and
+  other later fields). `Language.CompatibleWithRuntime()` only checks the tree-sitter ABI version
+  (`LanguageVersion`, where 0 means unknown and compatible); it does **not** detect engine/blob
+  skew.
 - Therefore: **blobs are not portable across engine vintages. Regenerate the blob from
   `grammar.json` with the exact gotreesitter module version your binary links.** Check in the
   `grammar.json` next to the blob, and make regeneration a one-command script:
@@ -451,17 +453,17 @@ Hard-learned; treat as policy.
 
 ## Known gaps
 
-An honest, current list of what an out-of-tree author still cannot do cleanly — kept short on
-purpose; items get removed from here the day they're fixed, not left as stale history.
+This is an honest, current list of what an out-of-tree author still cannot do cleanly. It stays
+short on purpose; items get removed the day they are fixed, not left as stale history.
 
-1. **No scanner-skeleton generation.** `grammargen` knows the externals list but there is no `emit
-   -scanner-skeleton` producing a Go `ExternalScanner` stub with the token-index constants and
-   symbol resolution boilerplate described on [External Scanners](/docs/external-scanners). Every
-   author hand-writes the same 60 lines.
+1. **No scanner-skeleton generation.** `grammargen` knows the externals list, but there is no
+   `emit -scanner-skeleton` command to produce a Go `ExternalScanner` stub with the token-index
+   constants and symbol resolution boilerplate described on
+   [External Scanners](/docs/external-scanners). Every author hand-writes the same 60 lines.
 2. **`TokenSource`-by-name registry is unexported**
-   (`grammars/token_source_factory_registry.go`). Workaround documented above
-   (`LangEntry.TokenSourceFactory`); exporting a `RegisterTokenSourceFactory` would remove the need
-   to re-`Register` the whole entry.
+   (`grammars/token_source_factory_registry.go`). The workaround is documented above
+   (`LangEntry.TokenSourceFactory`); exporting a `RegisterTokenSourceFactory` function would
+   remove the need to re-`Register` the whole entry.
 3. **Forest error recovery is name-keyed** (`languageWantsForestRecover`), so a `WantsForest`
    consumer with error-bearing inputs always pays the decline-to-production round trip; no public
    opt-in exists (only the global experimental `GOT_GLR_FOREST_RECOVER=1`).

@@ -5,9 +5,16 @@ nav_group: Using the Parser
 order: 3
 ---
 
-A query is a set of S-expression patterns matched against a parsed tree. Queries answer questions like "every exported function," "every string literal inside a loop," or "every import statement" without a hand-written tree walk. The same engine backs gotreesitter's [syntax highlighter](/docs/syntax-highlighting), [symbol tagger](/docs/code-navigation), and [multi-language injection parser](/docs/language-injection) — all three compile a query and run it against your tree; this page covers the query language and the `Query`/`QueryCursor` API directly.
+A query is a set of S-expression patterns matched against a parsed tree. Queries answer questions
+like "every exported function," "every string literal inside a loop," or "every import statement"
+without a hand-written tree walk. The same engine backs gotreesitter's
+[syntax highlighter](/docs/syntax-highlighting), [symbol tagger](/docs/code-navigation), and
+[multi-language injection parser](/docs/language-injection) — all three compile a query and run it
+against your tree. This page covers the query language and the `Query`/`QueryCursor` API
+directly.
 
-This page assumes you already have a `*gotreesitter.Tree` — see [Syntax Trees and Nodes](/docs/syntax-trees-and-nodes) if you need that first.
+This page assumes you already have a `*gotreesitter.Tree` — see
+[Syntax Trees and Nodes](/docs/syntax-trees-and-nodes) if you need that first.
 
 ## Quick start
 
@@ -42,7 +49,10 @@ for {
 ```
 
 > [!TIP] Compile-time safety
-> `gts.NewQuery(source string, lang *gts.Language) (*gts.Query, error)` compiles a query against a specific language, resolving every node type and field name up front — a query written for the wrong grammar fails at compile time (`query: unknown node type "foo"`), not silently at match time. A compiled `*Query` is safe to reuse and to share across goroutines.
+> `gts.NewQuery(source string, lang *gts.Language) (*gts.Query, error)` compiles a query against
+> a specific language and resolves every node type and field name up front. A query written for
+> the wrong grammar fails at compile time (`query: unknown node type "foo"`), not silently at
+> match time. A compiled `*Query` is safe to reuse and to share across goroutines.
 
 ## The pattern language
 
@@ -55,13 +65,21 @@ A pattern is a parenthesized S-expression rooted at a node type:
   body: (block) @body) @func
 ```
 
-**Captures** — `@name` — label a node (or a whole subtree) so you can read it back from `match.Captures`. A pattern can carry any number of captures at any depth, including one on the outermost node (`@func` above).
+**Captures** — `@name` — label a node (or a whole subtree) so you can read it back from
+`match.Captures`. A pattern can carry any number of captures at any depth, including one on the
+outermost node (`@func` above).
 
-**Field constraints** — `field: (pattern)` — require the child to sit in a specific grammar field, not just anywhere among the node's children. This is how the example above pins `@name` to the function's name rather than, say, a parameter that happens to also be an identifier.
+**Field constraints** — `field: (pattern)` — require the child to sit in a specific grammar
+field, not just anywhere among the node's children. This is how the example above pins `@name` to
+the function's name rather than, say, a parameter that happens to also be an identifier.
 
-**Negated fields** — `!field` — require a field to be *absent*. `(function_declaration !result name: (identifier) @name)` matches only functions with no declared return value.
+**Negated fields** — `!field` — require a field to be *absent*.
+`(function_declaration !result name: (identifier) @name)` matches only functions with no declared
+return value.
 
-**Wildcards** — `_` matches any node at all, named or anonymous (keywords, punctuation included). `(_)` — parenthesized — matches any *named* node only. This distinction is real and load-bearing:
+**Wildcards** — `_` matches any node at all, named or anonymous (keywords and punctuation
+included). `(_)` — parenthesized — matches any *named* node only. This distinction is real and
+load-bearing:
 
 ```go
 // (function_declaration _ @child)   -> captures "func", the name, the
@@ -72,7 +90,10 @@ A pattern is a parenthesized S-expression rooted at a node type:
 //                                       are excluded.
 ```
 
-**Anchors** — `.` — require adjacency with no intervening (named) sibling. `.` before the first child pattern anchors it to the parent's first named child; `.` after the last one anchors it to the last; `.` between two sibling patterns requires them to be immediately adjacent, with the matcher backtracking across earlier siblings to find a pair that satisfies it.
+**Anchors** — `.` — require adjacency with no intervening (named) sibling. A `.` before the first
+child pattern anchors it to the parent's first named child; a `.` after the last one anchors it to
+the last; a `.` between two sibling patterns requires them to be immediately adjacent, and the
+matcher backtracks across earlier siblings to find a pair that satisfies it.
 
 ```go
 // On "func F(a int, b string, c bool) {}":
@@ -87,7 +108,12 @@ q, _ = gts.NewQuery(`(parameter_list
 // -> 2 matches: ("a int", "b string") and ("b string", "c bool").
 ```
 
-**Quantifiers** — `?`, `*`, `+` — suffix a pattern to make it optional, zero-or-more, or one-or-more. `?` is straightforward: the capture is simply missing from the match when the optional node isn't there. `*`/`+` on a *child* pattern are more specific than they look: they collect one **contiguous run** of matching siblings into a single match, stopping at the first sibling that doesn't match — which includes punctuation. Two adjacent comment nodes are a contiguous run and both land in one match:
+**Quantifiers** — `?`, `*`, `+` — suffix a pattern to make it optional, zero-or-more, or
+one-or-more. `?` is straightforward: the capture is simply absent from the match when the
+optional node is not there. `*`/`+` on a *child* pattern are more specific than they look: they
+collect one **contiguous run** of matching siblings into a single match, and stop at the first
+sibling that does not match — which includes punctuation. Two adjacent comment nodes form a
+contiguous run and both land in one match:
 
 ```go
 // source: two "//" comments directly followed by a func decl
@@ -95,21 +121,25 @@ q, _ := gts.NewQuery(`(source_file (comment)+ @doc)`, lang)
 // -> 1 match, @doc captured twice (both comments)
 ```
 
-but a comma-separated parameter list is *not* contiguous — the "," tokens between `parameter_declaration` nodes break the run:
+but a comma-separated parameter list is *not* contiguous — the "," tokens between
+`parameter_declaration` nodes break the run:
 
 ```go
 q, _ := gts.NewQuery(`(parameter_list (parameter_declaration)+ @param)`, lang)
 // on "F(a int, b string, c bool)": 1 match, @param captured once ("a int")
 ```
 
-For "capture every item in a comma/punctuation-separated list," skip the quantifier entirely and let the pattern match repeatedly on its own — an **unquantified** repeated child pattern produces one match per occurrence, which is the idiom highlight queries actually use:
+To capture every item in a comma- or punctuation-separated list, skip the quantifier entirely and
+let the pattern match repeatedly on its own. An **unquantified** repeated child pattern produces
+one match per occurrence, which is the idiom highlight queries actually use:
 
 ```go
 q, _ := gts.NewQuery(`(parameter_list (parameter_declaration) @param)`, lang)
 // on the same source: 3 separate matches, one @param capture each
 ```
 
-**Alternation** — `[...]` — matches any one of several node types (or string literals) at a position:
+**Alternation** — `[...]` — matches any one of several node types (or string literals) at a
+position:
 
 ```scheme
 [
@@ -118,21 +148,48 @@ q, _ := gts.NewQuery(`(parameter_list (parameter_declaration) @param)`, lang)
 ] @decl
 ```
 
-**String literals** — `"text"` — match an anonymous token by its exact text, e.g. `"return"` or `"+"`. Useful inside an alternation for keyword sets: `["if" "else"] @keyword`.
+**String literals** — `"text"` — match an anonymous token by its exact text, for example
+`"return"` or `"+"`. Use this inside an alternation for keyword sets: `["if" "else"] @keyword`.
 
-**Grouping** — `(pattern1 pattern2 ...)` without a leading node type groups a run of sibling patterns, mainly so a quantifier can apply to the whole group at once (`((line_comment) (line_comment))* @doc-block`).
+**Grouping** — `(pattern1 pattern2 ...)` without a leading node type groups a run of sibling
+patterns, mainly so a quantifier can apply to the whole group at once
+(`((line_comment) (line_comment))* @doc-block`).
 
-**The `ERROR` node** — `(ERROR) @err` matches the parser's error nodes: spans the parser couldn't assign to any grammar rule (the same nodes `node.IsError()` reports — see [Syntax Trees and Nodes](/docs/syntax-trees-and-nodes)). `ERROR` resolves to the real error symbol at compile time, so patterns like `(ERROR (identifier) @salvaged)` work for picking recognizable pieces out of broken regions.
+**The `ERROR` node** — `(ERROR) @err` matches the parser's error nodes: spans the parser could not
+assign to any grammar rule (the same nodes `node.IsError()` reports — see
+[Syntax Trees and Nodes](/docs/syntax-trees-and-nodes)). `ERROR` resolves to the real error symbol
+at compile time, so patterns like `(ERROR (identifier) @salvaged)` work for picking recognizable
+pieces out of broken regions.
 
-**The `MISSING` node — not supported.** Upstream's query language can match zero-width missing nodes with `(MISSING)`, `(MISSING identifier)`, or `(MISSING ";")`. gotreesitter's compiler currently accepts the `MISSING` keyword but compiles it to a plain any-node wildcard — the matcher never checks missing-ness, so `(MISSING)` silently matches everything and the child form matches the wrong shape entirely. Don't use it; find missing nodes by walking the tree and checking `node.IsMissing()` instead.
+**The `MISSING` node — not supported.** Upstream's query language can match zero-width missing
+nodes with `(MISSING)`, `(MISSING identifier)`, or `(MISSING ";")`. gotreesitter's compiler
+currently accepts the `MISSING` keyword but compiles it to a plain any-node wildcard — the matcher
+never checks missing-ness, so `(MISSING)` silently matches everything and the child form matches
+the wrong shape entirely. Do not use it; find missing nodes by walking the tree and checking
+`node.IsMissing()` instead.
 
-**Supertypes — not supported in patterns.** Upstream grammars declare supertype rules (like `expression`), and upstream queries can write `(expression)` to match any of its subtypes, or qualify one as `expression/identifier`. gotreesitter does not expand supertypes at pattern positions: `(expression)` matches only a node literally named `expression`, and a `parent/child` name silently resolves to just the rightmost segment — `expression/identifier` behaves exactly like `(identifier)`. The supertype tables do exist on the `Language` (they power ancestor-type predicates), but pattern-position matching doesn't consult them. Spell out the subtypes you want in an alternation `[...]` instead.
+**Supertypes — not supported in patterns.** Upstream grammars declare supertype rules (like
+`expression`), and upstream queries can write `(expression)` to match any of its subtypes, or
+qualify one as `expression/identifier`. gotreesitter does not expand supertypes at pattern
+positions: `(expression)` matches only a node literally named `expression`, and a `parent/child`
+name silently resolves to just the rightmost segment — `expression/identifier` behaves exactly
+like `(identifier)`. The supertype tables do exist on the `Language` (they power ancestor-type
+predicates), but pattern-position matching does not consult them. Spell out the subtypes you want
+in an alternation `[...]` instead.
 
-The pattern language is upstream tree-sitter's, and upstream's query docs are the canonical spec for it: [syntax](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html), [operators](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/2-operators.html), and [predicates and directives](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/3-predicates-and-directives.html). Where gotreesitter's engine differs — the two unsupported cases above, and predicate evaluation below — this page says so explicitly.
+The pattern language is upstream tree-sitter's, and upstream's query docs are the canonical spec
+for it: [syntax](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html),
+[operators](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/2-operators.html), and
+[predicates and directives](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/3-predicates-and-directives.html).
+Where gotreesitter's engine differs — the two unsupported cases above, and predicate evaluation
+below — this page states it explicitly.
 
 ## Predicates
 
-A predicate is a parenthesized directive following the patterns it applies to, written `(#name? args...)`. Unlike the reference C tree-sitter library — which only parses predicates and leaves evaluation to whatever binding consumes the query — gotreesitter's engine evaluates predicates itself and filters matches before they reach you.
+A predicate is a parenthesized directive following the patterns it applies to, written
+`(#name? args...)`. Unlike the reference C tree-sitter library — which only parses predicates and
+leaves evaluation to whatever binding consumes the query — gotreesitter's engine evaluates
+predicates itself and filters matches before they reach you.
 
 | Predicate | Meaning |
 |---|---|
@@ -156,13 +213,23 @@ q, _ := gts.NewQuery(`
 `, lang)
 ```
 
-Two directives are also recognized but not enforced by the matcher itself: `#set!` attaches arbitrary key/value metadata to a pattern, read back with `QueryMatch.SetValues(q, key)` (this is how gotreesitter's injection parser reads an `injection.language` directive out of a query match), and `#offset!` is parsed and stored but not applied automatically. `#select-adjacent!` and `#strip!` *are* applied: the former filters a capture list down to nodes byte-adjacent to an anchor capture, the latter rewrites a capture's returned text by stripping a regexp match (via `QueryCapture.TextOverride`, surfaced through `cap.Text(source)`).
+Two directives are also recognized but not enforced by the matcher itself: `#set!` attaches
+arbitrary key/value metadata to a pattern, read back with `QueryMatch.SetValues(q, key)` (this is
+how gotreesitter's injection parser reads an `injection.language` directive out of a query
+match), and `#offset!` is parsed and stored but not applied automatically. `#select-adjacent!` and
+`#strip!` *are* applied: the former filters a capture list down to nodes byte-adjacent to an
+anchor capture, and the latter rewrites a capture's returned text by stripping a regexp match
+(through `QueryCapture.TextOverride`, surfaced by `cap.Text(source)`).
 
 ## Running a query
 
-`Query.Execute(tree *gts.Tree) []QueryMatch` runs against a tree's root and materializes every match. `Query.ExecuteNode(node, lang, source)` starts from an arbitrary node instead of the tree root — useful for querying a single function body. `Query.ExecuteInto(tree, dst)` appends into a caller-owned slice to avoid a fresh allocation on repeated calls.
+`Query.Execute(tree *gts.Tree) []QueryMatch` runs against a tree's root and materializes every
+match. `Query.ExecuteNode(node, lang, source)` starts from an arbitrary node instead of the tree
+root — useful for querying a single function body. `Query.ExecuteInto(tree, dst)` appends into a
+caller-owned slice to avoid a fresh allocation on repeated calls.
 
-For large files or early termination, use the streaming cursor instead of materializing everything:
+For large files or early termination, use the streaming cursor instead of materializing
+everything:
 
 ```go
 cursor := q.Exec(tree.RootNode(), lang, tree.Source())
@@ -178,11 +245,20 @@ for {
 }
 ```
 
-`QueryCursor` also has `SetPointRange` (row/column window), `SetUTF16Range` (the UTF-16 equivalent, for trees produced by a UTF-16 parse), `SetMaxStartDepth`, and `NextCapture()` — a capture-at-a-time alternative to `NextMatch()` that drains the same match stream one capture at a time. A `QueryCursor` is single-use and **not** safe for concurrent use; get one per goroutine from `q.Exec(...)` (the `*Query` itself is fine to share).
+`QueryCursor` also has `SetPointRange` (row/column window), `SetUTF16Range` (the UTF-16
+equivalent, for trees produced by a UTF-16 parse), `SetMaxStartDepth`, and `NextCapture()` — a
+capture-at-a-time alternative to `NextMatch()` that drains the same match stream one capture at a
+time. A `QueryCursor` is single-use and **not** safe for concurrent use; get one per goroutine
+from `q.Exec(...)` (the `*Query` itself is fine to share).
 
-Each `QueryMatch` carries `PatternIndex` (which top-level pattern in the source matched — useful with multi-pattern queries and `q.PredicatesForPattern(idx)`) and `Captures []QueryCapture`, where each `QueryCapture` has `Name`, `Node *gts.Node`, and a `Text(source []byte) string` method that respects any `#strip!` override.
+Each `QueryMatch` carries `PatternIndex` (which top-level pattern in the source matched — useful
+with multi-pattern queries and `q.PredicatesForPattern(idx)`) and `Captures []QueryCapture`, where
+each `QueryCapture` has `Name`, `Node *gts.Node`, and a `Text(source []byte) string` method that
+respects any `#strip!` override.
 
-If you keep queries in `.scm` files, `cmd/tsquery` generates a typed Go wrapper from one (`tsquery -input FILE.scm -lang LANG -output FILE.go -package PKG`) — it is a code generator for embedding a query as compiled Go source, not a query runner.
+If you keep queries in `.scm` files, `cmd/tsquery` generates a typed Go wrapper from one
+(`tsquery -input FILE.scm -lang LANG -output FILE.go -package PKG`). Use it as a code generator
+for embedding a query as compiled Go source, not as a query runner.
 
 ## Compile-checked example
 
@@ -251,6 +327,10 @@ func main() {
 }
 ```
 
-This prints both function definitions and their names, then reports `exported funcs: 1` (only `Add` starts with an uppercase letter).
+This prints both function definitions and their names, then reports `exported funcs: 1` (only
+`Add` starts with an uppercase letter).
 
-Queries are grammar-specific by construction, but the pattern language itself is the same across all 206 grammars. Once you have a tree in hand, see [incremental parsing](/docs/incremental-parsing) for how to keep it up to date across edits instead of reparsing from scratch.
+Queries are grammar-specific by construction, but the pattern language itself stays the same
+across all 206 grammars. Once you have a tree in hand, see
+[incremental parsing](/docs/incremental-parsing) for how to keep it up to date across edits
+instead of reparsing from scratch.
