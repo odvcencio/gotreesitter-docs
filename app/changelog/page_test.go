@@ -113,6 +113,16 @@ func TestReleaseEvidenceLinksStayPinned(t *testing.T) {
 	}
 }
 
+func TestExtractReferencesLinksNumericCommit(t *testing.T) {
+	references := extractReferences("Fixed by `1234567`.")
+	if len(references) != 1 {
+		t.Fatalf("references = %#v, want one commit", references)
+	}
+	if references[0]["href"] != repositoryURL+"/commit/1234567" {
+		t.Fatalf("commit reference = %#v", references[0])
+	}
+}
+
 func TestChangelogMetadataUsesInspectedSocialCard(t *testing.T) {
 	meta := changelogMetadata()
 	if meta.OpenGraph == nil || len(meta.OpenGraph.Images) != 1 {

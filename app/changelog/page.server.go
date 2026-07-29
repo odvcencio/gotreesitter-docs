@@ -514,9 +514,7 @@ func extractReferences(markdown string) []map[string]any {
 		appendReference("Issue #"+match[1], repositoryURL+"/issues/"+match[1], "issue")
 	}
 	for _, match := range commitPattern.FindAllStringSubmatch(markdown, -1) {
-		if strings.IndexAny(match[1], "abcdef") >= 0 {
-			appendReference("Commit "+match[1], repositoryURL+"/commit/"+match[1], "commit")
-		}
+		appendReference("Commit "+match[1], repositoryURL+"/commit/"+match[1], "commit")
 	}
 	for _, tag := range tagPattern.FindAllString(markdown, -1) {
 		appendReference(tag, repositoryURL+"/releases/tag/"+tag, "release")
