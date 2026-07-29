@@ -23,7 +23,9 @@ grammar that lives in your own module.
 ## The pipeline
 
 ```
-grammar.json ──ImportGrammarJSON──▶ *grammargen.Grammar (IR)
+grammar.js ──grammargen -js-cli──▶ temporary grammar.json
+                                      │
+grammar.json ──ImportGrammarJSON──────┴──▶ *grammargen.Grammar (IR)
                                           │
                               GenerateLanguageAndBlob
                                           │
@@ -75,7 +77,39 @@ if err != nil {
 }
 ```
 
-### Option B: write the Go DSL directly
+### Option B: resolve grammar.js with Tree-sitter
+
+Use `-js-cli` when the repository does not contain a resolved `grammar.json`.
+This mode needs Tree-sitter CLI 0.26 or newer on `PATH`.
+
+> **Warning:** This command evaluates `grammar.js` and its imports as JavaScript.
+> Use it only with code that you trust.
+
+```sh
+go run ./cmd/grammargen doctor \
+  -js-cli ./grammar.js \
+  -sample ./examples/example.txt
+
+go run ./cmd/grammargen emit \
+  -js-cli ./grammar.js \
+  -bin ./language.bin
+```
+
+The command asks Tree-sitter to generate only its structured files. It imports
+the temporary canonical `grammar.json` through `ImportGrammarJSON`, then removes
+the temporary directory.
+
+The grammar's external token declarations stay in the imported grammar. You
+must still register a compatible Go external scanner for runtime parsing.
+
+The older `-js` flag remains a best-effort pure-Go importer. It does not execute
+JavaScript, but it cannot resolve all helpers or `require()` calls.
+
+See the [CLI resolver](https://github.com/odvcencio/gotreesitter/blob/main/cmd/grammargen/grammar_js_cli.go),
+the [pure-Go importer](https://github.com/odvcencio/gotreesitter/blob/main/grammargen/import_grammarjs.go),
+and [pull request #520](https://github.com/odvcencio/gotreesitter/pull/520) for implementation details.
+
+### Option C: write the Go DSL directly
 
 For small DSLs there is no need for a JavaScript grammar at all. The builder functions live in
 `grammargen/grammar.go`: `NewGrammar`, `Define`, `Str`, `Pat`, `Sym`, `Seq`, `Choice`, `Repeat`,
