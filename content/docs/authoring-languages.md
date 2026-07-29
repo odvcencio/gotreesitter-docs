@@ -81,7 +81,9 @@ if err != nil {
 
 Use `-js-cli` when the repository does not contain a resolved `grammar.json`.
 This mode needs Tree-sitter CLI 0.26 or newer and a JavaScript runtime on `PATH`.
-Install Node, or set `TREE_SITTER_JS_RUNTIME=native` to use Tree-sitter's native runtime.
+Install Node, or set
+[`TREE_SITTER_JS_RUNTIME=native`](https://tree-sitter.github.io/tree-sitter/cli/generate.html#js-runtime-executable)
+to use Tree-sitter's native runtime.
 
 > **Warning:** This command evaluates `grammar.js` and its imports as JavaScript.
 > Use it only with code that you trust.
