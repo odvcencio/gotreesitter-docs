@@ -476,13 +476,13 @@ func releaseNarrative(release releasecatalog.Release) (string, string) {
 	switch displayVersion(release) {
 	case "Unreleased":
 		return "The compatibility layer is shrinking by parser-owned classes.",
-			"Current main retires four compatibility classes across ten grammars. Compact and forest routes keep their fail-closed checks."
+			"Current main retires four compatibility classes across ten grammars. The compact and forest routes keep strict rejection checks."
 	case "v0.47.1":
 		return "An emergency correction restored valid Go recovery.",
-			"Recovery reductions preserve deferred parent links during fresh parses. Complete Go trees survive final materialization, while the invariant guard still rejects invalid replacements."
+			"Recovery reductions preserve deferred parent links during fresh parses. Complete Go trees survive final materialization. The invariant check still rejects invalid replacements."
 	case "v0.47.0":
 		return "The graduation campaign became measurable.",
-			"This release sealed production and compact full-parse receipts, expanded recovery evidence, and kept the compact path diagnostic rather than presenting it as the public parser."
+			"This release sealed the full-parse receipts for the production and compact paths. It expanded the recovery evidence. The compact path stayed diagnostic."
 	default:
 		return "", ""
 	}

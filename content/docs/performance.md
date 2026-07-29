@@ -11,12 +11,12 @@ fresh materialized parse is currently slower than the C runtime on the canonical
 across much of the grammar fleet.
 
 The repository's current [`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.47.1/BENCH.md)
-is the canonical source for linkable performance claims. This site runs on gotreesitter v0.47.1
-and follows the sealed v0.47.0 performance epoch. The public production `Parser.Parse` path has a
-**5.526× C** equal-fixture geomean on the locked four-file matrix. The build-tagged compact
-diagnostic path measures **2.9975× C** on the same matrix, but it is not the public parser and is
-not presented as production performance. v0.47.1 changes recovery correctness only. It does not
-replace this receipt.
+is the canonical source for linkable performance claims. This site runs on gotreesitter v0.47.1.
+It follows the sealed v0.47.0 performance epoch. The public production `Parser.Parse` path has a
+**5.526× C** equal-fixture geomean on the locked four-file matrix. The build-tagged compact path
+measures **2.9975× C** on the same matrix. This compact path is diagnostic. It is not the public
+parser. The site does not present it as production performance. v0.47.1 changes recovery
+correctness only. It does not replace this receipt.
 
 ## Canonical full parse: the real-code matrix
 
