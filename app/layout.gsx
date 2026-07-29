@@ -12,7 +12,7 @@ func Layout() Node {
 		<a href="#docs-main" class="skip-link">Skip to content</a>
 		<header class="topbar">
 			<a href="/" class="brand" data-gosx-link="true">
-				<span class="blk">
+				<span class="blk" aria-hidden="true">
 					<i></i>
 					<i></i>
 					<i></i>
@@ -20,16 +20,16 @@ func Layout() Node {
 				</span>
 				gotreesitter
 			</a>
-			<span class="ver mono">{gtsVersion}</span>
+			<span class="ver mono" aria-hidden="true">{gtsVersion}</span>
 			<span class="tspacer"></span>
 			<span class="status">
-				<i></i>
+				<i aria-hidden="true"></i>
 				{gtsVersion}
 				· 206/206 curated parity
 			</span>
-			<a class="ghlink" href="/changelog" data-gosx-link="true">Changelog</a>
-			<a class="ghlink" href="/playground" data-gosx-link="true">Playground</a>
-			<a class="ghlink" href="/authoring" data-gosx-link="true">Authoring</a>
+			<TopNavLink href="/changelog" label="Changelog"></TopNavLink>
+			<TopNavLink href="/playground" label="Playground"></TopNavLink>
+			<TopNavLink href="/authoring" label="Authoring"></TopNavLink>
 			<a
 				class="ghlink"
 				href="https://github.com/odvcencio/gotreesitter"
@@ -52,6 +52,20 @@ func Layout() Node {
 	</div>
 }
 
+// TopNavLink exposes the active tool route to sighted and assistive users.
+func TopNavLink(props any) Node {
+	return <>
+		<If when={request.path == props.Href}>
+			<a class="ghlink" href={props.Href} aria-current="page" data-gosx-link="true">
+				{props.Label}
+			</a>
+		</If>
+		<If when={request.path != props.Href}>
+			<a class="ghlink" href={props.Href} data-gosx-link="true">{props.Label}</a>
+		</If>
+	</>
+}
+
 // DocsNavLink renders one sidebar `<li class="navitem">` entry using the
 // public/docs.css `.navitem`/`.ndot` contract and a real file-route link.
 func DocsNavLink(props any) Node {
@@ -59,7 +73,7 @@ func DocsNavLink(props any) Node {
 		<If when={props.Active}>
 			<li class="navitem on">
 				<a href={props.Href} class="nav-anchor" aria-current="page" data-gosx-link="true">
-					<span class={"ndot " + props.Color}></span>
+					<span class={"ndot " + props.Color} aria-hidden="true"></span>
 					{props.Label}
 				</a>
 			</li>
@@ -67,7 +81,7 @@ func DocsNavLink(props any) Node {
 		<If when={props.Active == false}>
 			<li class="navitem">
 				<a href={props.Href} class="nav-anchor" data-gosx-link="true">
-					<span class={"ndot " + props.Color}></span>
+					<span class={"ndot " + props.Color} aria-hidden="true"></span>
 					{props.Label}
 				</a>
 			</li>

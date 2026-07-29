@@ -30,3 +30,15 @@ func TestMergeDocsMetadataPreservesStructuredSocialMetadata(t *testing.T) {
 		t.Fatalf("base metadata changed unexpectedly: %#v", merged)
 	}
 }
+
+func TestCanonicalMetadataUsesProductionOrigin(t *testing.T) {
+	for _, path := range []string{"changelog", "/changelog"} {
+		meta := CanonicalMetadata(path)
+		if meta.MetadataBase != SiteURL {
+			t.Fatalf("metadata base = %q, want %q", meta.MetadataBase, SiteURL)
+		}
+		if meta.Alternates == nil || meta.Alternates.Canonical != SiteURL+"/changelog" {
+			t.Fatalf("canonical metadata for %q = %#v", path, meta.Alternates)
+		}
+	}
+}

@@ -2,10 +2,13 @@ package docs
 
 import (
 	"log"
+	"strings"
 
 	"m31labs.dev/gosx/route"
 	"m31labs.dev/gosx/server"
 )
+
+const SiteURL = "https://gotreesitter.m31labs.dev"
 
 var docsPublicAssetURL func(string) string
 
@@ -18,6 +21,14 @@ func PublicAssetURL(path string) string {
 		return docsPublicAssetURL(path)
 	}
 	return server.AssetURL(path)
+}
+
+func CanonicalMetadata(path string) server.Metadata {
+	path = "/" + strings.TrimLeft(strings.TrimSpace(path), "/")
+	return server.Metadata{
+		MetadataBase: SiteURL,
+		Alternates:   &server.Alternates{Canonical: SiteURL + path},
+	}
 }
 
 func RegisterDocsPage(title, description string, opts route.FileModuleOptions) {
@@ -41,13 +52,13 @@ func RegisterDocsPage(title, description string, opts route.FileModuleOptions) {
 	}
 }
 
-func RegisterStaticDocsPage(title, description string, opts route.FileModuleOptions) {
+func RegisterStaticDocsPage(title, description, canonicalPath string, opts route.FileModuleOptions) {
 	metaMetadata := opts.Metadata
 	opts.Metadata = func(ctx *route.RouteContext, page route.FilePage, data any) (server.Metadata, error) {
-		meta := server.Metadata{
+		meta := mergeDocsMetadata(server.Metadata{
 			Title:       server.Title{Default: title + " | GoTreeSitter Docs"},
 			Description: description,
-		}
+		}, CanonicalMetadata(canonicalPath))
 		if metaMetadata == nil {
 			return meta, nil
 		}

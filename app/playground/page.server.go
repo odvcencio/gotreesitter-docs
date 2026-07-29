@@ -30,11 +30,11 @@ func init() {
 	docsapp.RegisterStaticDocsPage(
 		"Playground",
 		"Parse source and run tree-sitter queries locally in a GoSX-managed WebAssembly engine.",
+		"/playground",
 		route.FileModuleOptions{
 			Load: loadPlayground,
 			Metadata: func(ctx *route.RouteContext, page route.FilePage, data any) (server.Metadata, error) {
 				return server.Metadata{
-					Title: server.Title{Absolute: "Playground — gotreesitter"},
 					Links: []server.LinkTag{{
 						Rel:  "stylesheet",
 						Href: docsapp.PublicAssetURL("playground/playground.css"),

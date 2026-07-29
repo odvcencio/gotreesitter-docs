@@ -62,16 +62,18 @@ func init() {
 					"title":       title,
 					"description": doc.Frontmatter["description"],
 					"content":     node,
+					"slug":        slug,
 				}, nil
 			},
 			Metadata: func(ctx *route.RouteContext, page route.FilePage, data any) (server.Metadata, error) {
 				values, _ := data.(map[string]any)
 				title, _ := values["title"].(string)
 				description, _ := values["description"].(string)
-				return server.Metadata{
-					Title:       server.Title{Default: title},
-					Description: description,
-				}, nil
+				slug, _ := values["slug"].(string)
+				meta := docsapp.CanonicalMetadata("/docs/" + slug)
+				meta.Title = server.Title{Default: title + " | GoTreeSitter Docs"}
+				meta.Description = description
+				return meta, nil
 			},
 		},
 	)

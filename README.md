@@ -44,13 +44,13 @@ Run the complete source, build, export, size, and route smoke gate:
 ./scripts/verify-production.sh
 ```
 
-The gate derives the exact GoSX and gotreesitter versions from `go.mod`, rejects local engine
-overrides, builds the browser parser and all 206 lazy grammar assets from Go, validates every `.gsx` source, runs the Go tests,
-creates a clean `gosx build --prod` artifact, runs `gosx export`, reports runtime size, boots
-`dist/run.sh`, and requests every documentation route. Its Chrome check types a unique private
-marker into the editor and proves that gotreesitter parses it without any source-bearing request;
-it then proves an internal route change does not issue a document request. The `gosx` binary on
-`PATH` must exactly match the version in `go.mod`.
+The gate derives the exact GoSX and gotreesitter versions from `go.mod`. It rejects local engine
+overrides. It builds the playground, all 206 lazy grammar assets, and the authoring engine from Go.
+It validates every `.gsx` source and runs the Go tests. It creates a clean `gosx build --prod`
+artifact, runs `gosx export`, reports runtime size, boots `dist/run.sh`, and requests every route.
+It checks every internal link and validates the authoring asset surface. Its Chrome check proves
+that playground source never enters a request. It also proves that internal navigation does not
+request a new document. The `gosx` binary on `PATH` must exactly match the version in `go.mod`.
 
 Browser performance budgets are optional because they require a local Chrome installation:
 

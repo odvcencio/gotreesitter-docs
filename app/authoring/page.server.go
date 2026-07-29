@@ -78,11 +78,11 @@ func init() {
 	docsapp.RegisterStaticDocsPage(
 		"Grammar Authoring",
 		"Inherit a base grammar and author a delta of added/overridden rules in the browser — grammargen merges and compiles the extended grammar live.",
+		"/authoring",
 		route.FileModuleOptions{
 			Load: loadAuthoring,
 			Metadata: func(ctx *route.RouteContext, page route.FilePage, data any) (server.Metadata, error) {
 				return server.Metadata{
-					Title: server.Title{Absolute: "Grammar Authoring — gotreesitter"},
 					Links: []server.LinkTag{{
 						Rel:  "stylesheet",
 						Href: docsapp.PublicAssetURL("authoring/authoring.css"),
