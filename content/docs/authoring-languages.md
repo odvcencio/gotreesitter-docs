@@ -80,7 +80,10 @@ if err != nil {
 ### Option B: resolve grammar.js with Tree-sitter
 
 Use `-js-cli` when the repository does not contain a resolved `grammar.json`.
-This mode needs Tree-sitter CLI 0.26 or newer on `PATH`.
+This mode needs Tree-sitter CLI 0.26 or newer and a JavaScript runtime on `PATH`.
+Install Node, or set
+[`TREE_SITTER_JS_RUNTIME=native`](https://tree-sitter.github.io/tree-sitter/cli/generate.html#js-runtime-executable)
+to use Tree-sitter's native runtime.
 
 > **Warning:** This command evaluates `grammar.js` and its imports as JavaScript.
 > Use it only with code that you trust.
@@ -107,7 +110,9 @@ JavaScript, but it cannot resolve all helpers or `require()` calls.
 
 See the [CLI resolver](https://github.com/odvcencio/gotreesitter/blob/main/cmd/grammargen/grammar_js_cli.go),
 the [pure-Go importer](https://github.com/odvcencio/gotreesitter/blob/main/grammargen/import_grammarjs.go),
-and [pull request #520](https://github.com/odvcencio/gotreesitter/pull/520) for implementation details.
+[pull request #520](https://github.com/odvcencio/gotreesitter/pull/520),
+and [runtime diagnostic pull request #537](https://github.com/odvcencio/gotreesitter/pull/537)
+for implementation details.
 
 ### Option C: write the Go DSL directly
 
