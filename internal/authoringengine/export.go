@@ -60,14 +60,12 @@ func ImportAndGenerateWithContext(ctx context.Context, grammarJSON string) (*gra
 }
 
 // ExportGrammar renders one of the three export formats from an
-// already-compiled grammar. lang is optional: when non-nil (the caller
-// already has a cached compile — see CompileWithContextArtifacts and
-// cmd/authoring-worker-wasm's cache) format "c" reuses it directly via
-// grammargen.EmitC instead of grammargen.GenerateC, which would otherwise
-// pay for a second, full LR-table generation pass purely to render C —
-// exactly the "do NOT recompile on export" requirement a heavy base like Go
-// (~5-13s to generate, depending on machine) needs. Formats "go" and "json"
-// only ever need grammar, never lang.
+// already-compiled grammar. lang is retained for the caller's shared cached
+// artifact shape, but format "c" deliberately regenerates through
+// grammargen.GenerateC. Since gotreesitter v0.47.0, C emission requires the
+// distinct GenerateLanguageForC layout; a Language produced for the Go runtime
+// may have cross-mode lexer-state minimization and is not safe to pass to
+// EmitC. Formats "go" and "json" only ever need grammar.
 //
 // name is used to derive the download filename (and, for "go", the package/
 // function names); it is independent of grammar.Name so a caller can use
@@ -121,13 +119,6 @@ func ExportGrammar(grammar *grammargen.Grammar, lang *gts.Language, format Expor
 		return stem + ".go", string(injectDotImport(data, pkg)), nil
 
 	case ExportFormatC:
-		if lang != nil {
-			data, emitErr := grammargen.EmitC(grammar.Name, lang)
-			if emitErr != nil {
-				return "", "", fmt.Errorf("emit parser.c: %w", emitErr)
-			}
-			return "parser.c", data, nil
-		}
 		data, genErr := grammargen.GenerateC(grammar)
 		if genErr != nil {
 			return "", "", fmt.Errorf("generate parser.c: %w", genErr)

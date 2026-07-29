@@ -287,7 +287,7 @@ type languageBoundExternalScanner interface {
 
 // loadFetchedLanguage binds runtime support without asking gotreesitter to
 // reopen the same built-in blob from a filesystem. The fetched assets are the
-// exact v0.36.0 package blobs, so unbound scanners already use matching symbol
+// exact pinned-module package blobs, so unbound scanners already use matching symbol
 // IDs; bound scanners derive their IDs directly from the decoded language.
 func loadFetchedLanguage(name string, blob []byte) (*gts.Language, error) {
 	language, err := gts.LoadLanguage(blob)

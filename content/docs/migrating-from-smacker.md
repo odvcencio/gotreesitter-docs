@@ -75,7 +75,7 @@ the whole call path, since there is no C frontier for the race detector to lose 
 across.
 
 On raw parsing throughput, gotreesitter's canonical real-code full-parse geomean is
-**4.851050× C** — slower, not faster, on that workload; see [Performance](/docs/performance) for
+**5.526× C** — slower, not faster, on that workload; see [Performance](/docs/performance) for
 the full methodology and fleet distribution. Where gotreesitter does win outright is allocations
 on the incremental path: reparsing after a small edit is zero-allocation, discussed in
 [Incremental Parsing](/docs/incremental-parsing). Migrate for portability and for the dead
@@ -91,7 +91,7 @@ mapping the name to gotreesitter's existing `grammars.XLanguage()` entry for tha
 
 > [!NOTE] Availability
 > `compat/smacker` lands in gotreesitter's module — once released, there is no separate `go get`,
-> just the one import swap above. It is not in `v0.42.0`; until the release that carries it is
+> just the one import swap above. It is not in `v0.47.1`; until the release that carries it is
 > tagged, pin the module to the revision that includes `compat/smacker` (or track `main`). See
 > [Getting Started](/docs/getting-started) if you are setting up gotreesitter for the first time
 > rather than migrating an existing smacker integration.

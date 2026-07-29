@@ -4,6 +4,7 @@ package modules
 import (
 	_ "github.com/odvcencio/gotreesitter-docs/app"
 	_ "github.com/odvcencio/gotreesitter-docs/app/authoring"
+	_ "github.com/odvcencio/gotreesitter-docs/app/changelog"
 	_ "github.com/odvcencio/gotreesitter-docs/app/docs/__slug"
 	_ "github.com/odvcencio/gotreesitter-docs/app/playground"
 )

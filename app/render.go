@@ -30,6 +30,20 @@ var RenderDesignDoc = content.RendererFunc(func(doc content.Document) (gosx.Node
 	return renderDesignDoc(doc, nil)
 })
 
+// RenderMarkdownFragment renders trusted project Markdown inside a component.
+// The changelog route uses it for entries from the pinned upstream snapshot.
+func RenderMarkdownFragment(source string) (gosx.Node, error) {
+	parsed, err := mdpp.Parse([]byte(source))
+	if err != nil {
+		return gosx.Node{}, err
+	}
+	if parsed == nil || parsed.Root == nil {
+		return gosx.Text(""), nil
+	}
+	children := normalizeBlocks(parsed.Root.Children)
+	return gosx.Fragment(renderBlocks(children, parsed.Source)...), nil
+}
+
 // RenderDesignDocWithLangIsland is RenderDesignDoc for content/docs/languages.md
 // specifically: it renders exactly like RenderDesignDoc, except the
 // ```langlist fenced block (previously always renderLangGrid's static

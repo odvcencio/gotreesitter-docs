@@ -10,18 +10,13 @@ distinction matters: the pure-Go runtime runs exceptionally fast on editor-style
 fresh materialized parse is currently slower than the C runtime on the canonical workload and
 across much of the grammar fleet.
 
-The repository's current [`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md)
-is the canonical source for linkable performance claims. This page follows the authenticated
-v0.40.0 production receipt at tag target `1935a42c`, published to `BENCH.md` after the project cut
-the immutable v0.40.0 tag. This site now runs on gotreesitter v0.42.0. v0.41.0 and v0.42.0 add a
-build-tagged, diagnostic-only compact-scheduler tier (fresh-full compact parsing, selected-store
-query execution, and PGO profile refreshes), plus a return of several grammars — including
-BibTeX, CSS, SCSS, Yuck, Bash, C#, Agda, Ledger, Authzed, Make, TLA+, Faust, CMake, Erlang, and
-Common Lisp — to explicit-only forest routing. Full-corpus recertification found their automatic
-routes slower or divergent from the production parser; none of that changes the public
-`Parser.Parse` code path these numbers describe. `BENCH.md` still names v0.40.0's **4.851050x C**
-equal-fixture geomean as the current authenticated production-code baseline, so the numbers below
-remain the v0.40.0 figures, pending a v0.41.0/v0.42.0 receipt refresh.
+The repository's current [`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.47.1/BENCH.md)
+is the canonical source for linkable performance claims. This site runs on gotreesitter v0.47.1.
+It follows the sealed v0.47.0 performance epoch. The public production `Parser.Parse` path has a
+**5.526× C** equal-fixture geomean on the locked four-file matrix. The build-tagged compact path
+measures **2.9975× C** on the same matrix. This compact path is diagnostic. It is not the public
+parser. The site does not present it as production performance. v0.47.1 changes recovery
+correctness only. It does not replace this receipt.
 
 ## Canonical full parse: the real-code matrix
 
@@ -31,18 +26,17 @@ exercise genuine GLR forking (12–18 live stacks), against one fingerprinted st
 uses a pinned quiet host, process-isolated samples per backend and fixture, and exact deep-tree
 identity admitted before timing:
 
-| Fixture | Go median | static C median | Go / C |
-|---|---:|---:|---:|
-| `rewrite.go` (5.1 KB) | 4.9456765 ms | 1.206203075 ms | 4.100202× |
-| `query_compile.go` (20 KB) | 27.9760085 ms | 5.439447625 ms | 5.143171× |
-| `language.go` (41 KB) | 27.1806765 ms | 5.80478855 ms | 4.682458× |
-| `grammargen/lr.go` (236 KB) | 331.409954 ms | 59.0925574 ms | 5.608320× |
+| Fixture | Production Go / C | Compact Go / C |
+|---|---:|---:|
+| `rewrite.go` (5.1 KB) | 5.042× | 3.077× |
+| `query_compile.go` (20 KB) | 6.283× | 3.161× |
+| `language.go` (41 KB) | 5.354× | 3.080× |
+| `grammargen/lr.go` (236 KB) | 5.498× | 2.695× |
+| **Equal-fixture geomean** | **5.526×** | **2.9975×** |
 
-The canonical equal-fixture geomean is **4.851050× C**. The fixed-suite sum is **5.472406× C**
-(391.5123155 ms Go versus 71.54299665 ms static C), and the worst fixture is `grammargen/lr.go`
-at **5.608320× C**. The geomean improves on v0.39.0's 4.886056× result by only **0.716%**, below
-the project's reproducible 2% performance-win threshold. This is an authenticated baseline
-refresh, not a banked performance win.
+The sealed receipt uses the public `Parser.Parse` API for the production lane, a fingerprinted
+tree-sitter v0.25.1 C oracle, at least ten seconds per fixture and backend pair, and A/A controls.
+See `BENCH.md` for receipt identities and mandatory caveats.
 
 The project withdrew an earlier **1.895× C** headline: it measured a generated 500-function Go
 file that never forks (a straight-LR control, not representative code) against a C baseline built

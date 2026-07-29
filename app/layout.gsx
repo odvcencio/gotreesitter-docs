@@ -27,6 +27,7 @@ func Layout() Node {
 				{gtsVersion}
 				· 206/206 curated parity
 			</span>
+			<a class="ghlink" href="/changelog" data-gosx-link="true">Changelog</a>
 			<a class="ghlink" href="/playground" data-gosx-link="true">Playground</a>
 			<a class="ghlink" href="/authoring" data-gosx-link="true">Authoring</a>
 			<a
