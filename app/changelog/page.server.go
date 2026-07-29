@@ -32,6 +32,7 @@ func init() {
 	docsapp.RegisterStaticDocsPage(
 		"Changelog",
 		"Explore every GoTreeSitter release, current unreleased work, upgrade impact, and source evidence.",
+		"/changelog",
 		route.FileModuleOptions{
 			Load: loadChangelog,
 			Metadata: func(ctx *route.RouteContext, page route.FilePage, data any) (server.Metadata, error) {
@@ -45,10 +46,9 @@ func changelogMetadata() server.Metadata {
 	const (
 		title       = "Changelog — GoTreeSitter"
 		description = "Explore GoTreeSitter releases, current work, upgrade impact, and source evidence."
-		siteURL     = "https://gotreesitter.m31labs.dev"
 	)
 	image := server.MediaAsset{
-		URL:    siteURL + docsapp.PublicAssetURL("social/changelog.png"),
+		URL:    docsapp.SiteURL + docsapp.PublicAssetURL("social/changelog.png"),
 		Width:  1200,
 		Height: 630,
 		Alt:    "GoTreeSitter Changelog with an abstract syntax-tree release timeline.",
@@ -57,11 +57,11 @@ func changelogMetadata() server.Metadata {
 	return server.Metadata{
 		Title:        server.Title{Absolute: title},
 		Description:  description,
-		MetadataBase: siteURL,
-		Alternates:   &server.Alternates{Canonical: siteURL + "/changelog"},
+		MetadataBase: docsapp.SiteURL,
+		Alternates:   &server.Alternates{Canonical: docsapp.SiteURL + "/changelog"},
 		OpenGraph: &server.OpenGraph{
 			Type:        "website",
-			URL:         siteURL + "/changelog",
+			URL:         docsapp.SiteURL + "/changelog",
 			SiteName:    "GoTreeSitter",
 			Title:       title,
 			Description: description,

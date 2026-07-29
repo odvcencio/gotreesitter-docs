@@ -9,6 +9,7 @@ func init() {
 	RegisterStaticDocsPage(
 		"Overview",
 		"A pure-Go, byte-exact reimplementation of tree-sitter — no CGo, no C toolchain, 206 grammars built in.",
+		"/",
 		route.FileModuleOptions{
 			Bindings: func(ctx *route.RouteContext, page route.FilePage, data any) route.FileTemplateBindings {
 				return route.FileTemplateBindings{

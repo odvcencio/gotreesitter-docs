@@ -12,7 +12,7 @@ fail() {
   exit 1
 }
 
-for command in go gosx tinygo curl grep sed awk mktemp find; do
+for command in git go gosx tinygo curl grep sed awk mktemp find sort; do
   command -v "$command" >/dev/null 2>&1 || fail "required command not found: $command"
 done
 
@@ -43,10 +43,9 @@ gosx_cli_version="$(gosx version 2>&1)"
 grep -Fq "GoSX ${gosx_version#v}" README.md || fail "README GoSX requirement does not match go.mod"
 grep -Fq "m31labs.dev/gosx/cmd/gosx@$gosx_version" README.md || fail "README GoSX install command does not match go.mod"
 
-# Application behavior must be authored in Go/GoSX. Framework-generated
-# runtime assets in dist are allowed; repository-authored JS is not.
-if find . -path './.git' -prune -o -path './dist' -prune -o -path './build' -prune \
-  -o -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' \) -print -quit | grep -q .; then
+# Application behavior must be authored in Go/GoSX. Ignore generated files
+# through the repository's normal ignore rules. Reject tracked or new source.
+if git ls-files --cached --others --exclude-standard -- '*.js' '*.jsx' '*.ts' '*.tsx' | grep -q .; then
   fail "application-authored JavaScript remains in the repository"
 fi
 if grep -R -n --include='*.gsx' '<script' app; then
@@ -55,6 +54,7 @@ fi
 
 rm -rf build dist
 go run ./cmd/build-playground-wasm
+go run ./cmd/build-authoring-wasm
 while IFS= read -r source; do
   gosx check "$source"
 done < <(find app -name '*.gsx' -type f | sort)
@@ -74,6 +74,7 @@ port="${VERIFY_PORT:-18080}"
 base="http://127.0.0.1:${port}"
 server_log="$(mktemp)"
 page_body="$(mktemp)"
+route_pages="$(mktemp -d)"
 server_pid=""
 
 cleanup() {
@@ -82,6 +83,7 @@ cleanup() {
     wait "$server_pid" 2>/dev/null || true
   fi
   rm -f "$server_log" "$page_body"
+  rm -rf "$route_pages"
 }
 trap cleanup EXIT
 
@@ -99,20 +101,36 @@ for _ in $(seq 1 60); do
 done
 curl --silent --fail "$base/healthz" | grep -q '"ok":true'
 
-routes=("/" "/playground")
+routes=("/" "/playground" "/authoring")
 routes+=("/changelog")
 for source in content/docs/*.md; do
   routes+=("/docs/$(basename "$source" .md)")
 done
-for route in "${routes[@]}"; do
-  curl --silent --show-error --fail --output /dev/null "$base$route"
+for index in "${!routes[@]}"; do
+  route="${routes[$index]}"
+  route_page="$route_pages/$index.html"
+  curl --silent --show-error --fail --output "$route_page" "$base$route"
+  grep -Fq 'rel="canonical"' "$route_page" || fail "canonical metadata missing from $route"
+  grep -Fq "href=\"https://gotreesitter.m31labs.dev$route\"" "$route_page" ||
+    fail "canonical metadata does not match $route"
 done
+
+while IFS= read -r href; do
+  [[ -n "$href" ]] || continue
+  curl --silent --show-error --fail --output /dev/null "$base$href" ||
+    fail "internal link does not resolve: $href"
+done < <(
+  grep -rhoE 'href="/[^"]*"' "$route_pages" |
+    sed -e 's/^href="//' -e 's/"$//' -e 's/&amp;/\&/g' -e 's/#.*$//' |
+    sort -u
+)
 
 curl --silent --fail "$base/" | grep -q '5.53×' || fail "landing headline metric (5.53× geomean) missing from /"
 curl --silent --fail "$base/docs/performance" | grep -q '5.526× C' || fail "performance geomean (5.526× C) missing from /docs/performance"
 curl --silent --show-error --fail --output "$page_body" "$base/changelog"
 grep -q 'History you can interrogate' "$page_body" || fail "changelog hero missing from /changelog"
 grep -q 'v0.47.1' "$page_body" || fail "v0.47.1 missing from /changelog"
+grep -q 'href="/changelog" aria-current="page"' "$page_body" || fail "active changelog navigation state is missing"
 
 languages_html="$(curl --silent --show-error --fail "$base/docs/languages")"
 lang_search_url="$(grep -oE '/gosx/islands/LangSearch\.json\?v=[0-9a-f]{12}' <<<"$languages_html" | head -n 1)"
@@ -134,8 +152,22 @@ curl --silent --show-error --fail --head "$base$wasm_url" | grep -Fqi 'content-t
 
 PLAYGROUND_BASE_URL="$base" go run ./cmd/verify-playground-browser
 
+curl --silent --show-error --fail --output "$page_body" "$base/authoring"
+grep -q 'data-gosx-engine="GotreesitterAuthoring"' "$page_body" || fail "authoring GoSX engine mount is missing"
+authoring_wasm_url="$(grep -oE '/authoring/authoring\.wasm\?v=[0-9a-f]{12}' "$page_body" | head -n 1)"
+[[ -n "$authoring_wasm_url" ]] || fail "content-versioned authoring WASM URL is missing"
+curl --silent --show-error --fail --head "$base$authoring_wasm_url" |
+  grep -Fqi 'content-type: application/wasm' || fail "authoring engine is not served as application/wasm"
+authoring_worker_url="$(grep -oE '/authoring/authoring-worker\.js\?v=[0-9a-f]{12}' "$page_body" | head -n 1)"
+[[ -n "$authoring_worker_url" ]] || fail "content-versioned authoring worker URL is missing"
+curl --silent --show-error --fail --output /dev/null "$base$authoring_worker_url"
+authoring_bases_url="$(grep -oE '/authoring/bases/index\.json\?v=[0-9a-f]{12}' "$page_body" | head -n 1)"
+[[ -n "$authoring_bases_url" ]] || fail "content-versioned authoring base index URL is missing"
+curl --silent --show-error --fail "$base$authoring_bases_url" | grep -Eq '"name"[[:space:]]*:[[:space:]]*"calc"' ||
+  fail "authoring base index does not include calc"
+
 if [[ "${RUN_BROWSER_PERF:-0}" == "1" ]]; then
-  for route in / /docs/getting-started /docs/performance /playground; do
+  for route in / /docs/getting-started /docs/performance /playground /authoring; do
     gosx perf --coverage --budget perf-budget.json --budget-profile docs "$base$route"
   done
 fi
