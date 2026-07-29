@@ -20,7 +20,7 @@ var pageSource embed.FS
 const repositoryURL = "https://github.com/odvcencio/gotreesitter"
 
 var (
-	catalog = mustLoadCatalog()
+	catalog, catalogErr = releasecatalog.Load()
 
 	pullRequestPattern = regexp.MustCompile(`(?i)\bPRs?\s+#([0-9]+)(?:\s+and\s+#([0-9]+))?`)
 	issuePattern       = regexp.MustCompile(`(?i)\bissue\s+#([0-9]+)`)
@@ -76,15 +76,10 @@ func changelogMetadata() server.Metadata {
 	}
 }
 
-func mustLoadCatalog() releasecatalog.Catalog {
-	loaded, err := releasecatalog.Load()
-	if err != nil {
-		panic(fmt.Sprintf("load changelog catalog: %v", err))
-	}
-	return loaded
-}
-
 func loadChangelog(ctx *route.RouteContext, _ route.FilePage) (any, error) {
+	if catalogErr != nil {
+		return nil, fmt.Errorf("load changelog catalog: %w", catalogErr)
+	}
 	query := strings.TrimSpace(ctx.Query("q"))
 	category := strings.TrimSpace(ctx.Query("category"))
 	status := normalizeStatus(ctx.Query("status"))

@@ -1,6 +1,7 @@
 package changelog
 
 import (
+	"errors"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -9,6 +10,22 @@ import (
 	"m31labs.dev/gosx"
 	"m31labs.dev/gosx/route"
 )
+
+func TestLoadChangelogReturnsCatalogError(t *testing.T) {
+	originalErr := catalogErr
+	catalogErr = errors.New("snapshot mismatch")
+	t.Cleanup(func() {
+		catalogErr = originalErr
+	})
+
+	ctx := &route.RouteContext{
+		Request: httptest.NewRequest("GET", "/changelog", nil),
+	}
+	_, err := loadChangelog(ctx, route.FilePage{})
+	if err == nil || !strings.Contains(err.Error(), "snapshot mismatch") {
+		t.Fatalf("error = %v, want snapshot mismatch", err)
+	}
+}
 
 func TestLoadChangelogSeparatesReleasedRecoveryFix(t *testing.T) {
 	ctx := &route.RouteContext{
