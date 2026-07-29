@@ -72,5 +72,38 @@ func mergeDocsMetadata(base, extra server.Metadata) server.Metadata {
 	if len(extra.Links) > 0 {
 		base.Links = append(base.Links, extra.Links...)
 	}
+	if extra.MetadataBase != "" {
+		base.MetadataBase = extra.MetadataBase
+	}
+	if extra.Alternates != nil {
+		base.Alternates = extra.Alternates
+	}
+	if extra.Robots != nil {
+		base.Robots = extra.Robots
+	}
+	if extra.Icons != nil {
+		base.Icons = extra.Icons
+	}
+	if extra.Manifest != "" {
+		base.Manifest = extra.Manifest
+	}
+	if extra.Verification != nil {
+		base.Verification = extra.Verification
+	}
+	if len(extra.ThemeColor) > 0 {
+		base.ThemeColor = append(base.ThemeColor, extra.ThemeColor...)
+	}
+	if extra.OpenGraph != nil {
+		base.OpenGraph = extra.OpenGraph
+	}
+	if extra.Twitter != nil {
+		base.Twitter = extra.Twitter
+	}
+	if len(extra.JSONLD) > 0 {
+		base.JSONLD = append(base.JSONLD, extra.JSONLD...)
+	}
+	if len(extra.Other) > 0 {
+		base.Other = append(base.Other, extra.Other...)
+	}
 	return base
 }

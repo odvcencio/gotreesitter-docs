@@ -10,6 +10,11 @@ application-authored JavaScript.
 
 Live site: [gotreesitter.m31labs.dev](https://gotreesitter.m31labs.dev/)
 
+The site links its displayed parser version to the pinned module build. The
+server-rendered [/changelog](https://gotreesitter.m31labs.dev/changelog) route
+turns the source changelog into a searchable release archive with tag, code,
+pull request, issue, commit, and exact source-line evidence.
+
 ## GopherCon slide deck
 
 The repository also contains a self-contained `gosx-slides` presentation in

@@ -68,7 +68,7 @@ build a single static binary for any target Go supports.
   nanoseconds. A real edit still reuses almost the whole tree and finishes in a small fraction of
   the time a full parse takes.
 - **Honest full-parse receipts.** The canonical claim is a locked publication receipt on four
-  human-authored, genuinely forking Go fixtures: a 4.851050× C equal-fixture geomean against a
+  human-authored, genuinely forking Go fixtures: a 5.526× C equal-fixture geomean against a
   fingerprinted static oracle. The project withdrew the old 1.895× synthetic headline as
   unrepresentative. The current fleet median is about 3× C, and per-language cliffs and held-outs
   stay visible in the ratcheted ledger.

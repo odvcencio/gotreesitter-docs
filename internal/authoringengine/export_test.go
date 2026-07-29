@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	gts "github.com/odvcencio/gotreesitter"
 	"github.com/odvcencio/gotreesitter/grammargen"
@@ -255,19 +254,13 @@ func TestExportGrammarCContainsStructuralMarkers(t *testing.T) {
 	}
 }
 
-// TestExportGrammarCReusesCachedLanguage is the "do NOT recompile on
-// export" requirement's unit-level proof: ExportGrammar's format="c" path
-// must call grammargen.EmitC directly on an already-compiled *gts.Language
-// (no second GenerateLanguage pass) rather than grammargen.GenerateC (which
-// regenerates internally). It asserts this indirectly but concretely: on a
-// grammar heavy enough for regeneration cost to be measurable natively
-// (grammargen.LoxGrammar(), this design's own canonical "expensive"
-// example), passing the cached Language must be dramatically faster than the
-// no-cache (nil lang, forces a fresh GenerateC-driven regeneration) path —
-// and must produce byte-identical output either way.
-func TestExportGrammarCReusesCachedLanguage(t *testing.T) {
+// TestExportGrammarCUsesCCompatibleGeneration verifies that a cached runtime
+// Language does not change parser.c output. Since gotreesitter v0.47.0,
+// GenerateC uses the distinct GenerateLanguageForC layout required by C lexer
+// emission; a normal cached runtime Language must not be passed to EmitC.
+func TestExportGrammarCUsesCCompatibleGeneration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skips the heavier lox-grammar timing comparison under -short")
+		t.Skip("skips the heavier lox-grammar generation comparison under -short")
 	}
 	g := grammargen.LoxGrammar()
 	lang, err := grammargen.GenerateLanguage(g)
@@ -275,29 +268,18 @@ func TestExportGrammarCReusesCachedLanguage(t *testing.T) {
 		t.Fatalf("GenerateLanguage(lox): %v", err)
 	}
 
-	cachedStart := time.Now()
 	_, cachedContent, err := ExportGrammar(g, lang, ExportFormatC, "lox", "")
-	cachedElapsed := time.Since(cachedStart)
 	if err != nil {
 		t.Fatalf("ExportGrammar(c, cached lang): %v", err)
 	}
 
-	freshStart := time.Now()
 	_, freshContent, err := ExportGrammar(g, nil, ExportFormatC, "lox", "")
-	freshElapsed := time.Since(freshStart)
 	if err != nil {
 		t.Fatalf("ExportGrammar(c, no cached lang): %v", err)
 	}
 
 	if cachedContent != freshContent {
 		t.Error("ExportGrammar(c) output differs between the cached-Language path and the regenerate-from-Grammar path — should be byte-identical")
-	}
-	t.Logf("ExportGrammar(c) with cached Language: %s; forced to regenerate: %s", cachedElapsed, freshElapsed)
-	// A conservative bound, not a tight one: this only needs to prove reuse
-	// avoids paying for LR-table generation again, not pin an exact ratio
-	// that could flake on a loaded CI machine.
-	if cachedElapsed*2 > freshElapsed {
-		t.Errorf("cached-Language export (%s) was not meaningfully faster than the regenerate-from-Grammar export (%s) — cache reuse may not be taking effect", cachedElapsed, freshElapsed)
 	}
 }
 

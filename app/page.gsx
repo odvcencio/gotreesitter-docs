@@ -134,7 +134,7 @@ func Page() Node {
 			.
 		</p>
 		<div class="mult" style="background:#ffedd0">
-			<div class="big t-orange">4.85×</div>
+			<div class="big t-orange">5.53×</div>
 			<div class="sub">
 				slower than
 				<b>C</b>

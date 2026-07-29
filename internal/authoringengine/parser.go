@@ -147,10 +147,10 @@ func CompileWithContext(ctx context.Context, grammarJSON, source string, include
 // compiled *grammargen.Grammar and *gts.Language on success — the same
 // artifacts CompileWithContext computes internally and would otherwise
 // discard. Phase 3 (export) needs them: cmd/authoring-worker-wasm caches
-// whatever this returns so a subsequent export request can render .go/
-// parser.c/grammar.json directly from the cached artifacts instead of
-// re-running LR-table generation (grammargen.GenerateC and grammargen.EmitC
-// both accept an already-built *gts.Language — see ExportGrammar).
+// whatever this returns so a subsequent export request can render .go and
+// grammar.json directly from the cached artifacts. parser.c regeneration is
+// intentionally separate because gotreesitter v0.47.0 requires
+// GenerateLanguageForC's lexer-state layout — see ExportGrammar.
 //
 // grammar/lang are non-nil whenever generation itself succeeded, even if a
 // later step (parsing the sample source) failed — an author's grammar can be

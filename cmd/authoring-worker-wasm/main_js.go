@@ -33,13 +33,13 @@
 // compile), so they are not seq-gated on this side either — see
 // cmd/authoring-wasm's onExportClick.
 //
-// Export caching (the "do NOT recompile from scratch on export" requirement):
+// Export caching:
 // every successful compile response also updates a package-level cache of
 // the exact (grammarJSON, *grammargen.Grammar, *gts.Language) triple that
 // compile produced (see updateCache). An export request whose grammarJSON
-// matches the cache reuses it directly — for a heavy base like Go this is
-// the difference between an export completing near-instantly and re-paying
-// the full LR-table generation cost. Only a genuine cache miss (the author
+// matches the cache reuses it directly for Go and JSON exports. C export
+// regenerates its dedicated C-compatible language layout, required since
+// gotreesitter v0.47.0. Only a genuine cache miss (the author
 // edited the grammar and clicked export before the next debounced compile
 // landed, or no compile has completed yet) falls back to compiling on
 // demand via authoringengine.ImportAndGenerateWithContext.
