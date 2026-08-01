@@ -125,8 +125,10 @@ done < <(
     sort -u
 )
 
-curl --silent --fail "$base/" | grep -q 'Certified fresh parsing' || fail "landing route contract missing from /"
-curl --silent --fail "$base/docs/performance" | grep -q '5.526× C' || fail "performance geomean (5.526× C) missing from /docs/performance"
+curl --silent --show-error --fail --output "$page_body" "$base/"
+grep -Fq 'Certified fresh parsing' "$page_body" || fail "landing route contract missing from /"
+curl --silent --show-error --fail --output "$page_body" "$base/docs/performance"
+grep -Fq '5.526× C' "$page_body" || fail "performance geomean (5.526× C) missing from /docs/performance"
 external_scanners_html="$(curl --silent --show-error --fail "$base/docs/external-scanners")"
 grep -Fq 'Certified checkpointed reuse for clean old trees.' <<<"$external_scanners_html" ||
   fail "Markdown clean-tree reuse contract missing from /docs/external-scanners"
