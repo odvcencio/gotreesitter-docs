@@ -10,13 +10,15 @@ distinction matters: the pure-Go runtime runs exceptionally fast on editor-style
 fresh materialized parse is currently slower than the C runtime on the canonical workload and
 across much of the grammar fleet.
 
-The repository's current [`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.47.1/BENCH.md)
-is the canonical source for linkable performance claims. This site runs on gotreesitter v0.47.1.
-It follows the sealed v0.47.0 performance epoch. The public production `Parser.Parse` path has a
-**5.526× C** equal-fixture geomean on the locked four-file matrix. The build-tagged compact path
-measures **2.9975× C** on the same matrix. This compact path is diagnostic. It is not the public
-parser. The site does not present it as production performance. v0.47.1 changes recovery
-correctness only. It does not replace this receipt.
+The repository's current [`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md)
+is the canonical source for linkable performance claims. The sealed v0.45.0 epoch contains two
+route receipts on the locked four-file matrix: **5.526× C** for production parsing and **2.9975×
+C** for compact parsing.
+
+Version 0.48 changes fresh full-parse dispatch. It attempts compact parsing only for an eligible
+fresh full parse. When compact parsing declines, production parsing returns the tree. This
+fail-closed dispatch preserves the production result. Do not combine the two sealed route
+receipts into a v0.48.0 full-parser headline.
 
 ## Canonical full parse: the real-code matrix
 
@@ -26,7 +28,7 @@ exercise genuine GLR forking (12–18 live stacks), against one fingerprinted st
 uses a pinned quiet host, process-isolated samples per backend and fixture, and exact deep-tree
 identity admitted before timing:
 
-| Fixture | Production Go / C | Compact Go / C |
+| Fixture | Sealed v0.45.0 production Go / C | Sealed v0.45.0 compact Go / C |
 |---|---:|---:|
 | `rewrite.go` (5.1 KB) | 5.042× | 3.077× |
 | `query_compile.go` (20 KB) | 6.283× | 3.161× |
@@ -36,7 +38,13 @@ identity admitted before timing:
 
 The sealed receipt uses the public `Parser.Parse` API for the production lane, a fingerprinted
 tree-sitter v0.25.1 C oracle, at least ten seconds per fixture and backend pair, and A/A controls.
-See `BENCH.md` for receipt identities and mandatory caveats.
+It measures each route independently. See `BENCH.md` for receipt identities and mandatory
+caveats.
+
+The v0.48 bounded real-corpus matrix contains 110 selected rows: 70 compact passes, 30 production
+fallbacks, and 10 skips. It contains no divergence or error. The compact route serves eligible
+fresh full parses only. Production parsing remains the fallback for every declined or ineligible
+input.
 
 The project withdrew an earlier **1.895× C** headline: it measured a generated 500-function Go
 file that never forks (a straight-LR control, not representative code) against a C baseline built

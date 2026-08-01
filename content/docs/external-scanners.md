@@ -142,6 +142,7 @@ From `external_lexer.go`, with C equivalents:
 | `MarkEnd()` | `lexer->mark_end(lexer)` | Set token end = current position. |
 | `SetResultSymbol(sym Symbol)` | `lexer->result_symbol = ...` | See numbering contract above. |
 | `Column() uint32` | `lexer->get_column(lexer)` | 0-based column at the cursor. |
+| `Previous() rune` | (no C equivalent) | The rune before the raw cursor. It returns `0` at source start or for an invalid cursor. It returns `utf8.RuneError` for invalid UTF-8. It does not identify the prior grammar token. |
 | `HasPreviousBytes(text string) bool` | (no C equivalent) | True if the bytes immediately before the cursor equal `text`; used to guard content tokens when merged parser states expose them too broadly. |
 | `AdvanceSpaces(skip bool) int`, `AdvanceUntilNewline(skip bool) int` | (helpers) | Bulk equivalents of repeated `Advance` for ASCII-space runs / to-end-of-line runs. |
 
@@ -153,6 +154,12 @@ You must not reinvent these span rules — they mirror C's `ts_lexer` exactly, a
 - If you `MarkEnd` and then `Advance(true)` past the mark, the token becomes **zero-width at the
   mark**, and the parser re-positions there, so it lexes the skipped bytes again on the next call.
   This is how YAML-style and terminator tokens work; it is deliberate, not a bug.
+
+`Previous()` reads a raw source rune, not a prior grammar token. The core lexer can consume
+whitespace or a comment as an extra between two scanner calls. That extra can become the rune
+that `Previous()` returns. Store required token-boundary history in scanner payload state instead.
+A scanner that calls `Previous()` cannot claim `StatelessExternalScanner`: it fails the stateless
+quiescence proof used for incremental reuse admission.
 
 ### A faithful Go port of Pawn's scanner (condensed)
 
@@ -283,6 +290,9 @@ remapper: `gotreesitter.AdaptExternalScannerByExternalOrder(sourceLang, targetLa
 - `IncrementalReuseExternalScanner` (`SupportsIncrementalReuse() bool`): declare true only if
   reusing subtrees across edits is safe for your state. Stateless scanners: yes. Python-style
   indent stacks deliberately leave this unimplemented, so edits force a conservative reparse.
+- `StatelessExternalScanner` (`ExternalScannerIsStateless() bool`): declare true only after you
+  prove that `Scan` depends on local lookahead and valid symbols only. Do not declare it when
+  `Scan` reads `Previous()` or other cross-token history.
 - `FailurePreservingExternalScanner` (`PreservesStateOnScanFailure() bool`): declare true if `Scan`
   returning false never mutated the payload — this lets the runtime skip defensive state
   snapshots on the hot path.

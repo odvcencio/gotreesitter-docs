@@ -126,26 +126,24 @@ func Page() Node {
 		<h2 class="h2">The numbers</h2>
 		<div class="underbar"></div>
 		<p class="p mut">
-			Full-parse headline: four frozen, human-written Go files (5 KB–236 KB), each measured against a locked upstream tree-sitter v0.25.1 C oracle — ten process-isolated samples per fixture, byte-exact tree identity admitted before every timing run.
+			The sealed v0.45.0 route receipts use four frozen, human-written Go files. Their sizes range from 5 KB to 236 KB. A locked tree-sitter v0.25.1 C oracle measures each fixture. Each fixture has ten process-isolated samples. Exact tree identity is admitted before timing.
 		</p>
 		<p class="p mut">
-			Full parse is currently slower than the C runtime on that real-code matrix — that's the honest number, not a marketing one; gotreesitter wins on the editor-style incremental path below instead. An older generated 500-function file is retained only for tracking single-stack regressions, not as a full-parse headline. Fleet ratios vary widely by grammar; the complete distribution and every named gap are on the
+			Version 0.48 uses compact parsing for eligible fresh full parses. It returns the production tree when compact parsing declines. No single ratio describes that dispatcher. An older generated 500-function file remains a single-stack control, not a full-parse headline. Fleet ratios vary by grammar; the complete distribution and every named gap are on the
 			<a href="/docs/performance" data-gosx-link="true">performance page</a>
 			.
 		</p>
 		<div class="mult" style="background:#ffedd0">
-			<div class="big t-orange">5.53×</div>
+			<div class="big t-orange">routes</div>
 			<div class="sub">
-				slower than
-				<b>C</b>
-				— full parse, real-code equal-fixture geomean across the four frozen fixtures. 204/206 grammars ratcheted, 206/206 pass curated structural parity.
+				v0.48 chooses compact parsing for eligible fresh full parses. It uses production parsing after a compact decline. The sealed v0.45.0 receipts are 5.526× C for production and 2.9975× C for compact.
 			</div>
 		</div>
 		<div class="multrow">
 			<div class="mult c-pink" style="background:#ffe0ec">
 				<div class="big t-pink">5,500×</div>
 				<div class="sub">
-					faster single-byte edit vs a full parse of the same file —
+					faster single-byte edit vs the sealed straight-LR full-parse control —
 					<b>1.98 µs</b>
 					, 0 allocs
 				</div>
@@ -153,7 +151,7 @@ func Page() Node {
 			<div class="mult" style="background:#d6f7ea">
 				<div class="big t-green">~1.1M×</div>
 				<div class="sub">
-					faster no-edit reparse vs a full parse of the same file —
+					faster no-edit reparse vs the sealed straight-LR full-parse control —
 					<b>9.9 ns</b>
 					, 0 B/op, 0 allocs
 				</div>
@@ -173,7 +171,7 @@ func Page() Node {
 		<h2 class="h2">206 grammars, embedded</h2>
 		<div class="underbar"></div>
 		<p class="p">
-			All 206 pass the curated C-oracle structural matrix, with no known-degraded skips. 116 have hand-written Go external scanners; 7 use hand-written Go token sources.
+			All 206 pass the curated C-oracle structural matrix, with no known-degraded skips. 119 have hand-written Go external scanners; 7 use hand-written Go token sources.
 			<a href="/docs/languages" data-gosx-link="true">Browse the full registry →</a>
 		</p>
 		<div class="langteaser">

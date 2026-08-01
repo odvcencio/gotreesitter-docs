@@ -51,11 +51,11 @@ func TestLoadChangelogSeparatesReleasedRecoveryFix(t *testing.T) {
 	}
 }
 
-func TestLoadChangelogKeepsRetirementCampaignUnreleased(t *testing.T) {
+func TestLoadChangelogShowsRetirementCampaignInV048(t *testing.T) {
 	ctx := &route.RouteContext{
 		Request: httptest.NewRequest(
 			"GET",
-			"/changelog?q=expected+Hurl+and+INI+root+types&category=Fixed&status=unreleased",
+			"/changelog?q=expected+Hurl+and+INI+root+types&category=Fixed&status=released",
 			nil,
 		),
 	}
@@ -65,11 +65,40 @@ func TestLoadChangelogKeepsRetirementCampaignUnreleased(t *testing.T) {
 	}
 	data := loaded.(map[string]any)
 	releases := data["releases"].([]map[string]any)
-	if len(releases) != 1 || releases[0]["version"] != "Unreleased" {
-		t.Fatalf("results = %#v, want Unreleased only", releases)
+	if len(releases) != 1 || releases[0]["version"] != "v0.48.0" {
+		t.Fatalf("results = %#v, want v0.48.0 only", releases)
 	}
-	if releases[0]["statusLabel"] != "Unreleased · may change" {
+	if releases[0]["statusLabel"] != "Released · immutable" {
 		t.Fatalf("status label = %q", releases[0]["statusLabel"])
+	}
+}
+
+func TestLoadChangelogDoesNotInventUnreleasedEntries(t *testing.T) {
+	ctx := &route.RouteContext{
+		Request: httptest.NewRequest("GET", "/changelog?status=unreleased", nil),
+	}
+	loaded, err := loadChangelog(ctx, route.FilePage{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := loaded.(map[string]any)
+	if data["hasResults"] != false {
+		t.Fatalf("hasResults = %#v, want false", data["hasResults"])
+	}
+	if releases := data["releases"].([]map[string]any); len(releases) != 0 {
+		t.Fatalf("unreleased results = %#v, want none", releases)
+	}
+}
+
+func TestBuildVersionLinksSkipsEmptyReleases(t *testing.T) {
+	links := buildVersionLinks()
+	for _, link := range links {
+		if link["version"] == "Unreleased" {
+			t.Fatalf("version links contain empty Unreleased: %#v", links)
+		}
+	}
+	if len(links) == 0 || links[0]["href"] != "#release-v0-48-0" {
+		t.Fatalf("first version link = %#v, want v0.48.0", links)
 	}
 }
 
@@ -98,16 +127,19 @@ func TestFilterFormUsesManagedGETAndPreservesSelection(t *testing.T) {
 
 func TestReleaseEvidenceLinksStayPinned(t *testing.T) {
 	release := catalog.Releases[1]
-	if got := releaseEvidenceURL(release); got != repositoryURL+"/releases/tag/v0.47.1" {
+	if got := releaseEvidenceURL(release); got != repositoryURL+"/releases/tag/v0.48.0" {
 		t.Fatalf("release evidence URL = %q", got)
 	}
-	if got := releaseCodeURL(release, 1); got != repositoryURL+"/compare/v0.47.0...v0.47.1" {
+	if got := releaseCodeURL(release, 1); got != repositoryURL+"/compare/v0.47.1...v0.48.0" {
 		t.Fatalf("release code URL = %q", got)
 	}
 	if got := sourceLineURL(release.SourceLine); !strings.HasPrefix(got, releasecatalog.SourceURL+"#L") {
 		t.Fatalf("source URL = %q", got)
 	}
-	trail := historicalTrail(release)
+	if title, body := releaseNarrative(release); title == "" || body == "" {
+		t.Fatalf("v0.48.0 narrative = (%q, %q), want content", title, body)
+	}
+	trail := historicalTrail(catalog.Releases[2])
 	if len(trail) != 3 || trail[0]["href"] != repositoryURL+"/issues/490" {
 		t.Fatalf("v0.47.1 trail = %#v", trail)
 	}
