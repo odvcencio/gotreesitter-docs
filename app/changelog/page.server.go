@@ -303,6 +303,9 @@ func catalogReleaseIndex(version string) int {
 func buildVersionLinks() []map[string]any {
 	links := make([]map[string]any, 0, len(catalog.Releases))
 	for _, release := range catalog.Releases {
+		if releaseEntryCount(release) == 0 {
+			continue
+		}
 		links = append(links, map[string]any{
 			"href":    "#" + versionAnchor(release),
 			"version": displayVersion(release),

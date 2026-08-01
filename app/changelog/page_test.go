@@ -90,6 +90,18 @@ func TestLoadChangelogDoesNotInventUnreleasedEntries(t *testing.T) {
 	}
 }
 
+func TestBuildVersionLinksSkipsEmptyReleases(t *testing.T) {
+	links := buildVersionLinks()
+	for _, link := range links {
+		if link["version"] == "Unreleased" {
+			t.Fatalf("version links contain empty Unreleased: %#v", links)
+		}
+	}
+	if len(links) == 0 || links[0]["href"] != "#release-v0-48-0" {
+		t.Fatalf("first version link = %#v, want v0.48.0", links)
+	}
+}
+
 func TestFilterFormUsesManagedGETAndPreservesSelection(t *testing.T) {
 	node := renderFilterForm(
 		"recovery",
