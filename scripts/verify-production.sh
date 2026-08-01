@@ -127,6 +127,11 @@ done < <(
 
 curl --silent --fail "$base/" | grep -q 'Certified fresh parsing' || fail "landing route contract missing from /"
 curl --silent --fail "$base/docs/performance" | grep -q '5.526× C' || fail "performance geomean (5.526× C) missing from /docs/performance"
+external_scanners_html="$(curl --silent --show-error --fail "$base/docs/external-scanners")"
+grep -Fq 'Certified checkpointed reuse for clean old trees.' <<<"$external_scanners_html" ||
+  fail "Markdown clean-tree reuse contract missing from /docs/external-scanners"
+grep -Fq 'Fallback (uncertified) after the leaf fast path declines.' <<<"$external_scanners_html" ||
+  fail "Markdown Inline fallback contract missing from /docs/external-scanners"
 curl --silent --show-error --fail --output "$page_body" "$base/changelog"
 grep -q 'History you can interrogate' "$page_body" || fail "changelog hero missing from /changelog"
 grep -q 'v0.48.0' "$page_body" || fail "v0.48.0 missing from /changelog"
