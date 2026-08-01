@@ -1,6 +1,6 @@
 ---
 title: Migrating from smacker/go-tree-sitter
-description: Move off the unmaintained smacker/go-tree-sitter cgo binding with an import swap, using the compat/smacker shim — no per-node rewrites.
+description: Plan a future move off the unmaintained smacker/go-tree-sitter cgo binding. The compat/smacker shim remains unreleased.
 nav_group: Using the Parser
 order: 8
 ---
@@ -9,8 +9,13 @@ order: 8
 to the C tree-sitter runtime, and it has been unmaintained since **August 2024**. Plenty of tools
 still depend on it — language servers, linters, security scanners — often because rewriting every
 call site that touches a `*sitter.Node` is more work than anyone wants to sign up for.
-`compat/smacker` is the drop-in path off that dead dependency: swap two imports, and keep every
-other line of your code.
+`compat/smacker` is the planned drop-in path off that dead dependency. It remains unreleased and
+is not part of v0.48.0. Treat the import swap below as an evaluated migration design, not a
+stable module contract.
+
+> [!CAUTION] Release status
+> Do not depend on `compat/smacker` from a tagged gotreesitter release yet. Use the native API, or
+> test an exact source revision outside a production dependency policy.
 
 ## The import swap
 
@@ -74,24 +79,20 @@ one static binary per target instead of a matrix of cgo cross-compiles. `go test
 the whole call path, since there is no C frontier for the race detector to lose visibility
 across.
 
-On raw parsing throughput, gotreesitter's canonical real-code full-parse geomean is
-**5.526× C** — slower, not faster, on that workload; see [Performance](/docs/performance) for
-the full methodology and fleet distribution. Where gotreesitter does win outright is allocations
-on the incremental path: reparsing after a small edit is zero-allocation, discussed in
-[Incremental Parsing](/docs/incremental-parsing). Migrate for portability and for the dead
-upstream, not for a full-parse speed win you will not see.
+The sealed v0.45.0 production route receipt is **5.526× C** on the real-code matrix. The compact
+route has a separate **2.9975× C** receipt. Version 0.48 selects compact parsing only for eligible
+fresh full parses and uses production parsing after a compact decline. See
+[Performance](/docs/performance) for the route-specific evidence. Migrate for portability and for
+the dead upstream, not for a full-parse speed win you will not see.
 
 ## Per-grammar subpackages
 
-Every grammar smacker shipped a subpackage for has a `compat/smacker/<language>` counterpart that
-mirrors the same layout — `compat/smacker/golang`, `compat/smacker/python`,
-`compat/smacker/rust`, and so on — each exposing the same `GetLanguage()` function smacker's
-subpackages export. If a grammar you depend on is not covered yet, add one with a few lines
-mapping the name to gotreesitter's existing `grammars.XLanguage()` entry for that language.
+When it ships, every grammar smacker shipped will have a `compat/smacker/<language>` counterpart.
+It will mirror the same layout — `compat/smacker/golang`, `compat/smacker/python`,
+`compat/smacker/rust`, and similar packages. Each package will expose smacker's `GetLanguage()`
+function. Do not rely on that surface until a compatibility release publishes it.
 
 > [!NOTE] Availability
-> `compat/smacker` lands in gotreesitter's module — once released, there is no separate `go get`,
-> just the one import swap above. It is not in `v0.47.1`; until the release that carries it is
-> tagged, pin the module to the revision that includes `compat/smacker` (or track `main`). See
-> [Getting Started](/docs/getting-started) if you are setting up gotreesitter for the first time
-> rather than migrating an existing smacker integration.
+> `compat/smacker` does not ship in v0.48.0. Do not assume its import paths exist in a tagged
+> module. Wait for an announced compatibility release before you make the swap in production. See
+> [Getting Started](/docs/getting-started) if you are setting up gotreesitter for the first time.

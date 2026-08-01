@@ -87,7 +87,7 @@ loop:
    DFA table baked into the `Language` ahead of time. Grammars whose tokens need context a DFA
    cannot express — Python's indentation, Go's automatic semicolons, YAML's nesting — supply a
    hand-written Go `TokenSource` instead (7 shipped, for example `grammars.AuthzedTokenSource`).
-   116 grammars additionally attach an `ExternalScanner` (`Create`/`Destroy`/`Serialize`/
+   119 grammars additionally attach an `ExternalScanner` (`Create`/`Destroy`/`Serialize`/
    `Deserialize`/`Scan`) for individual context-sensitive tokens inside an otherwise DFA-driven
    grammar.
 2. **GLR dispatch.** Each token drives a lookup in `Language.ParseActions`. One action, one stack

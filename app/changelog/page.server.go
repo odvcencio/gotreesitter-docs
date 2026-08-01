@@ -474,9 +474,9 @@ func releaseImpactClass(release releasecatalog.Release) string {
 
 func releaseNarrative(release releasecatalog.Release) (string, string) {
 	switch displayVersion(release) {
-	case "Unreleased":
-		return "The compatibility layer is shrinking by parser-owned classes.",
-			"Current main retires four compatibility classes across ten grammars. The compact and forest routes keep strict rejection checks."
+	case "v0.48.0":
+		return "The parser campaign moved into an immutable release.",
+			"The tag adds Swift corpus coverage, route evidence, recovery corrections, and bounded parser improvements."
 	case "v0.47.1":
 		return "An emergency correction restored valid Go recovery.",
 			"Recovery reductions preserve deferred parent links during fresh parses. Complete Go trees survive final materialization. The invariant check still rejects invalid replacements."
@@ -524,16 +524,6 @@ func extractReferences(markdown string) []map[string]any {
 
 func historicalTrail(release releasecatalog.Release) []map[string]any {
 	switch displayVersion(release) {
-	case "Unreleased":
-		return []map[string]any{
-			trailLink("PR #505", "Robot + Scheme class", repositoryURL+"/pull/505"),
-			trailLink("PR #506", "Compact allocation", repositoryURL+"/pull/506"),
-			trailLink("PR #507", "Named recovery error", repositoryURL+"/pull/507"),
-			trailLink("PR #508", "Forth + Luau class", repositoryURL+"/pull/508"),
-			trailLink("PR #509", "Stop-check allocation", repositoryURL+"/pull/509"),
-			trailLink("PR #510", "Hurl + INI class", repositoryURL+"/pull/510"),
-			trailLink("PR #511", "Four-grammar recovery class", repositoryURL+"/pull/511"),
-		}
 	case "v0.47.1":
 		return []map[string]any{
 			trailLink("Issue #490", "Go grammar regression", repositoryURL+"/issues/490"),
@@ -547,6 +537,7 @@ func historicalTrail(release releasecatalog.Release) []map[string]any {
 
 func campaignTrail() []map[string]any {
 	return []map[string]any{
+		trailLink("v0.48.0", "Swift corpus and route evidence", repositoryURL+"/releases/tag/v0.48.0"),
 		trailLink("v0.47.1", "Emergency recovery fix", repositoryURL+"/releases/tag/v0.47.1"),
 		trailLink("PR #505", "Retire skipped-error class", repositoryURL+"/pull/505"),
 		trailLink("PR #508", "Retire recovery-action class", repositoryURL+"/pull/508"),

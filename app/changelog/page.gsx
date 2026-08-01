@@ -7,7 +7,7 @@ func Page() Node {
 				<span class="eyebrow">Release archive</span>
 				<h1 class="change-title">History you can interrogate.</h1>
 				<p class="change-lead">
-					Search every shipped release and the active work on main. Follow each claim to its tag, code comparison, pull request, issue, or exact changelog line.
+					Search every shipped release and the pinned source snapshot. Follow each claim to its tag, code comparison, pull request, issue, or source line.
 				</p>
 				<div class="change-source-seal" aria-label="Changelog source evidence">
 					<span class="change-seal-label">source snapshot</span>
@@ -22,7 +22,7 @@ func Page() Node {
 			<aside class="change-latest" aria-label="Latest release">
 				<span class="change-latest-kicker">latest immutable release</span>
 				<strong>{data.latestVersion}</strong>
-				<p>The emergency recovery correction keeps valid Go trees complete during final materialization.</p>
+				<p>Version 0.48 adds Swift corpus coverage, route evidence, and recovery corrections.</p>
 				<a href={data.latestReleaseURL} target="_blank" rel="noopener noreferrer">Read the release notes ↗</a>
 			</aside>
 		</header>
@@ -49,11 +49,11 @@ func Page() Node {
 		<section class="change-thread" aria-labelledby="campaign-thread-title">
 			<div class="change-thread-head">
 				<div>
-					<span class="change-kicker">current thread</span>
-					<h2 id="campaign-thread-title">From emergency repair to parser ownership.</h2>
+					<span class="change-kicker">release thread</span>
+					<h2 id="campaign-thread-title">From recovery repair to parser ownership.</h2>
 				</div>
 				<p>
-					The latest tag fixes production recovery. Current main then retires compatibility work by shared parser defect class. Unreleased work stays visibly separate.
+					The v0.48 tag records the campaign results. New main entries remain separate from immutable release evidence.
 				</p>
 			</div>
 			<ol class="change-thread-list">

@@ -23,7 +23,7 @@ pre-compiled grammars. Each grammar comes from its real upstream repository; non
 hand-approximated.
 
 This double effort has a payoff. gotreesitter produces syntax trees that are byte-exact matches
-against the C runtime (tree-sitter v0.25.0), wherever the two implementations have been compared.
+against the C runtime (tree-sitter v0.25.1), wherever the two implementations have been compared.
 Its error-recovery engine is checked decision-by-decision against that same C runtime, for every
 language that has gone through the process (see below).
 
@@ -67,11 +67,10 @@ build a single static binary for any target Go supports.
   no-op edit runs on the engine's 0 B / 0-allocation hot path and returns in single-digit
   nanoseconds. A real edit still reuses almost the whole tree and finishes in a small fraction of
   the time a full parse takes.
-- **Honest full-parse receipts.** The canonical claim is a locked publication receipt on four
-  human-authored, genuinely forking Go fixtures: a 5.526× C equal-fixture geomean against a
-  fingerprinted static oracle. The project withdrew the old 1.895× synthetic headline as
-  unrepresentative. The current fleet median is about 3× C, and per-language cliffs and held-outs
-  stay visible in the ratcheted ledger.
+- **Honest full-parse receipts.** The sealed v0.45.0 receipts measure two routes on four
+  human-authored, forking Go fixtures. Production measures 5.526× C. Compact measures 2.9975× C.
+  Version 0.48 selects compact parsing only for eligible fresh full parses. It uses production
+  parsing after a compact decline. Do not use the two route values as one parser headline.
 
 ## The honest asterisks
 
@@ -89,7 +88,7 @@ This project states where it still falls short, rather than let you find that ou
   512 MiB policy still stops the parse, and its successful full parse remains 3.50× C.
 
 The discipline behind these claims is the same discipline that finds them: compile C tree-sitter
-v0.25.0 with printf instrumentation, replay the Go parser's decisions against it one at a time,
+v0.25.1 with printf instrumentation, replay the Go parser's decisions against it one at a time,
 and fix every divergence until the trees are byte-exact. That process keeps turning up
 "performance cliffs" that turn out to be correctness bugs wearing a performance costume. One bash
 file took 46.4 seconds and produced a whole-file error tree; the parser was silently evicting the

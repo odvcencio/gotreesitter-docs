@@ -7,7 +7,83 @@ for tags and release notes while still in `0.x`.
 
 ## [Unreleased]
 
+## [0.48.0] - 2026-08-01
+
+### Added
+
+- A validated Swift corpus now guards real-code parsing.
+  Twelve files come from swiftlang/swift 6.3 and apple/swift-algorithms 1.2.1.
+  A ratcheting expectations test fails on any regression or unrecorded fix.
+  Five upstream grammar gaps are recorded in issues
+  [#574](https://github.com/odvcencio/gotreesitter/issues/574) through
+  [#578](https://github.com/odvcencio/gotreesitter/issues/578).
+
+- The dispatcher census now reports distinct Ada, Apex, Bash, and Cooklang
+  materialization subpasses.
+  Compatibility-free probes record active and inert producer behavior.
+
+- `grammargen -js-cli` now resolves `grammar.js` with Tree-sitter 0.26 or newer.
+  It imports the temporary canonical `grammar.json` through the existing path.
+  The explicit flag warns that grammar evaluation executes JavaScript.
+
+- `grammargen -js-cli` now identifies a missing JavaScript runtime when
+  Tree-sitter cannot start Node. The command help and README list both
+  prerequisites.
+
+- The canonical compact real-corpus matrix now records 70 direct routes,
+  30 fallbacks, exactly 10 skips, and no divergence or error.
+  The bounded current receipt covers 110 rows.
+
 ### Performance
+
+- Live-header scoping reduces compact full-parse allocation counts by
+  11.27 percent on the 235,626-byte Go fixture.
+  Allocated bytes fall by 26.64 percent.
+  Parse time remains statistically unchanged for that fixture.
+  The rewrite fixture regresses by 19.99 percent.
+  The query-compile fixture regresses by 15.77 percent.
+
+- The parser now skips four redundant source reconstruction passes for
+  certified isolated C# recovered roots.
+  The receipt requires one one-byte error, no missing nodes, and matching raw
+  top-level spans.
+  The 137 KiB deletion witness still matches the pinned C parser.
+  Median full-parse time falls from 8.24 seconds to 5.01 seconds.
+  Median memory falls from 608 MB to 195 MB.
+  Median allocation count falls from 286,009 to 9,663.
+  `BenchmarkIssue454CSharpRecoveredFullParse` uses `GOMAXPROCS=1`,
+  `-benchmem`, `-benchtime=1x`, and `-count=5`.
+
+- The graph-structured stack shape walk now skips a duplicate cache lookup
+  after a known head miss.
+  The standard full-parse benchmark improves by 5.12 percent across 20 samples.
+  Allocations remain at nine per parse.
+
+- Graph-structured stack hashing now selects inline or pooled walk storage
+  before it collects nodes.
+  The 235,626-byte Go fixture allocates 24.84 KiB instead of 110.34 KiB.
+  Allocations fall from 511 to 169 per parse.
+  Parse time and maximum resident set size remain unchanged.
+
+- Outer parser-state re-lex transactions now reuse one 4 KiB scanner-state
+  buffer.
+  The 235,626-byte Go fixture allocates 7.583 MiB instead of 48.073 MiB.
+  Allocations fall from 10,404 to 513 per parse.
+  Two stable pairs improve parse time by 9.52 to 15.46 percent.
+  Maximum resident set size falls from 220,236 KiB to 185,920 KiB.
+
+- Direct parser-state re-lex probes now use their existing outer transaction.
+  This removes a redundant scanner-state snapshot.
+  The 235,626-byte Go fixture allocates 48.07 MiB instead of 86.69 MiB.
+  Allocations fall from 20,290 to 10,400 per parse.
+  Three stable benchmark pairs improve parse time by 10.90 to 15.26 percent.
+
+- The compact scheduler now stores its common rollback frontier inline.
+  This removes one allocation from a fresh full parse.
+
+- The fresh compact runner now reuses its scheduler storage across parses.
+  Full-parse allocations fall from 15 to 14 per operation.
+  Parse time and allocated bytes remain statistically unchanged.
 
 - The parser now reuses its bound stop-check callback across compact full
   parses.
@@ -52,6 +128,129 @@ for tags and release notes while still in `0.x`.
   Parse time remains statistically unchanged.
 
 ### Fixed
+
+- Swift now recovers an `if`/`else` whose comparison condition ends with a
+  parenthesised member access in the then-branch (a call argument or a
+  parenthesised negation). The then-block no longer swallows the trailing
+  `else` as a call's trailing closure.
+  This fixes [#560](https://github.com/odvcencio/gotreesitter/issues/560).
+
+- A Swift optional generic type such as `Range<Int>?` now parses cleanly.
+  The token source defers the closer to the DFA only when a reduce action
+  closes an open `type_arguments` production.
+  This fixes [#556](https://github.com/odvcencio/gotreesitter/issues/556).
+
+- A Swift constrained extension with a multiline `where` clause now parses
+  cleanly. The scanner carries the resolved previous rune across comment
+  handoffs instead of re-reading a raw source byte.
+  This fixes [#557](https://github.com/odvcencio/gotreesitter/issues/557).
+
+- Swift nested `if let` chains inside methods now parse cleanly.
+  The recovery pass brackets only the right-hand side of the binding.
+  This fixes [#558](https://github.com/odvcencio/gotreesitter/issues/558).
+
+- Three or more nested Swift generic type arguments such as `A<B<C<Int>>>`
+  now parse cleanly. The split fires only when an unclosed `<` sits open, so
+  custom operators such as `>>>` stay intact.
+  This fixes [#559](https://github.com/odvcencio/gotreesitter/issues/559).
+
+- A Swift method that contains a `for` loop over a range, followed by another
+  method, now parses cleanly. The recovery pass also fires when the `for`
+  statement forms with an error inside it.
+  This fixes [#561](https://github.com/odvcencio/gotreesitter/issues/561).
+
+- Raw error-cost walks now retain each captured child shape reference.
+  A later mutable node update cannot create a recursive shape cycle.
+  The Rust aggressive corpus completes all 25 bounded parses without a crash.
+
+- TypeScript and TSX now parse `in`, `out`, and `in out` variance
+  annotations on type parameters.
+  The source overlay uses the semantics from upstream pull request 361.
+  This fixes [issue #539](https://github.com/odvcencio/gotreesitter/issues/539).
+
+- TypeScript and TSX now separate adjacent generic call signatures at a
+  newline.
+  The grammar uses the dedicated function-signature separator.
+  Generic automatic-semicolon behavior remains unchanged.
+  This fixes [issue #540](https://github.com/odvcencio/gotreesitter/issues/540).
+
+- Compact reductions now merge only with live scheduler headers.
+  Removed historical versions no longer consume the shared boundary link cap.
+  This retires four real-corpus fallbacks without a tree divergence.
+
+- Shared DFA token election now prefers one composable close angle over a
+  wider close-angle token.
+  Nested TypeScript union arguments now retain the generic-call lineage.
+  This fixes [issue #541](https://github.com/odvcencio/gotreesitter/issues/541).
+  Apex nested generic declarations now match the pinned C tree without a
+  result rewrite.
+  This retires the Apex generic local declaration compatibility pass.
+
+- The full-parse retry ladder now retains a widened candidate until it reads
+  the candidate's runtime receipt.
+  This enables the existing combined stack-and-merge retry for the ZodUnion
+  fixture.
+  This fixes [issue #544](https://github.com/odvcencio/gotreesitter/issues/544).
+
+- Swift optional bindings now keep the statement body separate from a trailing
+  closure. The generator now uses exact advanced LR item precedence.
+  Production, compact, and pinned C tests cover the correction.
+  The regenerated Swift blob retains its exact runtime profile certification.
+  This fixes [#542](https://github.com/odvcencio/gotreesitter/issues/542).
+
+- The DFA lexer now splits adjacent Swift generic closers by parser state.
+  It preserves `>>` when the active state accepts the shift operator.
+  The pinned C oracle now matches without divergence.
+  This fixes [#543](https://github.com/odvcencio/gotreesitter/issues/543).
+
+- Native `grammar.js` import now ignores comments in semantic AST children.
+  All 206 pinned grammars show import coverage increasing from 62 to 70.
+
+- AWK recovery now captures the original splice parent before it constructs a
+  replacement concatenation.
+  This prevents self-parent links during recovered expression materialization.
+  A locked 7,392-byte production fixture now verifies bounded completion and
+  a stable tree digest.
+
+- Compact recursive insertion now proves external token identity from exact
+  scanner checkpoints.
+  Mismatched or missing checkpoints fail closed.
+  Locked Kotlin, OCaml, Perl, and Rust fixtures now reach their next parser gate.
+
+- Forest result selection now preserves an existing same-symbol container.
+  Its children must exactly match adjacent visible root containers.
+  This removes the inert HTTP section-coalescing compatibility pass.
+
+- The native reduction path now sets Dart switch-expression body fields.
+  It now sets the target field for nested Elixir calls.
+  This change removes two inert language-local field repairs.
+
+- Inherited reduction fields now fill anonymous gaps between repeated direct
+  descendants.
+  They do not cross a leading separator without direct descendant evidence.
+  This change removes three Scala field repairs and the SQL `INTO` cleanup.
+
+- Compact graph insertion now persists exact predecessor merges across a
+  bounded 16-level path.
+  Non-exact nested edges and deeper paths still fail closed.
+  Locked C#, Elixir, Perl, and Scala fixtures now reach their next parser gate.
+
+- The compact admission census now separates runnable no-table-action stops
+  from paused frontiers.
+  The real-corpus matrix labels production error trees.
+  Clean graduation coverage no longer counts recovery fixtures as parser gaps.
+
+- Compact graph branches now re-lex one exact token span for each parser state
+  when the shared symbol has no action.
+  Each alternative keeps the shared byte range and scanner checkpoint.
+  The medium Scala corpus now reaches compact acceptance.
+  A separate proof for joined reduction paths still gates direct publication.
+
+- Exact grammar profiles can now flatten certified same-span unary wrappers
+  during reduction materialization.
+  The F# profile removes its declaration-name compatibility walk.
+  Expression and dotted identifiers retain their wrappers.
+  Compact and forest routes retain fail-closed behavior.
 
 - Native C-style recovery now owns Angular, BibTeX, Chatito, and Electronic Data
   Sheet materialization for every registered recovery witness.
@@ -270,7 +469,19 @@ for tags and release notes while still in `0.x`.
   itself allocated, so they stop the same input at the same place every time.
   A downstream user reported this behavior in issue #454.
 
+### Changed
+
+- v0.48.0 adds fields to `FullParseAcceptedErrorRetryProfile`, `ParseRuntime`,
+  and `DiagnosticParserCoreGenericWork`. Change unkeyed literals to keyed
+  literals before you upgrade.
+
 ### Removed
+
+- **The Bash command-name concatenation repair.** Native reduction now
+  constructs the complete command name before result compatibility.
+  The historical producer, all result routes, and the isolated C oracle match.
+  The 25-case Bash corpus matches baseline `83548f55` exactly.
+  Three unrelated Bash subpasses remain live.
 
 - **The D template-call type result repair.** Generic result election now
   preserves a visible named unary wrapper over its direct-child alternative.
@@ -4032,7 +4243,8 @@ Warm-reuse throughput ~10 % higher. 206-grammar parity green under `GTS_PARITY_M
 - Initial standalone pure-Go runtime module.
 - External scanner VM foundation and base parser/lexer/tree infrastructure.
 
-[Unreleased]: https://github.com/odvcencio/gotreesitter/compare/v0.47.1...HEAD
+[Unreleased]: https://github.com/odvcencio/gotreesitter/compare/v0.48.0...HEAD
+[0.48.0]: https://github.com/odvcencio/gotreesitter/compare/v0.47.1...v0.48.0
 [0.47.1]: https://github.com/odvcencio/gotreesitter/compare/v0.47.0...v0.47.1
 [0.47.0]: https://github.com/odvcencio/gotreesitter/compare/v0.46.0...v0.47.0
 [0.46.0]: https://github.com/odvcencio/gotreesitter/compare/v0.45.0...v0.46.0

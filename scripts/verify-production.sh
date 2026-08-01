@@ -125,11 +125,11 @@ done < <(
     sort -u
 )
 
-curl --silent --fail "$base/" | grep -q '5.53×' || fail "landing headline metric (5.53× geomean) missing from /"
+curl --silent --fail "$base/" | grep -q 'Certified fresh parsing' || fail "landing route contract missing from /"
 curl --silent --fail "$base/docs/performance" | grep -q '5.526× C' || fail "performance geomean (5.526× C) missing from /docs/performance"
 curl --silent --show-error --fail --output "$page_body" "$base/changelog"
 grep -q 'History you can interrogate' "$page_body" || fail "changelog hero missing from /changelog"
-grep -q 'v0.47.1' "$page_body" || fail "v0.47.1 missing from /changelog"
+grep -q 'v0.48.0' "$page_body" || fail "v0.48.0 missing from /changelog"
 grep -q 'href="/changelog" aria-current="page"' "$page_body" || fail "active changelog navigation state is missing"
 
 languages_html="$(curl --silent --show-error --fail "$base/docs/languages")"

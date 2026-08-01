@@ -16,17 +16,17 @@ import (
 )
 
 const (
-	// SourceCommit is the gotreesitter main commit that supplied CHANGELOG.md.
-	SourceCommit = "2ef4802f2dbb853486d852cc9c1909e2a26f0199"
+	// SourceCommit is the gotreesitter release commit that supplied CHANGELOG.md.
+	SourceCommit = "706457c2f63578bfa577918fe960b37ef58688f7"
 
 	// LatestReleasedVersion is the newest immutable release in the snapshot.
-	LatestReleasedVersion = "v0.47.1"
+	LatestReleasedVersion = "v0.48.0"
 
 	// SourceURL links to the exact source used to build this catalog.
 	SourceURL = "https://github.com/odvcencio/gotreesitter/blob/" + SourceCommit + "/CHANGELOG.md"
 
 	// SourceSHA256 authenticates the embedded changelog bytes.
-	SourceSHA256 = "579d82c7f11c296a64fbb8eb5496263dc3287156cb55c8bf1077892ae0a81bd3"
+	SourceSHA256 = "871c1c39be98cb0c11c34165bd2676c28206eed85509fb92f21389e3b6e72776"
 )
 
 //go:embed CHANGELOG.md
@@ -348,7 +348,7 @@ func validateReleases(releases []Release) error {
 		return fmt.Errorf("first changelog section must be Unreleased")
 	}
 	for _, release := range releases {
-		if len(release.Sections) == 0 && release.SummaryMarkdown == "" {
+		if release.Status != StatusUnreleased && len(release.Sections) == 0 && release.SummaryMarkdown == "" {
 			return fmt.Errorf("release %q has no content", release.Version)
 		}
 		for _, section := range release.Sections {

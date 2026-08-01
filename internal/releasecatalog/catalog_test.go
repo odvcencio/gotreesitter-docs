@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestLoadDistinguishesReleaseFromUnreleased(t *testing.T) {
+func TestLoadDistinguishesReleaseFromEmptyUnreleased(t *testing.T) {
 	catalog, err := Load()
 	if err != nil {
 		t.Fatal(err)
@@ -13,8 +13,8 @@ func TestLoadDistinguishesReleaseFromUnreleased(t *testing.T) {
 	if catalog.Source.Commit != SourceCommit {
 		t.Fatalf("source commit = %q, want %q", catalog.Source.Commit, SourceCommit)
 	}
-	if catalog.Source.LatestReleased != "v0.47.1" {
-		t.Fatalf("latest released = %q, want v0.47.1", catalog.Source.LatestReleased)
+	if catalog.Source.LatestReleased != "v0.48.0" {
+		t.Fatalf("latest released = %q, want v0.48.0", catalog.Source.LatestReleased)
 	}
 	if len(catalog.Releases) < 70 {
 		t.Fatalf("release count = %d, want at least 70", len(catalog.Releases))
@@ -27,19 +27,19 @@ func TestLoadDistinguishesReleaseFromUnreleased(t *testing.T) {
 	if unreleased.Date != "" || unreleased.Tag != "" {
 		t.Fatalf("Unreleased has immutable metadata: %#v", unreleased)
 	}
-	if !releaseContains(unreleased, "expected Hurl and INI root types") {
-		t.Fatal("Unreleased does not contain the Hurl and INI retirement")
-	}
-	if !releaseContains(unreleased, "four inert result-compatibility dispatcher arms") {
-		t.Fatal("Unreleased does not contain the four-grammar recovery retirement")
+	if unreleased.SummaryMarkdown != "" || len(unreleased.Sections) != 0 {
+		t.Fatalf("Unreleased = %#v, want no entries", unreleased)
 	}
 
 	released := catalog.Releases[1]
-	if released.Tag != "v0.47.1" || released.Date != "2026-07-28" || released.Status != StatusReleased {
-		t.Fatalf("latest immutable release = %#v, want v0.47.1", released)
+	if released.Tag != "v0.48.0" || released.Date != "2026-08-01" || released.Status != StatusReleased {
+		t.Fatalf("latest immutable release = %#v, want v0.48.0", released)
 	}
-	if !releaseContains(released, "deferred parent links") {
-		t.Fatal("v0.47.1 does not contain the recovery fix")
+	if !releaseContains(released, "validated Swift corpus") {
+		t.Fatal("v0.48.0 does not contain the Swift corpus")
+	}
+	if !releaseContains(released, "expected Hurl and INI root types") {
+		t.Fatal("v0.48.0 does not contain the root-type retirement")
 	}
 	if released.SourceLine == 0 || released.Sections[0].SourceLine == 0 ||
 		released.Sections[0].Entries[0].SourceLine == 0 {
@@ -91,6 +91,29 @@ func TestParsePreservesNestedEntryMarkdown(t *testing.T) {
 	}
 }
 
+func TestParseAllowsEmptyUnreleased(t *testing.T) {
+	releases, err := Parse([]byte(`# Changelog
+
+## [Unreleased]
+
+## [0.48.0] - 2026-08-01
+
+### Added
+
+- Release.
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(releases) != 2 {
+		t.Fatalf("release count = %d, want 2", len(releases))
+	}
+	unreleased := releases[0]
+	if unreleased.Status != StatusUnreleased || unreleased.SummaryMarkdown != "" || len(unreleased.Sections) != 0 {
+		t.Fatalf("unreleased = %#v, want empty Unreleased", unreleased)
+	}
+}
+
 func TestFilterFindsEntriesWithoutMixingReleaseStatus(t *testing.T) {
 	catalog, err := Load()
 	if err != nil {
@@ -115,21 +138,26 @@ func TestFilterFindsEntriesWithoutMixingReleaseStatus(t *testing.T) {
 	releases = catalog.Filter(Filter{
 		Query:    "expected Hurl and INI root types",
 		Category: "Fixed",
-		Status:   StatusUnreleased,
+		Status:   StatusReleased,
 	})
-	if len(releases) != 1 || releases[0].Status != StatusUnreleased {
-		t.Fatalf("unreleased retirement results = %#v, want Unreleased only", releases)
+	if len(releases) != 1 || releases[0].Tag != "v0.48.0" {
+		t.Fatalf("released retirement results = %#v, want v0.48.0 only", releases)
 	}
 	if len(releases[0].Sections) != 1 || releases[0].Sections[0].Name != "Fixed" {
 		t.Fatalf("filtered sections = %#v, want Fixed only", releases[0].Sections)
 	}
 
+	releases = catalog.Filter(Filter{Status: StatusUnreleased})
+	if len(releases) != 0 {
+		t.Fatalf("unreleased results = %#v, want no entries", releases)
+	}
+
 	releases = catalog.Filter(Filter{
 		Query:  "four inert result-compatibility dispatcher arms",
-		Status: StatusUnreleased,
+		Status: StatusReleased,
 	})
-	if len(releases) != 1 || releases[0].Version != "Unreleased" {
-		t.Fatalf("four-grammar retirement results = %#v, want Unreleased only", releases)
+	if len(releases) != 1 || releases[0].Tag != "v0.48.0" {
+		t.Fatalf("four-grammar retirement results = %#v, want v0.48.0 only", releases)
 	}
 }
 

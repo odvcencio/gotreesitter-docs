@@ -10,7 +10,7 @@ C at runtime. That raises an obvious question: how do you know a from-scratch pa
 *same* tree the C runtime would?
 
 Here is the answer this project holds itself to: **byte-for-byte identical trees, verified against
-C tree-sitter v0.25.0** — and not just on well-formed code. **Error recovery is included in that
+C tree-sitter v0.25.1** — and not just on well-formed code. **Error recovery is included in that
 bar.** This page explains what that means, why it is hard, and the machinery that keeps it
 honest.
 
@@ -76,7 +76,7 @@ written as a deliberate port of the C functions that drive it — `ts_parser__ha
 helpers — with the C code named as the spec. The cost constants are copied from C's
 `error_costs.h` (cost-per-recovery 500, cost-per-missing 110, cost-per-skipped-tree 100, and
 similar values), and the maximum cost difference the version competition tolerates is pinned to
-the v0.25.0 value, with a warning in the code *not* to "correct" it to the older v0.24 value —
+the v0.25.1 value, with a warning in the code *not* to "correct" it to the older v0.24 value —
 doing so would silently break parity against the exact runtime this port was verified against.
 That is how tight the coupling is: an off-by-one in a tie-break threshold is a divergence.
 
@@ -85,7 +85,7 @@ That is how tight the coupling is: an off-by-one in a tie-break threshold is a d
 The correctness discipline behind the byte-exact claim is differential testing against C, driven
 down to individual decisions. Here is the method:
 
-1. **Compile C tree-sitter v0.25.0 as an oracle** and link it into a cgo test harness alongside
+1. **Compile C tree-sitter v0.25.1 as an oracle** and link it into a cgo test harness alongside
    the pure-Go engine. The harness parses the same bytes with both.
 2. **Compare the trees node-by-node in lockstep.** The comparison is exact on the fields that
    define a tree: type, start byte, end byte, named-ness, missing-ness, child count, and field
@@ -151,6 +151,17 @@ tooling: **parity versus the C oracle is the gate; performance is only a sub-ran
 that regresses below its recorded parity floor fails the tier ratchet. Correctness and speed stay
 deliberately separate gates — the harness framework spells it out: *do not infer correctness from
 performance numbers.*
+
+## Swift real-code corpus
+
+The v0.48.0 corpus contains twelve pinned files from Swift 6.3 and
+apple/swift-algorithms 1.2.1. Its expectation test rejects a regression and rejects an unrecorded
+fix. It keeps the current result classification explicit.
+
+Five Swift standard-library cases match the pinned C oracle but expose upstream grammar gaps.
+Issues [#574](https://github.com/odvcencio/gotreesitter/issues/574) through
+[#578](https://github.com/odvcencio/gotreesitter/issues/578) record them. Do not add a Go-only
+repair for those cases. It would break locked C parity.
 
 ## The campaign lesson: cliffs are correctness bugs in disguise
 
