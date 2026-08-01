@@ -297,6 +297,32 @@ remapper: `gotreesitter.AdaptExternalScannerByExternalOrder(sourceLang, targetLa
   returning false never mutated the payload — this lets the runtime skip defensive state
   snapshots on the hot path.
 
+### Markdown scanner certification matrix
+
+[PR #455](https://github.com/odvcencio/gotreesitter/pull/455) certifies only
+the block-level `markdown` scanner. Its
+[merge commit `91a5dccc`](https://github.com/odvcencio/gotreesitter/commit/91a5dccc01904dd18d75d7ea84b3a01a67b356c2)
+records the proof.
+
+The `markdown` scanner-dependent route records scanner checkpoints. A changed
+edit can enter old-tree reuse only for a clean old tree. The normal dirty-span,
+fragility, byte-equality, parser-state, and scanner-boundary gates still apply.
+
+The proof compares each incremental tree with a fresh production parse. It
+covers insert, delete, and changed-length replace edits at the start, middle,
+and end of 8 KiB clean documents. It also requires 25% reused bytes for a
+middle replace in a 256 KiB document. It does not promise O(edit) time.
+
+The `markdown_inline` scanner remains uncertified. After the token-invariant
+leaf fast path declines, its changed edits use the production full-parse
+fallback. The Markdown proof does not apply to `markdown_inline` or
+error-bearing old Markdown trees.
+
+| Language | Changed-edit contract |
+|---|---|
+| `markdown` | Certified checkpointed reuse for clean old trees. |
+| `markdown_inline` | Fallback (uncertified) after the leaf fast path declines. |
+
 ## Hard-learned behavioral contracts
 
 These four contracts came out of this project's C-parity work. They apply mainly when you
