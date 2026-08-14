@@ -13,8 +13,8 @@ func TestLoadDistinguishesReleaseFromEmptyUnreleased(t *testing.T) {
 	if catalog.Source.Commit != SourceCommit {
 		t.Fatalf("source commit = %q, want %q", catalog.Source.Commit, SourceCommit)
 	}
-	if catalog.Source.LatestReleased != "v0.48.0" {
-		t.Fatalf("latest released = %q, want v0.48.0", catalog.Source.LatestReleased)
+	if catalog.Source.LatestReleased != "v0.50.0" {
+		t.Fatalf("latest released = %q, want v0.50.0", catalog.Source.LatestReleased)
 	}
 	if len(catalog.Releases) < 70 {
 		t.Fatalf("release count = %d, want at least 70", len(catalog.Releases))
@@ -32,14 +32,14 @@ func TestLoadDistinguishesReleaseFromEmptyUnreleased(t *testing.T) {
 	}
 
 	released := catalog.Releases[1]
-	if released.Tag != "v0.48.0" || released.Date != "2026-08-01" || released.Status != StatusReleased {
-		t.Fatalf("latest immutable release = %#v, want v0.48.0", released)
+	if released.Tag != "v0.50.0" || released.Date != "2026-08-14" || released.Status != StatusReleased {
+		t.Fatalf("latest immutable release = %#v, want v0.50.0", released)
 	}
-	if !releaseContains(released, "validated Swift corpus") {
-		t.Fatal("v0.48.0 does not contain the Swift corpus")
+	if !releaseContains(released, "TestOutlineOracleDifferential") {
+		t.Fatal("v0.50.0 does not contain the outline oracle differential")
 	}
-	if !releaseContains(released, "expected Hurl and INI root types") {
-		t.Fatal("v0.48.0 does not contain the root-type retirement")
+	if !releaseContains(released, "signed right-shift operator") {
+		t.Fatal("v0.50.0 does not contain the TypeScript shift-operator fix")
 	}
 	if released.SourceLine == 0 || released.Sections[0].SourceLine == 0 ||
 		released.Sections[0].Entries[0].SourceLine == 0 {

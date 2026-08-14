@@ -7,6 +7,420 @@ for tags and release notes while still in `0.x`.
 
 ## [Unreleased]
 
+## [0.50.0] - 2026-08-14
+
+### Added
+
+- `TestOutlineOracleDifferential` (`cgo_harness/outline_differential_test.go`)
+  runs each language's resolved tags query through both the pure-Go query
+  engine and the official C tree-sitter runtime, then diffs the two capture
+  streams. It hard-asserts capture parity for the core nine outline
+  languages (`go`, `python`, `javascript`, `typescript`, `tsx`, `rust`,
+  `java`, `c`, `cpp`) and logs a census for every other language with a
+  resolvable tags query.
+
+- `TestOutlineCoverageWitnesses` (`grammars/outline_coverage_witness_test.go`)
+  pins 30 languages against the real `Outliner` pipeline. Each case names an
+  exact symbol its resolved tags query must produce, so a pattern that
+  compiles but never fires now fails the test instead of hiding behind a
+  non-empty query string.
+
+- File-outline tags-query coverage rose from a 30-language floor to 84 of
+  206 registered languages: 83 with a real-corpus fixture and 1 with a
+  smoke-sample fixture (`grammars/testdata/outline_census/baseline.json`).
+  `TestInferredTagsQueryCoverage` (`grammars/registry_test.go`) now enforces
+  84 as the floor. See `docs/outline.md` for the full coverage tiers and the
+  file outline API.
+
+- `OutlineSymbol.Owner` now resolves on every `OutlineTree` call. A rule
+  attached through `WithOutlineOwnerRules` matches a symbol by `NodeType`,
+  reads its `OwnerField`, and descends through the rule's `Unwrap` node
+  types until it reaches exactly one `NameTypes` terminal. Any other
+  outcome — an absent field, or a walk that reaches zero or more than one
+  terminal — leaves `Owner` empty and counts one
+  `OutlineReport.OwnerRuleMisses`; a `NodeType` no attached rule names
+  touches neither field.
+
+- `grammars.OutlineOwnerRules(entry)` gates the shipped owner-rule table by
+  symbol and field presence in each language's own compiled grammar, the
+  same way `ResolveTagsQuery`'s inference table is gated, and composes
+  directly with `gotreesitter.WithOutlineOwnerRules`. The shipped Go rule
+  resolves all four receiver shapes — value, pointer, generic value, and
+  generic pointer — to the receiver's base type name. See `docs/outline.md`
+  for the full resolution contract and a worked example.
+### Removed
+
+- Native root-extra folding and reduction now own Elixir comment placement
+  and map entry grouping. Parsing drops the hidden
+  `_newline_before_comment` scanner token without a post-parse pass.
+  Reduction groups map keyword pairs and wraps update and arrow entries in
+  the map grammar's `binary_operator` node. This removes the Elixir
+  result-compatibility dispatcher arm.
+### Removed
+
+- Native scheduling and reduction now own the Enforce `const int` formal
+  parameter shape. Parsing classifies `const` as a
+  `formal_parameter_modifier` and `int` as `type_int` directly. It keeps
+  the parameter's own name and default value instead of losing them to a
+  misread type/name pair. This removes the Enforce result-compatibility
+  dispatcher arm.
+
+### Fixed
+
+- TypeScript and TSX no longer split a signed right-shift operator into two
+  generic closers. `splitCompactCloseAngleToken` narrows a `>>` token to a
+  single `>` so nested closers such as `Array<Array<string>>` parse. Java
+  gated that split behind an "unclosed `<` precedes this run" check, because
+  `>>` is also a shift operator there; TypeScript and TSX carried no such
+  gate. Any `>>` whose next byte was one of `( ) [ ] { } , . ; : ?` was torn
+  apart, so `x = a >> (b)` failed to parse while `x = a >> b` succeeded. The
+  angle-depth gate now covers TypeScript and TSX, and runs only when a `>>`
+  symbol is actually active in the state: with no shift alternative to
+  protect, narrowing to `>` remains the only way to make progress. Found
+  while migrating the GoSX browser runtime to TypeScript, on
+  `indices[i] = (src[i >> 3] >> (i & 7)) & 1;`.
+  `on`, `off`, `yes`, `no`) at lex time. The grammar's word token pattern can
+  absorb leading whitespace before a keyword, and the keyword re-lex
+  previously required its match to start at byte zero, so it missed that
+  case and left the value as a generic string token. DFA keyword promotion
+  now skips the leading run first, the same way tree-sitter's own generated
+  keyword lexer does. This retires the Hyprlang dispatcher arm and fixes a
+  related bug: a trailing space after the keyword no longer produces an
+  incorrect boolean node.
+
+- Seven of the file outline's core nine languages carried tags-query rows
+  that reference a child node type the grammar never produces at that
+  position: `javascript`, `typescript`, `tsx`, `java`, `c`, `cpp`, and
+  `rust`. The C query compiler rejects such a row as an "Impossible
+  pattern" and drops the entire multi-pattern query with it. The pure-Go
+  query engine has no matching check, so it compiled the same row and
+  silently matched nothing. The dead rows are now removed or corrected.
+  `TestOutlineOracleDifferential`'s core-nine tier reports capture-stream
+  parity for all nine languages, and the fix changed no Go outline output —
+  confirmed by unchanged golden fixtures.
+
+### Removed
+
+- **The Bash assignment-wrapper and if-condition-field repairs.** Native
+  reduction already builds the C-shaped `variable_assignments` wrapper for
+  two or more consecutive assignments. It already sets the `condition`
+  field on an if-statement's condition tokens too. The Bash compatibility
+  pass no longer splices that wrapper's children into the enclosing node or
+  rebuilds the field afterward.
+  tree-sitter-bash's own corpus (`test/corpus/literals.txt`) pins the same
+  wrapper for two top-level assignments.
+  Production, compact, forest, and incremental routes match the raw parse
+  exactly, and the isolated C-oracle comparison matches for every case.
+  One unrelated Bash subpass remains live.
+- The FIDL result-compatibility dispatcher arm is retired. Native recovery
+  already builds the C-equivalent error shape for a versioned-layout-modifier
+  declaration whose modifier keyword carries a stray `(name=value)` argument
+  list. Production, compact, forest, and incremental routes produce the same
+  tree, and an isolated C-oracle parity check confirms the shape.
+- The HLSL subscript-assignment declarator member of the result-compatibility
+  dispatcher arm is retired. `structured_binding_declarator` carries a
+  negative dynamic precedence in the grammar. Native parsing already elects
+  the C-equivalent subscript-assignment expression for `Name[index] = value;`
+  without a post-parse pass. Production, compact, forest, and incremental
+  routes stay exact. The negative-number cast and unorm-buffer members of the
+  HLSL arm remain live.
+
+## [0.49.0] - 2026-08-11
+
+### Removed
+
+- One member of the Go result-compatibility arm is retired: the member
+  that widened the root span across a trailing end-of-file newline.
+  `extendNodeToTrailingWhitespace` runs unconditionally after the
+  compatibility pass and accepts a superset of the byte set the Go member
+  tested, so the Go member could never reach a span the later pass did not
+  already reach.
+  A census recorded 35,244 gate entries and zero rewrites.
+  The four pinned canonical Go deep-tree digests are byte-identical, and
+  the exhaustive C-oracle fresh and incremental parity sweep stays green.
+
+### Added
+
+- `FactProgram` compiles selected definition, call, heritage, and import work
+  into a dense 16-bit instruction stream. One program can process compatible
+  trees with one traversal while the individual extraction APIs remain stable.
+  The 20-seed combined benchmark reduced Go tree inspection time by 71.19%
+  for definitions and calls. The all-facts path reduced time by 84.14%, bytes
+  by 1.88%, and allocations by 49.41%. Parse-plus-extraction stayed unchanged.
+
+- Opt-in Lean 4 support now provides a grammar blob, scanner, highlights,
+  outline tags, and focused corpus tests in `grammars/lean`. The default
+  206-language registry remains unchanged.
+
+- The V10 fleet harness now runs bounded Google Cloud spot workers across all
+  registered languages. It enforces wall, memory, disk, and automatic deletion
+  limits. Accepted epoch `20260808T202958Z-v10-full-5003ffba` completed all
+  1,435 measurements for 206 languages.
+
+- `scripts/run_randomized_benchmarks.sh` now runs one process for each shuffle
+  seed and randomizes benchmark order. The standard comparison uses 20 seeds,
+  `GOMAXPROCS=1`, a 750 millisecond benchmark time, and memory reporting.
+
+- Merge-event census instrumentation now records merge decisions and refusal
+  gates on the production and C-oracle paths. Its first constructed receipt
+  reports 15 Go merges against 191 C merges across 104 sources. It records no
+  source where Go merges more often than C.
+
+- A regression guard covers issue #660.
+  It checks anonymous comma nodes in Python imports and subscripts on both
+  parser routes.
+
+- The included-ranges route now has committed test coverage.
+  `Parser.SetIncludedRanges` had no test for any language, and injection
+  uses that call for every injected child.
+  A Markdown document with two or more Go fences reaches it in production.
+  Four new gates cover the route: a root-symbol gate, a positive control
+  that proves the Go arm still rewrites the tree there, a C-oracle table
+  that pins the measured root of both parsers across four range
+  geometries, and a deletion guard.
+  The route is not at parity with C, and the new tests do not claim it is.
+  The root span matches C only when the first range starts at byte 0 and
+  the last ends at end of file, which is a shape an injection child never
+  receives.
+  One pinned geometry publishes an `ERROR` root where C publishes
+  `source_file`.
+  That case is an open defect in included-range clipping, recorded so the
+  fix moves the pin.
+
+- The Go result-compatibility arm's three members are now registered as
+  named census subpasses, so a census receipt names the member that
+  rewrote the tree instead of only the arm.
+  Census receipts are recorded on the production route only; the default
+  candidate route leaves `ParseRuntime().NormalizationPasses` nil.
+
+### Fixed
+
+- C enum lists with three or more enumerators no longer publish `ERROR` or
+  `MISSING` nodes. A clean forest result can replace a recovered tree only
+  after it covers the full source and contains no recovery nodes. This fixes
+  [issue #667](https://github.com/odvcencio/gotreesitter/issues/667).
+
+- `Node.HasErrorOrMissing` reports both recovery node forms. The
+  `grammargen parse -strict` command now rejects either form.
+
+- JavaScript, TypeScript, and TSX scanners now bind external results through
+  each language's positional symbol table. Regenerated blobs no longer mistype
+  shifted external symbols.
+
+- The full-parse retry selector no longer releases an incumbent when a
+  candidate aliases it. This restores selected roots across retry and compact
+  fallback paths.
+
+- The accepted-error retry ladder now honors explicit stack and merge caps.
+  It also keeps bounded pass counts and configured wall budgets across retries.
+
+- Kotlin published an `ERROR` root instead of `source_file` when a parse used
+  `Parser.SetIncludedRanges` with more than one range and the parse entered
+  recovery.
+  The recovered-root normalization that owns this result was removed on
+  2026-08-02 as dead code.
+  The census behind that removal measured the fresh, over-64-KiB, incremental
+  and pinned routes.
+  It never measured the included-ranges route, and the member is live there.
+  The member is restored.
+  On the committed witness, `testdata/included_ranges/kotlin_work_queue_test.kt`
+  with three ranges, the root returns to `source_file`, which is the kind the
+  locked Kotlin C reference runtime publishes for the same input.
+  Production reaches this route through injection.
+  The member retags the root.
+  Its downstream consequence is not always toward the reference runtime: on one
+  measured file the retag lets a later stage flatten a clean
+  `class_declaration` into root-level members.
+  The route now has committed test coverage for Kotlin, in the root package and
+  in the C-parity lane.
+- The C-recovery missing-token search (`cHandleError` /
+  `cDoAllPotentialReductions`, `parser_recover_c.go`) cloned the whole GSS
+  stack without a work limit.
+  A 4-byte erlang input and a 56-byte jsdoc input drove heap use past 2 GB
+  in seconds.
+  Two new loop ceilings now bound the search directly.
+  `cRecoverMaxReductionCandidateAttempts` caps candidate attempts within one
+  `cDoAllPotentialReductions` call.
+  `cRecoverMaxMissingTokenTrials` caps total trials across one
+  `cHandleError` search.
+  `cRecoverMaxReductionCandidateAttempts` is the active mechanism.
+  It is what stops every known witness and every corpus file measured so
+  far.
+  `cRecoverMaxMissingTokenTrials` has not fired once on any of them.
+  It stays in place as an unexercised backstop for input this codebase has
+  not sampled yet, not as a mechanism this fix currently relies on.
+  A new `Parser.budgetScratch` pointer feeds GSS-scratch allocation into
+  the existing 512 MB soft memory budget.
+  The check already in the main parse loop now covers the C-recovery
+  candidate search too.
+
+  Measured through the shipped regression test on the `erlang_pfx_017_71b`
+  witness (`testdata/recovery_memory_bound_witnesses/`): heap growth after
+  this fix is 144.1 MB on the production route and 138.9 MB on the compact
+  route, in well under half a second.
+  Before this fix, the same input reached 695 MB and 52.0 seconds.
+  Both post-fix numbers are the real, reproducible figures.
+  An earlier draft of this fix reported smaller ones.
+
+  `parser_memory_budget_runtime.go`'s `runtimeMemoryHardCeilingEnabled`
+  function keeps its exact prior behavior.
+  This fix adds a comment there recording why an earlier draft's
+  source-length-independent hard ceiling was tried and dropped.
+  It reopened issue #454's determinism symptom class on sub-64 KiB input.
+  It also cost 3.6-9x more time on ordinary small parses, with no
+  offsetting protection over the two loop ceilings above.
+
+- The GSS-forest link cap could silently drop the widest hidden-symbol
+  alternative when it tied a narrower one on score and error cost.
+  The cap kept the earlier arrival by default in every tie.
+  json5's flat-array grammar shape hits this tie constantly on ordinary
+  input.
+  Other forest-default languages hit it rarely or not at all on their
+  current tables.
+  The cap now keeps the wider alternative when two links tie on the same
+  symbol and the same end byte.
+  A narrower-tie or cross-symbol tie keeps the prior behavior unchanged.
+  `Parser.ForestCapTieStats()` is a new method.
+  It reports how often the tie fires and how often the fix changes the
+  outcome.
+  Set `GOT_FOREST_CAP_TIE_DUMP=1` to also record a bounded per-decision
+  receipt list.
+
+- Corrected the root-cause comment on the javascript declared-conflict
+  election witness test.
+  `grammargen/lr.go` already retains the `labeled_statement`/`_property_name`
+  GLR fork that the real tree-sitter-javascript grammar declares.
+  That fix landed 2026-03-16.
+  The shipped `javascript.bin` blob predates the fix by two weeks.
+  Nothing resynced the blob afterward, so the raw parse still diverges from
+  the C oracle today.
+  A new unit test pins the retention rule directly against the generator.
+  Regressions now surface without a blob rebuild.
+
+- The Swift optional-binding vs trailing-closure fix (#542) added a
+  shift/reduce precedence branch to `grammargen/lr.go`.
+  It ran before the declared-conflict retention check.
+  It also matched ordinary undeclared conflicts in other grammars and
+  picked the wrong side.
+  JavaScript's `update_expression` vs `binary_expression` conflict is one
+  example.
+  The branch now runs last, after declared-conflict retention and the
+  ordinary precedence ladder get a chance to resolve the conflict first.
+  The Swift case from #542 still resolves correctly.
+  A new test now guards javascript and typescript regeneration against the
+  C reference parser on real source files.
+
+### Changed
+
+- Parser stop checks now skip inactive callbacks and keep the common callback
+  direct. Result materialization reads the wall clock every 64 checkpoints.
+  Cancellation and sticky stop checks still run at every checkpoint.
+
+- GLR recovery now computes C-compatible error cost and visible counts in one
+  tree walk. Memo indexing uses pointer-bit folds and checks the primary way
+  first. Graph-structured stack (GSS) nodes store clean-zero merge results
+  without a larger node layout. Extra-link mutations invalidate the result.
+
+- C-recovery promotes an error stack to the graph-structured stack before
+  reduction forks. Deep recovery branches now share their immutable prefix.
+  The Swift recovery witness reduced time by 9.96%, bytes by 59.65%, and mean
+  peak resident memory by 22.09%. The 20-seed combined suite reduced KDL
+  recovery time by 1.20%, bytes by 13.14%, and allocations by 1.58%.
+  Other parser timings stayed neutral.
+
+- The randomized benchmark suite now accepts an exact recovery corpus file and
+  language. The 20-seed comparison against the release boundary reduced the
+  timing geomean by 1.77%. Elixir recovery improved by 15.21%, KDL recovery by
+  9.12%, full parse by 1.16%, and incremental no-edit by 6.51%.
+  `FactProgram` parse and extraction improved by 1.23%.
+  The parser-core control stayed neutral. No timing, byte, or allocation metric
+  had a significant regression.
+
+- The guarded parser-core bytecode experiment now supports `REDUCE_CHAIN` and
+  `REDUCE_SHIFT`. The corridor remains off by default. Each superinstruction
+  also requires its own experiment gate.
+
+- Synthetic-root replay now hashes frames and gap cursors, memoizes gap tokens
+  and advance transitions, reuses scratch, and pools external token sources.
+  Paged advance and close streams bound retained memo storage.
+  Advance memoization cut the hard Elixir target latency by 22.62 percent.
+  Close paging cut bytes per operation by 5.15 percent and allocations by
+  60.48 percent. Its latency remained neutral across 20 balanced pairs. All
+  16 combined-suite latency rows also remained neutral.
+
+- Exact C and V runtime profiles now avoid certified duplicate retry work.
+  Other grammars keep the conservative retry ladder.
+
+- Performance counters now expose maximum resident memory, replay closure
+  distribution, memo capacity skips, and parser stop attribution.
+
+- The compact fresh-path route now skips two tail steps for a language with
+  no live result-compatibility entry: the C-recovery-swallow resolver and
+  the final-tree compaction pass.
+  The eligible set is computed from
+  `testdata/result_compat_ownership_v1.json`.
+  It is not a maintained list.
+  A future dispatcher arm cannot silently escape it.
+  163 of 206 registered languages are eligible today.
+  Go is not one of them.
+  `dispatch.go` stays live, so `grammargen_lr` and the other three canonical
+  Go fixtures still take the full tail.
+  A deep-tree digest comparison (elided against unelided) is exact across
+  every eligible language's smoke sample.
+  It is also exact across every real-corpus file this campaign measured, up
+  to 484 KB.
+  This is a correctness-neutral simplification, not a measured performance
+  win: the result-compatibility dispatch and its error-summary walk already
+  run once, during materialization, for every language; the tail's own copy
+  of that work was already unreachable in the common case before this
+  change, eligible language or not.
+  Two eligible-language timing probes (OCaml, Zig) and the Go warm-route
+  benchmark all read within this shared host's noise floor, consistent with
+  that finding.
+  See the PR for the full reading and `docs/compat-tail-elision.md` for the
+  corrected performance and correctness analysis.
+
+- The condense-candidate dispatch path no longer passes a closure through
+  two wrapper layers per event.
+  Each shift, cohort, and reduction entry point now validates the scheduler
+  owner and calls the uncheckpointed operation directly.
+  Behavior is unchanged; every identity, work-count, and allocation check
+  still passes.
+  Local timing on a shared host showed no significant change across four
+  fixtures.
+  The host carried heavy background load throughout the run, so the result
+  is not a sealed measurement.
+
+- Removed the 64 KiB source-length eligibility decline from the compact
+  admission switch.
+  A fresh full parse of any size now attempts the compact route first.
+  The scheduler's stop-control poll bounds a large or pathological input:
+  it compares the compact core's own real retained-memory footprint
+  against the same soft memory budget production honors, and falls back to
+  production with a matching `ParseStopMemoryBudget` stop reason when the
+  budget is exceeded.
+  Every decline path now releases the compact core's retained capacity
+  before returning, not only its logical record count, so a production
+  fallback does not run alongside megabytes of memory an earlier declined
+  attempt on the same parser left allocated.
+  An operator watching `AdmissionCandidateCounters()` sees this directly:
+  a large input that declines bumps the fallback count exactly as a small
+  one always did.
+  This bounds retained footprint, not the compact scheduler's own transient
+  per-token allocation during a declined attempt; closing that remaining
+  gap trades against how large an input the compact route can still serve,
+  and is an open follow-up, not resolved by this change.
+  Routing only changes; every canonical tree digest stays identical.
+
+## [0.48.1] - 2026-08-04
+
+### Fixed
+
+- Anonymous separator nodes in Python import and subscript forms stay
+  unfielded.
+  The patch restores field-name behavior from the reference C runtime.
+  This fixes [issue #660](https://github.com/odvcencio/gotreesitter/issues/660).
+
 ## [0.48.0] - 2026-08-01
 
 ### Added
@@ -224,11 +638,6 @@ for tags and release notes while still in `0.x`.
 - The native reduction path now sets Dart switch-expression body fields.
   It now sets the target field for nested Elixir calls.
   This change removes two inert language-local field repairs.
-
-- Inherited reduction fields now fill anonymous gaps between repeated direct
-  descendants.
-  They do not cross a leading separator without direct descendant evidence.
-  This change removes three Scala field repairs and the SQL `INTO` cleanup.
 
 - Compact graph insertion now persists exact predecessor merges across a
   bounded 16-level path.
@@ -4243,7 +4652,10 @@ Warm-reuse throughput ~10 % higher. 206-grammar parity green under `GTS_PARITY_M
 - Initial standalone pure-Go runtime module.
 - External scanner VM foundation and base parser/lexer/tree infrastructure.
 
-[Unreleased]: https://github.com/odvcencio/gotreesitter/compare/v0.48.0...HEAD
+[Unreleased]: https://github.com/odvcencio/gotreesitter/compare/v0.50.0...HEAD
+[0.50.0]: https://github.com/odvcencio/gotreesitter/compare/v0.49.0...v0.50.0
+[0.49.0]: https://github.com/odvcencio/gotreesitter/compare/v0.48.1...v0.49.0
+[0.48.1]: https://github.com/odvcencio/gotreesitter/compare/v0.48.0...v0.48.1
 [0.48.0]: https://github.com/odvcencio/gotreesitter/compare/v0.47.1...v0.48.0
 [0.47.1]: https://github.com/odvcencio/gotreesitter/compare/v0.47.0...v0.47.1
 [0.47.0]: https://github.com/odvcencio/gotreesitter/compare/v0.46.0...v0.47.0

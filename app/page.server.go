@@ -57,7 +57,7 @@ var landingFeatures = []map[string]any{
 	{"tok": "noC", "ttl": "No CGo, no C toolchain", "body": "Parser, lexer, scanners, query engine — all Go. Nothing to link, nothing to install.", "color": "c-cyan"},
 	{"tok": "→*", "ttl": "Cross-compiles anywhere", "body": "Any GOOS/GOARCH Go supports, wasip1 included. No per-target C cross-toolchain.", "color": "c-blue"},
 	{"tok": "206", "ttl": "206 grammars in the box", "body": "Extracted from upstream parser.c by ts2go, compressed to blobs, lazy-loaded with an LRU cache.", "color": "c-violet"},
-	{"tok": "route", "ttl": "Certified fresh parsing", "body": "Eligible fresh full parses use compact parsing. A compact decline returns the production result. The sealed v0.45.0 receipts are 5.526× C for production and 2.9975× C for compact. They do not describe every v0.48.0 parse.", "color": "c-green"},
+	{"tok": "route", "ttl": "Certified fresh parsing", "body": "Eligible fresh full parses use compact parsing. A compact decline returns the production result. The sealed v0.45.0 receipts are 5.526× C for production and 2.9975× C for compact. They do not describe every v0.50.0 parse.", "color": "c-green"},
 	{"tok": "ns", "ttl": "Zero-allocation incrementals", "body": "The sealed v0.45.0 straight-LR control allocates zero bytes for no-edit and one-byte incremental parses. Timing depends on the host and input.", "color": "c-orange"},
 	{"tok": "GLR", "ttl": "C-oracle recovery gates", "body": "The GLR and recovery paths are verified separately from performance, with curated and real-corpus parity receipts.", "color": "c-red"},
 	{"tok": "U16", "ttl": "Native UTF-16 for editors", "body": "Parse UTF-16 code units or endian byte buffers; nodes, edits & queries map back to UTF-16 offsets.", "color": "c-pink"},

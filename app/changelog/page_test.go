@@ -97,8 +97,12 @@ func TestBuildVersionLinksSkipsEmptyReleases(t *testing.T) {
 			t.Fatalf("version links contain empty Unreleased: %#v", links)
 		}
 	}
-	if len(links) == 0 || links[0]["href"] != "#release-v0-48-0" {
-		t.Fatalf("first version link = %#v, want v0.48.0", links)
+	// Derive the expected anchor from the catalog rather than pinning a
+	// version, so cutting a release does not fail this test for the wrong
+	// reason. The invariant under test is ordering: newest released first.
+	wantHref := "#release-" + strings.NewReplacer(".", "-").Replace(releasecatalog.LatestReleasedVersion)
+	if len(links) == 0 || links[0]["href"] != wantHref {
+		t.Fatalf("first version link = %#v, want %s", links, wantHref)
 	}
 }
 
@@ -125,21 +129,43 @@ func TestFilterFormUsesManagedGETAndPreservesSelection(t *testing.T) {
 	}
 }
 
-func TestReleaseEvidenceLinksStayPinned(t *testing.T) {
-	release := catalog.Releases[1]
-	if got := releaseEvidenceURL(release); got != repositoryURL+"/releases/tag/v0.48.0" {
-		t.Fatalf("release evidence URL = %q", got)
+// releaseByTag finds a release in the loaded catalog. Tests that assert on a
+// specific release's content look it up by tag instead of by slice index, which
+// shifts by one on every release and fails for reasons unrelated to the code.
+func releaseByTag(t *testing.T, tag string) releasecatalog.Release {
+	t.Helper()
+	for _, release := range catalog.Releases {
+		if release.Tag == tag {
+			return release
+		}
 	}
-	if got := releaseCodeURL(release, 1); got != repositoryURL+"/compare/v0.47.1...v0.48.0" {
-		t.Fatalf("release code URL = %q", got)
+	t.Fatalf("release %s is not in the catalog", tag)
+	return releasecatalog.Release{}
+}
+
+func TestReleaseEvidenceLinksStayPinned(t *testing.T) {
+	// The newest released entry, whatever it currently is.
+	release := releaseByTag(t, releasecatalog.LatestReleasedVersion)
+	wantEvidence := repositoryURL + "/releases/tag/" + releasecatalog.LatestReleasedVersion
+	if got := releaseEvidenceURL(release); got != wantEvidence {
+		t.Fatalf("release evidence URL = %q, want %q", got, wantEvidence)
+	}
+	// releaseCodeURL compares against the release one position older, so the
+	// link must name two different versions and end at the newest one.
+	code := releaseCodeURL(release, 1)
+	if !strings.HasPrefix(code, repositoryURL+"/compare/") ||
+		!strings.HasSuffix(code, "..."+releasecatalog.LatestReleasedVersion) {
+		t.Fatalf("release code URL = %q", code)
 	}
 	if got := sourceLineURL(release.SourceLine); !strings.HasPrefix(got, releasecatalog.SourceURL+"#L") {
 		t.Fatalf("source URL = %q", got)
 	}
 	if title, body := releaseNarrative(release); title == "" || body == "" {
-		t.Fatalf("v0.48.0 narrative = (%q, %q), want content", title, body)
+		t.Fatalf("%s narrative = (%q, %q), want content", releasecatalog.LatestReleasedVersion, title, body)
 	}
-	trail := historicalTrail(catalog.Releases[2])
+	// v0.47.1 is named directly because the assertion is about that release's
+	// own issue trail, not about whichever release happens to be latest.
+	trail := historicalTrail(releaseByTag(t, "v0.47.1"))
 	if len(trail) != 3 || trail[0]["href"] != repositoryURL+"/issues/490" {
 		t.Fatalf("v0.47.1 trail = %#v", trail)
 	}

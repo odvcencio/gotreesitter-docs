@@ -10,7 +10,7 @@ to the C tree-sitter runtime, and it has been unmaintained since **August 2024**
 still depend on it — language servers, linters, security scanners — often because rewriting every
 call site that touches a `*sitter.Node` is more work than anyone wants to sign up for.
 `compat/smacker` is the planned drop-in path off that dead dependency. It remains unreleased and
-is not part of v0.48.0. Treat the import swap below as an evaluated migration design, not a
+is not part of v0.50.0. Treat the import swap below as an evaluated migration design, not a
 stable module contract.
 
 > [!CAUTION] Release status
@@ -93,6 +93,6 @@ It will mirror the same layout — `compat/smacker/golang`, `compat/smacker/pyth
 function. Do not rely on that surface until a compatibility release publishes it.
 
 > [!NOTE] Availability
-> `compat/smacker` does not ship in v0.48.0. Do not assume its import paths exist in a tagged
+> `compat/smacker` does not ship in v0.50.0. Do not assume its import paths exist in a tagged
 > module. Wait for an announced compatibility release before you make the swap in production. See
 > [Getting Started](/docs/getting-started) if you are setting up gotreesitter for the first time.

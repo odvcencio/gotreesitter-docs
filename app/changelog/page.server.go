@@ -477,6 +477,12 @@ func releaseImpactClass(release releasecatalog.Release) string {
 
 func releaseNarrative(release releasecatalog.Release) (string, string) {
 	switch displayVersion(release) {
+	case "v0.50.0":
+		return "The file outline grew to cover most of the language set.",
+			"Tags-query coverage rose from 30 languages to 84, and a differential test now checks every resolved query against the official C runtime. TypeScript and TSX also stopped splitting a signed right-shift operator into two generic closers."
+	case "v0.49.0":
+		return "Compiled fact extraction arrived, and recovery got cheaper.",
+			"FactProgram compiles definition, call, heritage, and import work into one pass. Recovery reduced allocations and time across the benchmark fleet, and Lean 4 joined the opt-in grammar set."
 	case "v0.48.0":
 		return "The parser campaign moved into an immutable release.",
 			"The tag adds Swift corpus coverage, route evidence, recovery corrections, and bounded parser improvements."
