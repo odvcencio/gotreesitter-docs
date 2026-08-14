@@ -5,6 +5,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall/js"
 	"time"
@@ -44,6 +46,11 @@ type playgroundHandle struct {
 	runSeq   uint64
 	assets   map[string]grammarAsset
 
+	// seeded records the sample last written into the editors. Switching
+	// language only replaces the editors when they still hold exactly this
+	// text, so a visitor's own code is never discarded by a grammar change.
+	seeded languageSample
+
 	languageMu sync.Mutex
 	languages  map[string]*gts.Language
 }
@@ -79,7 +86,9 @@ func mountPlayground(ctx enginewasm.Context) (enginewasm.Handle, error) {
 	}{
 		{"#pg-source", "input", false},
 		{"#pg-query", "input", false},
-		{"#pg-language", "change", true},
+		// #pg-language is deliberately absent: its handler below swaps in the
+		// new language's starter sample first, then re-parses. Binding it here
+		// too would re-parse the old source before the swap landed.
 		{"#pg-anonymous", "change", true},
 		{"#pg-parse", "click", true},
 	} {
@@ -125,6 +134,71 @@ func mountPlayground(ctx enginewasm.Context) (enginewasm.Handle, error) {
 	})
 	source.Call("addEventListener", "scroll", scrollFn)
 	h.listeners = append(h.listeners, browserListener{target: source, event: "scroll", fn: scrollFn})
+
+	// Switching grammar swaps in that language's starter sample, so the picker
+	// never leaves Go source sitting under a Rust parser. The swap is skipped
+	// the moment the visitor has typed anything of their own: see swapSample.
+	languageEl := h.find("#pg-language")
+	if !languageEl.Truthy() {
+		return nil, fmt.Errorf("playground element #pg-language is missing")
+	}
+	// Seed from whatever the server rendered, so the first grammar change can
+	// recognise the untouched initial sample.
+	h.seeded = languageSample{
+		Source: source.Get("value").String(),
+		Query:  h.find("#pg-query").Get("value").String(),
+	}
+	languageFn := js.FuncOf(func(_ js.Value, _ []js.Value) any {
+		h.swapSample(languageEl.Get("value").String())
+		h.run()
+		return nil
+	})
+	languageEl.Call("addEventListener", "change", languageFn)
+	h.listeners = append(h.listeners, browserListener{target: languageEl, event: "change", fn: languageFn})
+
+	// Selecting a syntax tree row selects the source it covers. The listener is
+	// delegated to #pg-tree because render() rebuilds every row on each parse,
+	// so per-row listeners would leak and would have to be rebound constantly.
+	// Rows carry data-start/data-end in UTF-16 units (see render).
+	tree := h.find("#pg-tree")
+	if !tree.Truthy() {
+		return nil, fmt.Errorf("playground element #pg-tree is missing")
+	}
+	selectFn := js.FuncOf(func(_ js.Value, args []js.Value) any {
+		if len(args) == 0 {
+			return nil
+		}
+		event := args[0]
+		// Keyboard activation follows the treeitem role: Enter or Space only,
+		// so arrow-key navigation between rows does not hijack the caret.
+		if event.Get("type").String() == "keydown" {
+			switch event.Get("key").String() {
+			case "Enter", " ":
+			default:
+				return nil
+			}
+			event.Call("preventDefault")
+		}
+		target := event.Get("target")
+		if !target.Truthy() || target.Get("closest").IsUndefined() {
+			return nil
+		}
+		row := target.Call("closest", "[data-start]")
+		if !row.Truthy() {
+			return nil
+		}
+		start, startErr := strconv.Atoi(row.Call("getAttribute", "data-start").String())
+		end, endErr := strconv.Atoi(row.Call("getAttribute", "data-end").String())
+		if startErr != nil || endErr != nil {
+			return nil
+		}
+		h.selectSourceRange(start, end)
+		return nil
+	})
+	for _, event := range []string{"click", "keydown"} {
+		tree.Call("addEventListener", event, selectFn)
+		h.listeners = append(h.listeners, browserListener{target: tree, event: event, fn: selectFn})
+	}
 
 	h.mount.Get("dataset").Set("privacyBoundary", "browser-only")
 	go h.bootstrap(props.GrammarIndexURL)
@@ -338,6 +412,14 @@ func (h *playgroundHandle) render(language, source string, result playgroundengi
 		line.Set("className", row.Class)
 		line.Set("role", "treeitem")
 		line.Call("setAttribute", "aria-level", fmt.Sprint(row.Level))
+		// Stamp the row's source span so a click can select the exact text the
+		// node covers. These are UTF-16 code-unit indices, not the byte offsets
+		// gotreesitter reports: textarea.setSelectionRange counts UTF-16 units,
+		// so any non-ASCII source earlier in the buffer would otherwise shift
+		// the selection. selectSourceRange reads these back verbatim.
+		line.Call("setAttribute", "data-start", fmt.Sprint(utf16Index(source, row.StartByte)))
+		line.Call("setAttribute", "data-end", fmt.Sprint(utf16Index(source, row.EndByte)))
+		line.Call("setAttribute", "tabindex", "0")
 		line.Call("appendChild", textNode(row.Depth))
 		if row.Field != "" {
 			line.Call("appendChild", styledText("span", "tfield", row.Field+": "))
@@ -555,6 +637,99 @@ func element(tag string) js.Value {
 
 func textNode(value string) js.Value {
 	return js.Global().Get("document").Call("createTextNode", value)
+}
+
+// swapSample replaces the editors with the starter sample for language, but
+// only while they still hold the sample this playground put there. Once the
+// visitor edits either editor the text is theirs, and changing grammar leaves
+// it alone — switching parser to inspect your own code is the whole point.
+func (h *playgroundHandle) swapSample(language string) {
+	sample, ok := sampleFor(language)
+	if !ok {
+		return
+	}
+	sourceEl := h.find("#pg-source")
+	queryEl := h.find("#pg-query")
+	if !sourceEl.Truthy() || !queryEl.Truthy() {
+		return
+	}
+
+	h.stateMu.Lock()
+	seeded := h.seeded
+	h.stateMu.Unlock()
+
+	// An empty editor counts as untouched: clearing it and switching language
+	// should still offer the new language's sample rather than nothing.
+	currentSource := sourceEl.Get("value").String()
+	if currentSource != seeded.Source && currentSource != "" {
+		return
+	}
+
+	sourceEl.Set("value", sample.Source)
+	// Only replace the query when it is also untouched. A visitor who wrote a
+	// query but left the sample source alone keeps their query.
+	if currentQuery := queryEl.Get("value").String(); currentQuery == seeded.Query || currentQuery == "" {
+		queryEl.Set("value", sample.Query)
+		seeded.Query = sample.Query
+	}
+	seeded.Source = sample.Source
+
+	h.stateMu.Lock()
+	h.seeded = seeded
+	h.stateMu.Unlock()
+
+	// Keep the highlight overlay in step with the text that just replaced it,
+	// otherwise the old sample stays visible behind the transparent textarea
+	// until the debounced re-highlight lands.
+	h.mirrorPlainSource()
+	sourceEl.Set("scrollTop", 0)
+	h.syncHighlightScroll()
+}
+
+// selectSourceRange focuses the source editor and selects [start, end) in
+// UTF-16 units, then scrolls the selection into view. A textarea does not
+// reliably scroll to a programmatic selection on its own, so the caller-visible
+// line is centred by hand.
+func (h *playgroundHandle) selectSourceRange(start, end int) {
+	source := h.find("#pg-source")
+	if !source.Truthy() {
+		return
+	}
+	source.Call("focus", map[string]any{"preventScroll": true})
+	source.Call("setSelectionRange", start, end)
+
+	value := source.Get("value").String()
+	if start > len(value) {
+		start = len(value)
+	}
+	line := strings.Count(value[:start], "\n")
+
+	style := js.Global().Call("getComputedStyle", source)
+	lineHeight := parseCSSPixels(style.Get("lineHeight").String())
+	if lineHeight <= 0 {
+		// "normal" resolves to no usable number; fall back to the font size.
+		lineHeight = parseCSSPixels(style.Get("fontSize").String()) * 1.4
+	}
+	if lineHeight <= 0 {
+		return
+	}
+	target := float64(line)*lineHeight - source.Get("clientHeight").Float()/2 + lineHeight
+	if target < 0 {
+		target = 0
+	}
+	source.Set("scrollTop", target)
+	h.syncHighlightScroll()
+}
+
+// parseCSSPixels reads a computed CSS length such as "21.6px". It returns 0
+// for keyword values like "normal", which the caller treats as "unknown".
+func parseCSSPixels(value string) float64 {
+	trimmed := strings.TrimSuffix(strings.TrimSpace(value), "px")
+	parsed, err := strconv.ParseFloat(trimmed, 64)
+	if err != nil {
+		return 0
+	}
+	return parsed
 }
 
 func styledText(tag, className, value string) js.Value {

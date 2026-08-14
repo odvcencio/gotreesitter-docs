@@ -23,6 +23,13 @@ type TreeRow struct {
 	Type    string
 	Range   string
 	Missing bool
+
+	// StartByte and EndByte locate the row in the parsed source. Range is a
+	// display string built from row/column points, so it cannot drive a text
+	// selection; these offsets let the playground select the exact source a
+	// tree row came from when a visitor clicks it.
+	StartByte uint32
+	EndByte   uint32
 }
 
 type Capture struct {
@@ -148,13 +155,15 @@ func appendTreeRows(node *gts.Node, lang *gts.Language, includeAnonymous bool, d
 			className += " pg-err"
 		}
 		result.TreeRows = append(result.TreeRows, TreeRow{
-			Class:   className,
-			Depth:   strings.Repeat("  ", depth),
-			Level:   depth + 1,
-			Field:   field,
-			Type:    node.Type(lang),
-			Range:   formatRange(node.StartPoint(), node.EndPoint()),
-			Missing: node.IsMissing(),
+			Class:     className,
+			Depth:     strings.Repeat("  ", depth),
+			Level:     depth + 1,
+			Field:     field,
+			Type:      node.Type(lang),
+			Range:     formatRange(node.StartPoint(), node.EndPoint()),
+			Missing:   node.IsMissing(),
+			StartByte: node.StartByte(),
+			EndByte:   node.EndByte(),
 		})
 	}
 	for i := 0; i < node.ChildCount(); i++ {
