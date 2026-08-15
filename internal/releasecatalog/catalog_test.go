@@ -13,8 +13,11 @@ func TestLoadDistinguishesReleaseFromEmptyUnreleased(t *testing.T) {
 	if catalog.Source.Commit != SourceCommit {
 		t.Fatalf("source commit = %q, want %q", catalog.Source.Commit, SourceCommit)
 	}
-	if catalog.Source.LatestReleased != "v0.50.0" {
-		t.Fatalf("latest released = %q, want v0.50.0", catalog.Source.LatestReleased)
+	// Derive from the catalog constant rather than pinning a version, so
+	// refreshing the snapshot to a new release does not fail this test for a
+	// reason unrelated to what it checks.
+	if catalog.Source.LatestReleased != LatestReleasedVersion {
+		t.Fatalf("latest released = %q, want %q", catalog.Source.LatestReleased, LatestReleasedVersion)
 	}
 	if len(catalog.Releases) < 70 {
 		t.Fatalf("release count = %d, want at least 70", len(catalog.Releases))
@@ -31,14 +34,27 @@ func TestLoadDistinguishesReleaseFromEmptyUnreleased(t *testing.T) {
 		t.Fatalf("Unreleased = %#v, want no entries", unreleased)
 	}
 
+	// The newest immutable release: assert its shape, not its identity. Pinning
+	// a version here made every snapshot refresh fail for a reason unrelated to
+	// the parsing this test covers.
 	released := catalog.Releases[1]
-	if released.Tag != "v0.50.0" || released.Date != "2026-08-14" || released.Status != StatusReleased {
-		t.Fatalf("latest immutable release = %#v, want v0.50.0", released)
+	if released.Tag != LatestReleasedVersion || released.Status != StatusReleased {
+		t.Fatalf("latest immutable release = %#v, want %s released", released, LatestReleasedVersion)
 	}
-	if !releaseContains(released, "TestOutlineOracleDifferential") {
+	if released.Date == "" {
+		t.Fatalf("latest immutable release has no date: %#v", released)
+	}
+	if len(released.Sections) == 0 || len(released.Sections[0].Entries) == 0 {
+		t.Fatalf("latest immutable release has no entries: %#v", released)
+	}
+
+	// Content assertions name their release explicitly, so they keep testing
+	// what they were written to test as newer releases land above them.
+	v0500 := releaseByTag(t, catalog, "v0.50.0")
+	if !releaseContains(v0500, "TestOutlineOracleDifferential") {
 		t.Fatal("v0.50.0 does not contain the outline oracle differential")
 	}
-	if !releaseContains(released, "signed right-shift operator") {
+	if !releaseContains(v0500, "signed right-shift operator") {
 		t.Fatal("v0.50.0 does not contain the TypeScript shift-operator fix")
 	}
 	if released.SourceLine == 0 || released.Sections[0].SourceLine == 0 ||
@@ -221,4 +237,18 @@ func releaseContains(release Release, text string) bool {
 		}
 	}
 	return strings.Contains(release.SummaryMarkdown, text)
+}
+
+
+// releaseByTag finds a release by tag so content assertions do not depend on
+// slice position, which shifts by one with every release.
+func releaseByTag(t *testing.T, catalog Catalog, tag string) Release {
+	t.Helper()
+	for _, release := range catalog.Releases {
+		if release.Tag == tag {
+			return release
+		}
+	}
+	t.Fatalf("release %s is not in the catalog", tag)
+	return Release{}
 }

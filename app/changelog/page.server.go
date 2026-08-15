@@ -477,6 +477,9 @@ func releaseImpactClass(release releasecatalog.Release) string {
 
 func releaseNarrative(release releasecatalog.Release) (string, string) {
 	switch displayVersion(release) {
+	case "v0.50.1":
+		return "Single-language builds work again.",
+			"Shared lexer helpers had moved into subset-gated files, so a build selecting one grammar could not compile. CI now sweeps every single-language subset build, which is how this class of break gets caught before a release rather than after."
 	case "v0.50.0":
 		return "The file outline grew to cover most of the language set.",
 			"Tags-query coverage rose from 30 languages to 84, and a differential test now checks every resolved query against the official C runtime. TypeScript and TSX also stopped splitting a signed right-shift operator into two generic closers."
