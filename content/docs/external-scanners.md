@@ -313,15 +313,18 @@ covers insert, delete, and changed-length replace edits at the start, middle,
 and end of 8 KiB clean documents. It also requires 25% reused bytes for a
 middle replace in a 256 KiB document. It does not promise O(edit) time.
 
-The `markdown_inline` scanner remains uncertified. After the token-invariant
-leaf fast path declines, its changed edits use the production full-parse
+The `markdown_inline` scanner remains uncertified. Version 0.52.0 disables the
+unsafe same-width token-invariant shortcut. Its changed edits use the production full-parse
 fallback. The Markdown proof does not apply to `markdown_inline` or
 error-bearing old Markdown trees.
 
 | Language | Changed-edit contract |
 |---|---|
 | `markdown` | Certified checkpointed reuse for clean old trees. |
-| `markdown_inline` | Fallback (uncertified) after the leaf fast path declines. |
+| `markdown_inline` | Fallback (uncertified) for edited parses. |
+
+Ordinary certified subtree reuse and no-edit reuse remain available.
+The mitigation does not certify any additional scanner for general reuse.
 
 ## Hard-learned behavioral contracts
 

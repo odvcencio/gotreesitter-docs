@@ -45,7 +45,9 @@ grep -Fq "m31labs.dev/gosx/cmd/gosx@$gosx_version" README.md || fail "README GoS
 
 # Application behavior must be authored in Go/GoSX. Ignore generated files
 # through the repository's normal ignore rules. Reject tracked or new source.
-if git ls-files --cached --others --exclude-standard -- '*.js' '*.jsx' '*.ts' '*.tsx' | grep -q .; then
+authored_scripts="$(git ls-files --cached --others --exclude-standard -- '*.js' '*.jsx' '*.ts' '*.tsx')" ||
+  fail "cannot inspect application source files with Git"
+if [[ -n "$authored_scripts" ]]; then
   fail "application-authored JavaScript remains in the repository"
 fi
 if grep -R -n --include='*.gsx' '<script' app; then
@@ -132,8 +134,11 @@ grep -Fq '5.526× C' "$page_body" || fail "performance geomean (5.526× C) missi
 external_scanners_html="$(curl --silent --show-error --fail "$base/docs/external-scanners")"
 grep -Fq 'Certified checkpointed reuse for clean old trees.' <<<"$external_scanners_html" ||
   fail "Markdown clean-tree reuse contract missing from /docs/external-scanners"
-grep -Fq 'Fallback (uncertified) after the leaf fast path declines.' <<<"$external_scanners_html" ||
+grep -Fq 'Fallback (uncertified) for edited parses.' <<<"$external_scanners_html" ||
   fail "Markdown Inline fallback contract missing from /docs/external-scanners"
+curl --silent --show-error --fail --output "$page_body" "$base/docs/performance"
+grep -Fq '1,964 times slower' "$page_body" || fail "v0.52.0 edit slowdown missing from /docs/performance"
+grep -Fq '42.90%' "$page_body" || fail "v0.52.0 allocation result missing from /docs/performance"
 curl --silent --show-error --fail --output "$page_body" "$base/changelog"
 grep -q 'History you can interrogate' "$page_body" || fail "changelog hero missing from /changelog"
 grep -q 'v0.48.0' "$page_body" || fail "v0.48.0 missing from /changelog"

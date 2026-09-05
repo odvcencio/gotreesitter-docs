@@ -27,6 +27,30 @@ func TestLoadChangelogReturnsCatalogError(t *testing.T) {
 	}
 }
 
+func TestChangelogReleaseReportUsesPinnedUpstreamLink(t *testing.T) {
+	ctx := &route.RouteContext{Request: httptest.NewRequest("GET", "/changelog?q=release+performance", nil)}
+	loaded, err := loadChangelog(ctx, route.FilePage{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := repositoryURL + "/blob/" + releasecatalog.SourceCommit + "/docs/performance/release-v0.52.0-2026-09-05.md"
+	found := false
+	for _, release := range loaded.(map[string]any)["releases"].([]map[string]any) {
+		for _, section := range release["sections"].([]map[string]any) {
+			for _, entry := range section["entries"].([]map[string]any) {
+				html := gosx.RenderHTML(entry["content"].(gosx.Node))
+				if strings.Contains(html, `href="docs/`) {
+					t.Fatalf("unresolved source link: %s", html)
+				}
+				found = found || strings.Contains(html, `href="`+want+`"`)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("missing pinned report link %s", want)
+	}
+}
+
 func TestLoadChangelogSeparatesReleasedRecoveryFix(t *testing.T) {
 	ctx := &route.RouteContext{
 		Request: httptest.NewRequest(
