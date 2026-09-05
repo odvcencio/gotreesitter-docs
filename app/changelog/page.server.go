@@ -477,6 +477,9 @@ func releaseImpactClass(release releasecatalog.Release) string {
 
 func releaseNarrative(release releasecatalog.Release) (string, string) {
 	switch displayVersion(release) {
+	case "v0.52.0":
+		return "Safer edits with an explicit performance cost.",
+			"This release disables the unsafe same-width shortcut while preserving ordinary subtree reuse and no-edit reuse. Recovery optimizations reduce full-parse allocations. The measured single-byte edit becomes about 1,964 times slower. Complete lexical dependency proofs remain required before restoring the shortcut. Compact parser graduation remains unfinished."
 	case "v0.50.1":
 		return "Single-language builds work again.",
 			"Shared lexer helpers had moved into subset-gated files, so a build selecting one grammar could not compile. CI now sweeps every single-language subset build, which is how this class of break gets caught before a release rather than after."

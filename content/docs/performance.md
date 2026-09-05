@@ -5,10 +5,30 @@ nav_group: Internals
 order: 2
 ---
 
-gotreesitter measures interactive incremental work and cold full parsing separately. The
-distinction matters: the pure-Go runtime runs exceptionally fast on editor-style reparses, while a
-fresh materialized parse is currently slower than the C runtime on the canonical workload and
-across much of the grammar fleet.
+gotreesitter measures edited incremental parsing, no-edit reuse, and fresh parsing separately.
+Version 0.52.0 temporarily disables the unsafe same-width token-invariant shortcut.
+Ordinary subtree reuse and no-edit reuse remain enabled.
+
+## v0.52.0 release tradeoff
+
+The measured single-byte edit rises from 1.706 microseconds to 3,350.460 microseconds,
+approximately **1,964 times slower** than the baseline. It allocates 184.4 KiB
+and 95 objects per operation instead of zero.
+The owner approved disabling the unsafe shortcut. Restoring it requires complete
+lexical dependency proofs under [issue #1087](https://github.com/odvcencio/gotreesitter/issues/1087).
+
+Full-parse timing changes from 19.79 ms to 19.52 ms, without statistical significance.
+Full parsing reduces allocated bytes by **42.90%** and allocation count by **99.72%**.
+No-edit timing changes from 3.576 ns to 3.619 ns, without statistical significance.
+No-edit parsing retains zero allocations.
+
+The comparison uses twenty alternating same-seed pairs on a shared WSL host.
+It measures both release optimizations and the mitigation together.
+It does not time C or establish compact parser graduation.
+Read the [release report](https://github.com/odvcencio/gotreesitter/blob/v0.52.0/docs/performance/release-v0.52.0-2026-09-05.md)
+for exact commits, raw samples, resource limits, and memory observations.
+
+## Historical receipts
 
 The repository's current [`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md)
 is the canonical source for linkable performance claims. The sealed v0.45.0 epoch contains two
@@ -57,7 +77,8 @@ fast paths:
 | Incremental, 1-byte edit | 1.98 µs | **0** |
 | Incremental, no edit | 9.9 ns | **0** |
 
-Absolute times are host-specific; the allocation counts are the portable claims.
+These historical allocation counts do not describe edited parsing in v0.52.0.
+Absolute times are host-specific.
 
 ```sh
 GOMAXPROCS=1 go test . -run '^$' \
@@ -75,14 +96,15 @@ GOMAXPROCS=1 go test . -run '^$' \
 
 An edit invalidates a narrow span. `ParseIncremental` can reuse unchanged subtrees, their parser
 states, and external-scanner checkpoints instead of rebuilding the document. A no-edit call can
-return the old tree immediately. On the pinned receipt, both the one-byte edit and no-edit lanes
-allocate nothing.
+return the old tree immediately. The historical receipt reports zero allocations
+for both incremental lanes. Version 0.52.0 preserves that result only for the
+measured no-edit control.
 
 Earlier releases published incremental speedup multipliers against the cgo binding a Go
 application would otherwise call, which pays a fixed per-call FFI cost that pure Go avoids. The
 project withdrew those same-host calibration rows together with the old full-parse headline,
-because the binding used a mismatched grammar; the portable claims today are the zero-allocation
-fast paths above. Representative incremental timing on real code returns once the remaining
+because the binding used a mismatched grammar. Do not apply those historical
+zero-allocation edit claims to v0.52.0. Representative incremental timing on real code returns once the remaining
 incremental/fresh tree-identity work closes — correctness gates timing here.
 
 ## Full parse across the grammar fleet

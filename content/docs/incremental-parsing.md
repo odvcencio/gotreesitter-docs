@@ -12,7 +12,15 @@ tree-sitter (and gotreesitter) avoid that: you tell the parser exactly what byte
 and it reuses every subtree the edit did not touch, re-lexing and re-parsing only the invalidated
 span.
 
-On the pinned-host benchmark (a generated 500-function, 19,294-byte Go file,
+Version 0.52.0 disables the unsafe same-width token-invariant shortcut.
+Ordinary subtree reuse and no-edit reuse remain available.
+The release comparison measures single-byte edits at 3,350.460 microseconds,
+approximately 1,964 times the previous baseline, with 95 allocations per operation.
+Read the [release performance tradeoff](/docs/performance)
+before applying older incremental timing claims to this release.
+Restoring the shortcut requires complete lexical dependency proofs, not a relaxed reuse gate.
+
+The following historical pinned-host benchmark used a generated 500-function, 19,294-byte Go file,
 `GOMAXPROCS=1`, median of 10 runs):
 
 | Parse | Median time | Allocs/op |
@@ -21,9 +29,9 @@ On the pinned-host benchmark (a generated 500-function, 19,294-byte Go file,
 | Incremental, one byte edited | 1.98 µs | 0 |
 | Incremental, no edit | 9.9 ns | 0 |
 
-A single-byte edit runs about **5,500× faster** than the sealed straight-LR full-parse control. A
-no-op check runs about **1.1 million× faster**. Both incremental lanes allocate zero. These
-host-specific control ratios do not describe v0.48 fresh full-parse dispatch. Earlier releases
+In that historical receipt, a single-byte edit ran about **5,500× faster** than the sealed straight-LR full-parse control.
+A no-op check ran about **1.1 million× faster**. Both incremental lanes allocated zero. These
+host-specific control ratios do not describe v0.52.0 edited parsing or v0.48 fresh full-parse dispatch. Earlier releases
 published speedup multipliers against the cgo binding. The project withdrew those calibration rows.
 The binding used a mismatched grammar. Full
 figures and methodology live in the project's canonical

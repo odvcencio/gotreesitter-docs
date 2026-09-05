@@ -387,7 +387,11 @@ func (h *authoringHandle) run() {
 		h.stateMu.Unlock()
 		return
 	}
-	h.timer = nil
+	// An immediate run consumes any pending debounced edit.
+	if h.timer != nil {
+		h.timer.Stop()
+		h.timer = nil
+	}
 	h.runSeq++
 	seq := h.runSeq
 	h.stateMu.Unlock()
