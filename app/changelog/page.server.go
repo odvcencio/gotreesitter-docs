@@ -142,7 +142,7 @@ func buildReleaseViews(releases []releasecatalog.Release) ([]map[string]any, int
 		for _, section := range release.Sections {
 			entries := make([]map[string]any, 0, len(section.Entries))
 			for _, entry := range section.Entries {
-				content, err := docsapp.RenderMarkdownFragment(entry.BodyMarkdown)
+				content, err := docsapp.RenderMarkdownFragmentWithBase(entry.BodyMarkdown, repositoryURL+"/blob/"+releasecatalog.SourceCommit+"/")
 				if err != nil {
 					return nil, 0, fmt.Errorf(
 						"render %s %s line %d: %w",

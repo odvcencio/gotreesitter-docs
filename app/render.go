@@ -15,6 +15,7 @@
 package docs
 
 import (
+	"net/url"
 	"strings"
 
 	"github.com/odvcencio/mdpp"
@@ -33,6 +34,11 @@ var RenderDesignDoc = content.RendererFunc(func(doc content.Document) (gosx.Node
 // RenderMarkdownFragment renders trusted project Markdown inside a component.
 // The changelog route uses it for entries from the pinned upstream snapshot.
 func RenderMarkdownFragment(source string) (gosx.Node, error) {
+	return RenderMarkdownFragmentWithBase(source, "")
+}
+
+// RenderMarkdownFragmentWithBase resolves relative links against a source URL.
+func RenderMarkdownFragmentWithBase(source, sourceURL string) (gosx.Node, error) {
 	parsed, err := mdpp.Parse([]byte(source))
 	if err != nil {
 		return gosx.Node{}, err
@@ -41,6 +47,31 @@ func RenderMarkdownFragment(source string) (gosx.Node, error) {
 		return gosx.Text(""), nil
 	}
 	children := normalizeBlocks(parsed.Root.Children)
+	if sourceURL != "" {
+		base, err := url.Parse(sourceURL)
+		if err != nil {
+			return gosx.Node{}, err
+		}
+		var resolve func(*mdpp.Node)
+		resolve = func(n *mdpp.Node) {
+			if n == nil {
+				return
+			}
+			if n.Type == mdpp.NodeLink {
+				if href := n.Attrs["href"]; href != "" {
+					if ref, err := url.Parse(href); err == nil && !ref.IsAbs() && ref.Host == "" {
+						n.Attrs["href"] = base.ResolveReference(ref).String()
+					}
+				}
+			}
+			for _, child := range n.Children {
+				resolve(child)
+			}
+		}
+		for _, child := range children {
+			resolve(child)
+		}
+	}
 	return gosx.Fragment(renderBlocks(children, parsed.Source)...), nil
 }
 
