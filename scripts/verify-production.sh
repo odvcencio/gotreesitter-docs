@@ -137,8 +137,8 @@ grep -Fq 'Certified checkpointed reuse for clean old trees.' <<<"$external_scann
 grep -Fq 'Fallback (uncertified) for edited parses.' <<<"$external_scanners_html" ||
   fail "Markdown Inline fallback contract missing from /docs/external-scanners"
 curl --silent --show-error --fail --output "$page_body" "$base/docs/performance"
-grep -Fq '1,964 times slower' "$page_body" || fail "v0.52.0 edit slowdown missing from /docs/performance"
-grep -Fq '42.90%' "$page_body" || fail "v0.52.0 allocation result missing from /docs/performance"
+grep -Fq '127.5' "$page_body" || fail "v0.53.0 restored edit timing missing from /docs/performance"
+grep -Fq -- '-26.43%' "$page_body" || fail "v0.53.0 full-parse improvement missing from /docs/performance"
 curl --silent --show-error --fail --output "$page_body" "$base/changelog"
 grep -q 'History you can interrogate' "$page_body" || fail "changelog hero missing from /changelog"
 grep -q 'v0.48.0' "$page_body" || fail "v0.48.0 missing from /changelog"

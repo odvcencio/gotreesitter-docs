@@ -7,6 +7,445 @@ for tags and release notes while still in `0.x`.
 
 ## [Unreleased]
 
+## [0.53.0] - 2026-09-19
+
+### Release overview
+
+- This release fixes public API contract faults and C-parity gaps that a
+  repository audit found. It also includes the maintenance work merged after
+  v0.52.0.
+- Each parse applies its timeout once. Tree handles are safe to release in
+  the C order. Incremental reuse is correct for edit sequences and changed
+  included ranges.
+- The default memory budget grows with the input size, so valid large inputs
+  no longer stop early.
+- Reserved words, query predicates, and generated grammar tables match C in
+  more cases.
+- Eligible fresh parses use the compact parser by default. Unsupported cases
+  retain the legacy fallback. This release does not complete compact parser
+  graduation.
+
+### Performance evidence
+
+Paired randomized benchmarks compare v0.52.0 with the v0.53.0 candidate code at
+`48503fef`. The run used 20 shuffle seeds, alternating order, `-benchtime=750ms`,
+`GOMAXPROCS=1`, and the `gts_parsercorephase0` tag. It ran in the harness
+container with 4 GiB of memory and one pinned CPU (Intel Core Ultra 9 285).
+
+| Benchmark | v0.52.0 | v0.53.0 | Change |
+| --- | ---: | ---: | ---: |
+| `BenchmarkGoParseFullDFA` | 13.099 ms, 258.6 KiB, 42 allocs | 9.637 ms, 226.5 KiB, 37 allocs | -26.43% time |
+| `BenchmarkGoParseIncrementalSingleByteEditDFA` | 2,294.1 us, 184.2 KiB, 95 allocs | 127.5 us, 3.5 KiB, 5 allocs | -94.44% time |
+| `BenchmarkGoParseIncrementalNoEditDFA` | 2.612 ns, 0 allocs | 4.043 ns, 0 allocs | +54.80% time |
+
+All three time changes have p=0.000 with n=20.
+
+- The single-byte edit gain comes from the authenticated token-invariant
+  reuse that v0.52.0 disabled and that returned after it.
+- The no-edit regression is 1.4 ns. The unchanged-tree fast path now adds a
+  tree handle and compares included ranges. It stays in single-digit
+  nanoseconds with no allocations. Recover it in a later release.
+- Each returned tree now allocates one new `Tree` value, because released
+  trees no longer return to a pool.
+
+A one-shot large-file run parses the canonical `grammargen/lr.go` fixture with
+`BenchmarkParityGoCanonicalFull` under `/usr/bin/time -v` in the same container.
+
+| Measure | v0.52.0 | v0.53.0 |
+| --- | ---: | ---: |
+| Maximum resident set size | 151,444 KiB | 137,540 KiB |
+| Bytes allocated for each parse | 4,304,096 B | 134,560 B |
+| Allocations for each parse | 64,132 | 3,080 |
+
+The run used `GOMAXPROCS=1` and `-benchtime=1x`. The raw outputs stay outside the repository.
+
+### Parse timeout
+
+- Apply `SetTimeoutMicros` once for each parse. The compact route and the production fallback now share one deadline.
+- A parse that the compact route stopped on a timeout ran for about twice the configured timeout before this change.
+
+### Tree handles
+
+- Make a second `Release` on a released tree do nothing. A stale call no longer frees the tree of a later parse.
+- Stop pooling `Tree` values. Each returned tree now costs one new 3,296-byte value.
+- Add a handle when an unchanged incremental parse returns its old tree. Releasing the old tree no longer invalidates the result.
+- Document that `ParseIncremental` updates parent links in the old tree, and that `Node.Edit` after `Tree.Edit` moves spans twice.
+
+### Incremental edit sequences
+
+- Clear dirty nodes on byte-identical source only when the recorded edits restore every node span. A delete-then-reinsert sequence no longer reuses a collapsed leaf.
+- Parse again from the start when the parser included ranges differ from the old tree ranges.
+- Compare random multi-edit sequences with fresh parses for JSON and Go.
+
+### Memory budget
+
+- Scale the default per-parse memory budget with the input. It is the larger of 512 MiB and 512 bytes for each input byte. Valid 7 MB JSON no longer stops with `ParseStopMemoryBudget`.
+- Keep the process-heap ceiling at the larger of 2 GiB and twice the budget.
+- Add `Parser.SetMemoryBudgetBytes`, `Parser.MemoryBudgetBytes`, and `WithParserPoolMemoryBudgetBytes` for a fixed budget.
+
+### Reserved words
+
+- Promote a reserved word to its keyword token, as C `ts_parser__lex` does. JavaScript `var if = 1;` now reports an error.
+- Attach reserved-word tables for JavaScript, OCaml, PHP, Pkl, Python, and templ from generated sidecars. Blob hashes do not change.
+- Add the `ts2go -reservedwords-only` sidecar mode.
+
+### Query predicates
+
+- Apply text predicates to every node of a quantified capture. The `any-` predicates need one matching node.
+- Reject a predicate that names a capture the query has not bound, as C does.
+- Keep matching unchanged after `DisableCapture`. The returned match only omits the disabled capture.
+
+### Generated grammar tables
+
+- Encode shift targets with 32 bits in action-group keys. Grammars with more than 65,535 states no longer merge unrelated shift actions.
+- Expand case-insensitive character-class ranges without extra characters.
+- Reject a production with more than 255 right-hand-side symbols.
+
+### Continuous integration gates
+
+- Fail continuous integration when a workflow `-run` pattern names a test that does not exist. Correct seven stale names.
+- Run the exhaustive 206-language parity sweep every night.
+- Require the `build` check for merges to `main`. Administrators can still bypass it.
+
+### Stack hashing
+
+- Pack node flags with masks and shifts without changing hash values.
+
+### Generated CSS token precedence
+
+- Preserve the authored precedence of named immediate tokens.
+- Keep longer preferred tokens reachable after an immediate token accepts a prefix.
+- Parse escaped CSS unit suffixes without introducing error nodes.
+
+### Generated HCL splat expressions
+
+- Preserve right associativity when a proven repeat continuation has equal precedence.
+- Keep attribute and index chains inside HCL splats in nested blocks.
+- Compare generated splat trees with the locked C grammar.
+
+### Generated supertype aliases
+
+- Use public alias symbols in generated supertype maps.
+- Remove duplicate subtype entries after alias resolution.
+- Test named aliases, anonymous name collisions, query captures, and the locked C map for Go's `_simple_type`.
+
+### Test package execution coverage
+
+- Execute 13 previously omitted test packages in continuous integration.
+- Check package assignments against the workflow and use the same plan for race execution.
+- Reject new test packages without an execution lane.
+
+### Compact parser maintenance
+
+- Move scheduler memory accounting and stop checks into a dedicated source file.
+- Share symbol metadata projection between recovery and selected-store materialization.
+- Include retained recovery-memo capacity in scheduler memory limits, including after reset.
+- Document source ownership and the checks required for new retained state.
+
+### Recovery symbol allocation
+
+- Reuse one symbol table for recovery per compact parse across all language grammars.
+- Count the table in the memory budget and discard it when the scheduler resets.
+- Reduce allocated bytes by 81.58 percent on the real Go query compiler fixture. Parse timing shows no significant change.
+
+### Recovery memo pressure
+
+- Compute leaf error costs and visible counts without occupying recovery memo entries.
+- Preserve error-region costs, missing-token costs, cache limits, and cleanup.
+
+### Compact incremental allocation
+
+- Grow borrowed incremental arenas as needed instead of reserving capacity for the complete source.
+- Preserve full-parse reservation, memory limits, and cleanup after a compact decline.
+
+### Incremental profile accounting
+
+- Count discarded retry work without adding its reuse coverage to the selected result.
+- Preserve fallback work, phase times, and maximum resource counts in incremental profiles.
+- Keep reuse status and parse boundaries tied to the returned tree.
+
+### Standalone grammar packages
+
+- Add generated standalone packages for all 206 blob-backed grammars without build tags.
+- Share scanners, decoder repairs, caches, and certified profiles through `grammars/runtime`.
+- Remove the aggregate catalog dependency from the native Lean package.
+
+### Generated source ownership
+
+- Standardize generated Go markers and name each generator command as the
+  owner. Continuous integration now rejects unknown owners, malformed markers,
+  and generated file names without markers.
+- Move the grammargen marker before the package clause. Go tools can now
+  identify emitted grammar source as generated code.
+
+### C parity program, round one: query semantics
+
+- Resolve node types in query patterns the way the C query compiler does:
+  only a visible or supertype named symbol is a node type. A hidden rule
+  name or an anonymous token in a node pattern is now a compile error, as in
+  C. The inferred tags queries use the same lookup, so a grammar whose
+  `call` is a keyword no longer receives a call pattern.
+- Compile a supertype node pattern such as `(expression)` into a wildcard
+  step that requires the supertype among the node's hidden ancestors, and
+  support the `super/sub` form with the C subtype check. Nodes record the
+  hidden supertype wrappers that reduction elided in a parallel arena table
+  (`Node` stays 104 bytes); the record survives final tree compaction and
+  incremental clones.
+- Port the C wildcard-root rule: a pattern whose root is a wildcard (a
+  supertype counts) and whose first child is a concrete node type never
+  tests the root. `(expression (identifier) @i)` matches every identifier
+  whose parent is not an ERROR node, as it does in C.
+- Wildcard steps never match ERROR nodes, and a top-level bare `_` pattern
+  compiles.
+- Share one Lua-pattern compiler between production queries and both C query comparisons.
+  The outline comparison now evaluates `#lua-match?` predicates instead of rejecting them.
+- `TestParityQuerySemantics` runs 103 query cases on both engines: 101
+  agree, 2 carry a named divergence (an aliased subtype in the grammargen
+  supertype map, and a hidden wrapper lost inside a compact error region).
+  Highlight parity holds on 204 of 206 languages with no tolerance entry;
+  hare and luau, the last two tolerated languages, now match C.
+- `TestParitySupertypeMap` compares every grammar's ABI 15 supertype map
+  with the C runtime: 40 languages agree, 29 diverge. The board is
+  informational until the grammargen map is rebuilt.
+
+### C parity program, round two: recovery
+
+- Add `TestParityRecoveryBoard`: 78 malformed sources in eight languages
+  parsed on the C oracle and on every Go route, compared node by node. The
+  default route agrees on 36 (29 before this round); with the C recovery
+  port forced on for JavaScript, 46.
+- An absorbed leaf inside an ERROR region carries no error bit, as in C,
+  where only a missing leaf has an error cost. The region proof that used
+  to decide when a leaf could stay clean is gone.
+- The A0 dispatcher census receipts for cobol and wgsl, and the cooklang
+  witness digests, now pin the trees without leaf error bits. The cobol
+  `MBANK30.cpy` fixture matches the C oracle exactly.
+- Keyword capture follows `ts_parser__lex`: a keyword stays a keyword when
+  the parse state has an action for it or reserves it; otherwise the lexer
+  returns the word token. The reserved-word rule was inverted before.
+- A missing leaf takes an inherited field, as a relevant child does in C.
+- cpp, html, javascript, and julia stay on the legacy recovery path behind
+  measured witnesses recorded in `docs/c-parity-boards.md`.
+- An accepted GLR version stays out of the stack merge, as C removes it
+  from the version pool, so a recovery fork created at end of input still
+  competes as its own tree. An ERROR node keeps the fields a hidden child
+  gave its spliced children. The recovery board moves to 36 of 78.
+- The incremental invariant gate records its first two entries: python
+  `setup.py` byte 1241 (delete and replace) parses without an error bit on
+  both routes while C reports an ERROR, and the fresh and incremental
+  parses keep a different number of GLR stacks after the site. The C
+  keyword rule exposed the site; the divergence itself is older.
+- Retire the Python interpolation compatibility pass after native clean-tie
+  election reaches parity with the pinned C parser.
+- Keep raw-shape ordering for forest-local alternatives when compact primary
+  derivation selection is certified. Python f-string splats now match locked C
+  on the forest route.
+
+### Compact core cost, round two (issue #454)
+
+- Fuse the top-down parse-state replay into the postorder materialization
+  visit. The visit computes each subtree's pre-goto and parse state at push
+  time with the same transition rules, so the tree needs no second
+  full-derivation pass and no arena-length replay tables.
+  `TestCompactFusedReplayMatchesTopDownReplay` proves the states equal the
+  separate replay on every subtree.
+- Remove the dead `tokenCell` election record and its five save-and-restore
+  sites, read the reuse-dependency subtree count and head path count through
+  narrow accessors instead of `Core.Stats`, and build the election record in
+  place.
+- Stop copying large records on the hot path: headers, reduction outputs,
+  pop paths, boundary outputs, and canonical groups are read through
+  pointers; the
+  direct-append condense reads the predecessor it already resolved instead of
+  validating a synthetic link and resolving it again; a zero stored cost no
+  longer republishes a fresh node's lineage.
+- Validate link records at node publication, including copied adjacencies.
+  Single-link pop enumeration can trust immutable published records.
+  The relex payload scratch no longer clears its whole buffer on
+  every election, the head owner record runs without a closure per dispatch,
+  and a single fresh reduction output updates its header in place.
+- Earlier exploratory measurements predate the correctness review and
+  benchmark lifetime fixes. They do not establish current performance gains.
+  The route decision record retains them as historical measurements.
+- Extract the accepted-tree visit into `compactMaterializer`, a struct the
+  scheduler can drive as well as the postorder pass. The postorder pass
+  now fills one scratch view in place and visits it through a pointer, and
+  it can skip subtrees that already own a public node
+  (`VisitMaterializationPostorderPrebuilt`). The extraction changes no
+  tree and no work count.
+- Add the eager materialization lane (`GTS_COMPACT_EAGER=1`). After each
+  single-header shift and each in-place reduction the scheduler builds the
+  new subtree's public node at once, and it builds the subtrees a
+  multi-header phase left pending as soon as a single header consumes them.
+  On every Go witness the lane builds the whole tree before acceptance and
+  publishes the same tree, the same replay stamps, and the same work as the
+  postorder pass (`TestCompactEagerMaterializationMatchesPostorder`). The
+  lane stays off by default: on the Go 137 KiB witness it costs about ten
+  percent more wall time, because construction interleaved with dispatch
+  loses the locality of the batch pass while the compact core still writes
+  every record. The lane is the construction half of the single-head kernel,
+  which will stop writing compact records for subtrees that already own a
+  public node.
+- Skip the canonical-boundary probe when a single header holds a node the
+  dispatch just published: a fresh node is the latest node of its phase
+  identity, so the probe would return the head the header already holds.
+  The generic shift, the in-place reduction, and the corridor direct shift
+  all take the skip when the header sits outside recovery isolation with no
+  pending freshness; the skip records the barrier, the header peak, and the
+  verifier binding, so every work vector and receipt stays identical. Parents take their span
+  from the point index only when their visible children do not tile the
+  record, and a reduction sums its pop payload work once.
+- Turn the C4 bytecode corridor on by default (stage 3 of
+  spec.c4-bytecode-isa.v1). The 137 KiB full-parse comparison is faster on
+  14 of 15 grammars. A JavaScript recovery mutation once changed the C tree
+  with the lane on; the lane now stays off while a version-owned lexer
+  request is live, and the evidence for the default is: the runtime
+  equivalence test keeps every work count and digest equal; the exhaustive
+  curated structural parity suite (fresh, incremental, no-error) passes on
+  every grammar with the lane on; the pinned-oracle T3 recovery adjudication
+  in the harness container matches C on every html and JavaScript witness
+  with the lane on; and the JavaScript recovery mutation differentials pass
+  in both modes. `GTS_C4_CORRIDOR=0` turns the lane off.
+- Keep version-owned lexer requests on the generic dispatch path. The
+  corridor reads a shared token and cannot publish an owned request.
+- Preserve separate canonicalization output buffers for single headers.
+  Reusing the input slice changed earlier snapshots and broke rollback isolation.
+- Answer point lookups from the line of the previous answer or the next
+  line before the hashed cache and the binary search: materialization asks
+  for points in source order. Skip the scanner-provenance search for a
+  terminal that cannot carry an entry, and the skipped-prefix search when
+  no prefix was recorded. Together about 3 percent on the Go 137 KiB
+  witness.
+
+### Production engine fixes kept until retirement (issue #454)
+
+The compact route stays the default fresh full-parse route. The owner's
+direction is to retire the production engine once the compact core
+outperforms it; until then production still serves incremental, injection,
+included-range, and fallback parses, so these fixes stay.
+
+- Isolate parser scratch lifetimes across parses. A pooled scratch kept the
+  transient parent and child slabs of the largest earlier parse, up to 512K
+  elements, and billed them to every later parse in the process: a 4 KiB
+  parse after a 315 KiB parse reported 35 MB of inherited scratch. Each parse
+  now drops inherited transient slabs above four times its own initial arena
+  estimate before it starts. A new small-large-small test guards the bound
+  through the new `ParseRuntime.TransientScratchBytesAllocated` counter.
+- Shrink `Token` from 80 to 64 bytes. The five unexported provenance bits
+  pack into one flag byte, and the stack position behind a synthetic missing
+  token moves to a parser-owned anchor table that the token indexes. Tokens
+  are copied by value on every election and dispatch, so the size shows up
+  directly as copy cost on both routes. The public fields are unchanged.
+- Bound reuse-hostile incremental parses. An old-tree reuse parse that has
+  built four times the larger of the old tree's nodes and the fresh-parse
+  arena estimate while reusing under one eighth of the source now stops with
+  `ParseStopReuseBudget`, and the parser runs one plain full parse, the same
+  fail-closed retry the memory budget uses. The issue #454 C single-byte
+  delete built 3.2 million nodes before the memory budget stopped it; it now
+  stops near 370 thousand and returns the fresh-parse tree. The profile names
+  the retry `incremental_parse_reuse_budget_full_retry`.
+
+### Compact route repair (issue #454)
+
+- Repair the three regressions on the compact candidate route that issue
+  [#454](https://github.com/odvcencio/gotreesitter/issues/454) measured on
+  137 KiB editor fixtures.
+- Compact error recovery scales linearly. The recovery cost memo grew to the
+  exact size on every store and was reallocated on every call, so a fresh
+  parse of a 16 KiB Go file with one syntax error took 4.9 seconds. The memo
+  now grows geometrically and lives for the whole parse. The same parse takes
+  49 milliseconds, and the 137 KiB single-byte delete completes in 178
+  milliseconds instead of never.
+- Compact-materialized old trees reuse top-level siblings under the same
+  compatible-goto contract as production trees. TOML insert reuse returns
+  from 62 percent to 100 percent, and TypeScript from 54 percent to 98 percent.
+- A synthesized root no longer disables reuse for the whole tree. INI files
+  that end in a blank line return from 0 percent to 97 percent reuse. The
+  unsupported-reuse reason now names the clause that failed.
+- The compact incremental attempt declines after eight unauthenticated
+  in-scope candidates or 32 KiB past the edit with zero reuse, so INI and
+  JSON no longer pay a discarded whole-file compact parse per keystroke.
+- The compact scheduler checks its current footprint at every memory-budget
+  poll. A cached small footprint did not detect subsequent storage growth.
+  Regression tests cover both the memory budget and the hard ceiling.
+- The compact scheduler skips avoidable per-token work: the checkpoint
+  interner compares against the last interned
+  record before hashing, the relex probe authenticates its payload by byte
+  comparison instead of SHA-256, and the materialization walk passes records
+  by pointer. Earlier performance measurements predate the review fixes.
+  Run randomized comparisons before reporting gains for the corrected code.
+- Halt a production GLR stack at a no-action point when a sibling stack
+  accepts the lookahead, before the previous-shift recovery runs. Pull
+  request [#709](https://github.com/odvcencio/gotreesitter/pull/709) added a
+  per-stack re-lex that kept the constructor-specifier fork of
+  `static inline void f(int *v) {}` alive, and the recovered fork won
+  selection with an ERROR node. Five C++ witnesses now match the compact route.
+- Add `cmd/issue454bench`, which reproduces the downstream measurements on
+  synthetic fixtures with an optional CPU profile.
+- Serve a mid-file transient-error keystroke on a compact old tree with
+  production incremental reuse, the v0.48.1 mechanism, when the compact
+  borrow attempt declines at recovery. The fresh compact recovery route never
+  produced those trees; it declined after a whole-file pass. Edits within 256
+  bytes of end of file keep the compact recovery route. Go single-byte deletes
+  drop from 178 to 15 milliseconds at 137 KiB, and every measured tree equals
+  the fresh default-route parse except two pre-existing divergences that the
+  new parity gate documents.
+- Skip the fail-closed whole-file reparse after an incremental parse whose
+  errors sit inside top-level items covering at most a quarter of the source.
+  Pull request #613's wide-stack condition fired on TypeScript's ordinary GLR
+  ambiguity, so a single-byte delete at 137 KiB cost 296 milliseconds against
+  78 at v0.48.1; it now costs 75. Degenerate results still retry.
+- Decline an unpublishable compact recovery when its region commits instead
+  of after a whole-file pass. A fresh compact parse of a 137 KiB Go file with
+  a mid-file error drops from about 424 to 275 milliseconds; the production
+  parse alone costs 240.
+- Shrink `Token` from 88 to 80 bytes, memoize the scanner identity
+  fingerprint per parse, and compute per-election checkpoint receipt digests
+  only under full receipts. Scala and CMake compact full parses gain about
+  another 12 percent.
+- Cut the production engine's drift since v0.48.1, which both routes
+  inherit. The token source passes tokens by pointer through its per-token
+  helper chain instead of copying 80 bytes about ten times per token, both
+  lexers decode the frontier rune only for non-ASCII bytes, the contextual
+  close-angle probe checks the token bytes before symbol names, and the
+  external scanner failure-mode probes are answered once per language.
+  Production full parses of 137 KiB fixtures move from 1.1 to 1.4 times
+  v0.48.1 to 1.06 to 1.19 times, with Rust at 1.33. The report attributes
+  the remaining gap and records the compact route's graduation status.
+- Remove four avoidable per-token costs from the compact scheduler: the
+  cap-pressure poll reads the node count without validating the head, the
+  per-state relex probe caches the scanner contract and identity and uses
+  scheduler-owned snapshot scratch, the election reads the cached checkpoint
+  identity instead of asking the order adapter, and the reuse-proof
+  invalidation takes the lineage record by pointer. Go compact full parses
+  gain 7 percent; the other grammars are within 2 percent.
+
+### Compact parser correctness
+
+- Authenticate terminal aliases at ordinary grammar reductions during recovery. Preserve separate rules for synthetic ERROR reductions and retain span coverage checks.
+- Preserve inherited alternative history when a reduction joins an active sibling.
+- Retain convergence and resurrection restrictions after adoption. Preserve existing blended-history rejection checks.
+- Parse `foo<A00>(2);` through compact without fallback, with exact locked-C tree parity.
+  Malformed TypeScript recovery remains unfinished.
+- Preserve numeric-edit reuse for newly admitted TypeScript trees after authenticating lexer dependencies and scanner equivalence.
+
+### Incremental correctness
+
+- Restore bounded token-invariant reuse after authenticating earlier lexical
+  dependencies and the edited token. Unknown coverage requires reparsing.
+- Retain examined-byte coverage through failed scans, rollback, and accepted
+  tree ownership. Include UTF-8 continuation bytes beyond token boundaries.
+- Add optional scanner byte-equivalence declarations. These declarations do
+  not authorize general subtree reuse or replace scanner checkpoints.
+- Check repeated edits against locked C trees for Go, CSS, SCSS, TypeScript,
+  and Julia. Keep malformed and unsupported cases on their existing fallback paths.
+
+Twenty paired benchmark samples compare this change with v0.52.0.
+Generated Go single-byte edits improve from 3,033.2 to 182.1 microseconds.
+Allocations decrease from 95 to 3 per edit. Full parsing regresses 1.68 percent.
+See [pull request #1093](https://github.com/odvcencio/gotreesitter/pull/1093) for the restoration and its validation.
+These changes do not complete compact parser graduation or retire the legacy parser.
+
 ## [0.52.0] - 2026-09-05
 
 ### Release overview
@@ -32,7 +471,6 @@ The owner approved the temporary slowdown. The measured single-byte edit rises
 from 1.706 us to 3,350.460 us, with 184.4 KiB and 95 allocations per operation.
 Full-parse and no-edit timing changes are not significant. Full parsing reduces
 allocated bytes by 42.90 percent and allocations by 99.72 percent.
-See the [release performance report](docs/performance/release-v0.52.0-2026-09-05.md).
 
 Lexical error-leaf flags and TypeScript recovery divergences remain graduation work.
 The attempted flag correction changed AWK recovery selection and remains deferred.
@@ -46,9 +484,6 @@ The attempted flag correction changed AWK recovery selection and remains deferre
   caches recovery visible-subtree counts and removes canonicalization callback
   allocations. The cache reduces time across four frozen Go fixtures.
   The callback change reduces allocations without a significant timing change.
-  Read the [recovery count report](docs/performance/recovery-visible-count-2026-09-05.md)
-  and [canonicalization report](docs/performance/canonical-owner-binding-2026-09-05.md)
-  for measured commits, paired results, and limits.
   These measurements precede the temporary shortcut mitigation.
 
 The owner authorized a v0.52.0-only exception for an unsupported tag-creation
@@ -6053,7 +6488,8 @@ Warm-reuse throughput ~10 % higher. 206-grammar parity green under `GTS_PARITY_M
 - Initial standalone pure-Go runtime module.
 - External scanner VM foundation and base parser/lexer/tree infrastructure.
 
-[Unreleased]: https://github.com/odvcencio/gotreesitter/compare/v0.52.0...HEAD
+[Unreleased]: https://github.com/odvcencio/gotreesitter/compare/v0.53.0...HEAD
+[0.53.0]: https://github.com/odvcencio/gotreesitter/compare/v0.52.0...v0.53.0
 [0.52.0]: https://github.com/odvcencio/gotreesitter/compare/v0.51.0...v0.52.0
 [0.51.0]: https://github.com/odvcencio/gotreesitter/compare/v0.50.1...v0.51.0
 [0.50.1]: https://github.com/odvcencio/gotreesitter/compare/v0.50.0...v0.50.1
