@@ -28,12 +28,12 @@ func TestLoadChangelogReturnsCatalogError(t *testing.T) {
 }
 
 func TestChangelogReleaseReportUsesPinnedUpstreamLink(t *testing.T) {
-	ctx := &route.RouteContext{Request: httptest.NewRequest("GET", "/changelog?q=release+performance", nil)}
+	ctx := &route.RouteContext{Request: httptest.NewRequest("GET", "/changelog?q=dated+exception", nil)}
 	loaded, err := loadChangelog(ctx, route.FilePage{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := repositoryURL + "/blob/" + releasecatalog.SourceCommit + "/docs/performance/release-v0.52.0-2026-09-05.md"
+	want := repositoryURL + "/blob/" + releasecatalog.SourceCommit + "/docs/releasing.md#v0520-only-tag-creation-exception"
 	found := false
 	for _, release := range loaded.(map[string]any)["releases"].([]map[string]any) {
 		for _, section := range release["sections"].([]map[string]any) {

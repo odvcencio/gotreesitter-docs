@@ -12,13 +12,13 @@ tree-sitter (and gotreesitter) avoid that: you tell the parser exactly what byte
 and it reuses every subtree the edit did not touch, re-lexing and re-parsing only the invalidated
 span.
 
-Version 0.52.0 disables the unsafe same-width token-invariant shortcut.
+Version 0.53.0 restores the same-width token-invariant shortcut behind authenticated lexical
+dependency proofs ([PR #1093](https://github.com/odvcencio/gotreesitter/pull/1093)).
 Ordinary subtree reuse and no-edit reuse remain available.
-The release comparison measures single-byte edits at 3,350.460 microseconds,
-approximately 1,964 times the previous baseline, with 95 allocations per operation.
-Read the [release performance tradeoff](/docs/performance)
-before applying older incremental timing claims to this release.
-Restoring the shortcut requires complete lexical dependency proofs, not a relaxed reuse gate.
+The paired release comparison measures single-byte edits at 127.5 microseconds, down from
+2,294.1 microseconds in v0.52.0, with 5 allocations per operation instead of 95.
+The no-edit lane still allocates zero and now takes 4.043 nanoseconds.
+Read the [release performance evidence](/docs/performance) for the full paired comparison.
 
 The following historical pinned-host benchmark used a generated 500-function, 19,294-byte Go file,
 `GOMAXPROCS=1`, median of 10 runs):
@@ -31,7 +31,7 @@ The following historical pinned-host benchmark used a generated 500-function, 19
 
 In that historical receipt, a single-byte edit ran about **5,500× faster** than the sealed straight-LR full-parse control.
 A no-op check ran about **1.1 million× faster**. Both incremental lanes allocated zero. These
-host-specific control ratios do not describe v0.52.0 edited parsing or v0.48 fresh full-parse dispatch. Earlier releases
+host-specific control ratios do not describe v0.53.0 edited parsing or v0.48 fresh full-parse dispatch. Earlier releases
 published speedup multipliers against the cgo binding. The project withdrew those calibration rows.
 The binding used a mismatched grammar. Full
 figures and methodology live in the project's canonical

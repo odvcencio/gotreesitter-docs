@@ -6,27 +6,64 @@ order: 2
 ---
 
 gotreesitter measures edited incremental parsing, no-edit reuse, and fresh parsing separately.
-Version 0.52.0 temporarily disables the unsafe same-width token-invariant shortcut.
-Ordinary subtree reuse and no-edit reuse remain enabled.
+Version 0.53.0 restores the same-width token-invariant shortcut behind authenticated lexical
+dependency proofs. Ordinary subtree reuse and no-edit reuse remain available.
 
-## v0.52.0 release tradeoff
+## v0.53.0 performance evidence
 
-The measured single-byte edit rises from 1.706 microseconds to 3,350.460 microseconds,
-approximately **1,964 times slower** than the baseline. It allocates 184.4 KiB
+[Pull request #1093](https://github.com/odvcencio/gotreesitter/pull/1093) restores the shortcut
+that v0.52.0 disabled. Complete lexical dependency proofs authenticate reuse before v0.53.0
+applies it. The [v0.52.0 mitigation](#v0520-mitigation-historical) below no longer describes
+this release.
+
+Paired randomized benchmarks compare v0.52.0 with the v0.53.0 candidate code. The run used 20
+shuffle seeds, alternating order, `-benchtime=750ms`, `GOMAXPROCS=1`, and one pinned CPU (Intel
+Core Ultra 9 285). All three time changes have p=0.000 with n=20.
+
+| Benchmark | v0.52.0 | v0.53.0 | Change |
+| --- | ---: | ---: | ---: |
+| `BenchmarkGoParseFullDFA` | 13.099 ms | 9.637 ms | -26.43% |
+| `BenchmarkGoParseIncrementalSingleByteEditDFA` | 2,294.1 µs | 127.5 µs | -94.44% |
+| `BenchmarkGoParseIncrementalNoEditDFA` | 2.612 ns | 4.043 ns | +54.80% |
+
+The single-byte edit gain comes from the restored token-invariant reuse. The no-edit path grew
+by 1.4 ns because the unchanged-tree fast path now adds a tree handle and compares included
+ranges; it still allocates zero bytes. Each returned tree now allocates one new `Tree` value,
+because released trees no longer return to a pool.
+
+A one-shot run on the `grammargen/lr.go` large-file fixture recorded maximum resident set size
+under `/usr/bin/time -v`, `GOMAXPROCS=1`, `-benchtime=1x`:
+
+| Measure | v0.52.0 | v0.53.0 |
+| --- | ---: | ---: |
+| Maximum resident set size | 151,444 KiB | 137,540 KiB |
+| Bytes allocated for each parse | 4,304,096 B | 134,560 B |
+| Allocations for each parse | 64,132 | 3,080 |
+
+This comparison measures two Go releases on one pinned host. It does not time C and does not
+establish compact parser graduation, which remains unfinished. See
+[`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md) for the canonical
+C-ratio claims.
+
+## v0.52.0 mitigation (historical)
+
+Version 0.53.0 restored the shortcut this section describes as disabled. The numbers below
+remain the sealed v0.52.0 receipt.
+
+The measured single-byte edit rose from 1.706 microseconds to 3,350.460 microseconds,
+approximately **1,964 times slower** than the baseline. It allocated 184.4 KiB
 and 95 objects per operation instead of zero.
-The owner approved disabling the unsafe shortcut. Restoring it requires complete
+The owner approved disabling the unsafe shortcut for that release. Restoring it required complete
 lexical dependency proofs under [issue #1087](https://github.com/odvcencio/gotreesitter/issues/1087).
 
-Full-parse timing changes from 19.79 ms to 19.52 ms, without statistical significance.
-Full parsing reduces allocated bytes by **42.90%** and allocation count by **99.72%**.
-No-edit timing changes from 3.576 ns to 3.619 ns, without statistical significance.
-No-edit parsing retains zero allocations.
+Full-parse timing changed from 19.79 ms to 19.52 ms, without statistical significance.
+Full parsing reduced allocated bytes by **42.90%** and allocation count by **99.72%**.
+No-edit timing changed from 3.576 ns to 3.619 ns, without statistical significance.
+No-edit parsing retained zero allocations.
 
-The comparison uses twenty alternating same-seed pairs on a shared WSL host.
-It measures both release optimizations and the mitigation together.
-It does not time C or establish compact parser graduation.
-Read the [release report](https://github.com/odvcencio/gotreesitter/blob/v0.52.0/docs/performance/release-v0.52.0-2026-09-05.md)
-for exact commits, raw samples, resource limits, and memory observations.
+The comparison used twenty alternating same-seed pairs on a shared WSL host. It measured both
+release optimizations and the mitigation together, and it did not time C or establish compact
+parser graduation.
 
 ## Historical receipts
 
@@ -77,7 +114,8 @@ fast paths:
 | Incremental, 1-byte edit | 1.98 µs | **0** |
 | Incremental, no edit | 9.9 ns | **0** |
 
-These historical allocation counts do not describe edited parsing in v0.52.0.
+These historical allocation counts do not describe edited parsing in v0.53.0, which allocates 5
+objects for the restored single-byte edit lane.
 Absolute times are host-specific.
 
 ```sh
@@ -97,14 +135,15 @@ GOMAXPROCS=1 go test . -run '^$' \
 An edit invalidates a narrow span. `ParseIncremental` can reuse unchanged subtrees, their parser
 states, and external-scanner checkpoints instead of rebuilding the document. A no-edit call can
 return the old tree immediately. The historical receipt reports zero allocations
-for both incremental lanes. Version 0.52.0 preserves that result only for the
-measured no-edit control.
+for both incremental lanes. Version 0.53.0 preserves that result only for the
+measured no-edit control; the restored single-byte edit lane allocates 5 objects,
+far fewer than the v0.52.0 mitigation's 95.
 
 Earlier releases published incremental speedup multipliers against the cgo binding a Go
 application would otherwise call, which pays a fixed per-call FFI cost that pure Go avoids. The
 project withdrew those same-host calibration rows together with the old full-parse headline,
 because the binding used a mismatched grammar. Do not apply those historical
-zero-allocation edit claims to v0.52.0. Representative incremental timing on real code returns once the remaining
+zero-allocation edit claims to v0.53.0. Representative incremental timing on real code returns once the remaining
 incremental/fresh tree-identity work closes — correctness gates timing here.
 
 ## Full parse across the grammar fleet

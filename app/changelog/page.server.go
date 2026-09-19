@@ -477,6 +477,9 @@ func releaseImpactClass(release releasecatalog.Release) string {
 
 func releaseNarrative(release releasecatalog.Release) (string, string) {
 	switch displayVersion(release) {
+	case "v0.53.0":
+		return "Safer trees, restored speed, and closer C parity.",
+			"This release fixes timeout, tree-handle, and incremental-reuse contract faults an audit found. It restores the same-width token-invariant shortcut behind authenticated proofs, so single-byte edits fall to about 127.5 microseconds. The default memory budget now scales with input size, and reserved-word and query-predicate handling match C in more cases. Compact parser graduation remains unfinished."
 	case "v0.52.0":
 		return "Safer edits with an explicit performance cost.",
 			"This release disables the unsafe same-width shortcut while preserving ordinary subtree reuse and no-edit reuse. Recovery optimizations reduce full-parse allocations. The measured single-byte edit becomes about 1,964 times slower. Complete lexical dependency proofs remain required before restoring the shortcut. Compact parser graduation remains unfinished."
