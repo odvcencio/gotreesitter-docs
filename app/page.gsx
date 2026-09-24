@@ -27,7 +27,7 @@ func Page() Node {
 				<div class="install">
 					<div class="cmd mono">
 						<span class="pr">$</span>
-						go get github.com/odvcencio/gotreesitter
+						go get github.com/odvcencio/gotreesitter@v0.54.0
 					</div>
 				</div>
 				<div class="pillrow">
@@ -41,7 +41,7 @@ func Page() Node {
 					</span>
 					<span class="pill">
 						<b class="t-blue">0</b>
-						edit allocations
+						no-edit allocations
 					</span>
 					<span class="pill">MIT</span>
 				</div>
@@ -84,13 +84,12 @@ func Page() Node {
 				<div class="wtop c-green"></div>
 				<h4>② Fast</h4>
 				<p>
-					Fast enough to parse on every keystroke. On the pinned-host receipt, a single-byte edit takes
-					<b>1.98 µs</b>
-					—
-					<b>5,500×</b>
-					faster than a full parse of the same file — and a no-op reparse takes 9.9 ns. Both allocate zero. Full parse is slower than C on the canonical workload and across much of the fleet; the
-					<a href="/docs/performance" data-gosx-link="true">numbers, with asterisks</a>
-					.
+					The 2026-09-23 control receipt measures a single-byte edit at
+					<b>439.825 µs</b>
+					with 5 allocations. No-edit reuse takes 27.4 ns with zero allocations.
+					These timings apply to revision 4637be52a on one host. See the
+					<a href="/docs/performance" data-gosx-link="true">dated benchmark evidence</a>.
+
 				</p>
 				<span class="pillref">
 					tree-sitter → "fast enough to parse on every keystroke"
@@ -100,7 +99,7 @@ func Page() Node {
 				<div class="wtop c-orange"></div>
 				<h4>③ Robust</h4>
 				<p>
-					Useful results even with syntax errors. The generalized GLR core and language-specific scanners are checked against a pinned C oracle. All 206 grammars pass the curated structural matrix; real-corpus gaps stay explicit.
+					Useful results even with syntax errors. The generalized GLR core and language-specific scanners are checked against a pinned C oracle. The curated structural gate covers 206 grammars. The dated parity boards record other known differences.
 				</p>
 				<span class="pillref">
 					tree-sitter → "robust enough to provide useful results with errors"
@@ -126,37 +125,27 @@ func Page() Node {
 		<h2 class="h2">The numbers</h2>
 		<div class="underbar"></div>
 		<p class="p mut">
-			The sealed v0.45.0 route receipts use four frozen, human-written Go files. Their sizes range from 5 KB to 236 KB. A locked tree-sitter v0.25.1 C oracle measures each fixture. Each fixture has ten process-isolated samples. Exact tree identity is admitted before timing.
+			Version v0.54.0 uses production parsing by default. Compact parsing requires GTS_ADMISSION_CANDIDATE=1.
 		</p>
 		<p class="p mut">
-			Version 0.48 uses compact parsing for eligible fresh full parses. It returns the production tree when compact parsing declines. No single ratio describes that dispatcher. An older generated 500-function file remains a single-stack control, not a full-parse headline. Fleet ratios vary by grammar; the complete distribution and every named gap are on the
-			<a href="/docs/performance" data-gosx-link="true">performance page</a>
-			.
+			The 2026-08-02 sealed v9 receipt measures four frozen Go files. Its production ratio is 4.815× C; its compact ratio is 3.986× C. It does not measure the v0.54.0 tag. See the
+			<a href="/docs/performance" data-gosx-link="true">performance page</a> for methods and limits.
 		</p>
 		<div class="mult" style="background:#ffedd0">
-			<div class="big t-orange">routes</div>
-			<div class="sub">
-				v0.48 chooses compact parsing for eligible fresh full parses. It uses production parsing after a compact decline. The sealed v0.45.0 receipts are 5.526× C for production and 2.9975× C for compact.
-			</div>
+			<div class="big t-orange">v0.54.0</div>
+			<div class="sub">Production GLR is the default. Compact parser graduation remains incomplete.</div>
 		</div>
 		<div class="multrow">
 			<div class="mult c-pink" style="background:#ffe0ec">
-				<div class="big t-pink">5,500×</div>
-				<div class="sub">
-					faster single-byte edit vs the sealed straight-LR full-parse control —
-					<b>1.98 µs</b>
-					, 0 allocs
-				</div>
+				<div class="big t-pink">439.825 µs</div>
+				<div class="sub">Single-byte edit: 410 B/op, 5 allocations. Generated Go control, 2026-09-23, revision 4637be52a.</div>
 			</div>
 			<div class="mult" style="background:#d6f7ea">
-				<div class="big t-green">~1.1M×</div>
-				<div class="sub">
-					faster no-edit reparse vs the sealed straight-LR full-parse control —
-					<b>9.9 ns</b>
-					, 0 B/op, 0 allocs
-				</div>
+				<div class="big t-green">27.4 ns</div>
+				<div class="sub">No-edit reuse: 0 B/op, 0 allocations. Same dated control receipt.</div>
 			</div>
 		</div>
+
 		<h2 class="h2">A whole parsing toolkit</h2>
 		<div class="underbar"></div>
 		<div class="grid3">
@@ -171,7 +160,7 @@ func Page() Node {
 		<h2 class="h2">206 grammars, embedded</h2>
 		<div class="underbar"></div>
 		<p class="p">
-			All 206 pass the curated C-oracle structural matrix, with no known-degraded skips. 119 have hand-written Go external scanners; 7 use hand-written Go token sources.
+			The v0.54.0 language guide lists 206 registry grammars, 119 Go external scanners, and 7 token-source implementations. The curated structural gate allows no known-degraded entries.
 			<a href="/docs/languages" data-gosx-link="true">Browse the full registry →</a>
 		</p>
 		<div class="langteaser">

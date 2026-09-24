@@ -22,7 +22,7 @@ func Page() Node {
 			<aside class="change-latest" aria-label="Latest release">
 				<span class="change-latest-kicker">latest immutable release</span>
 				<strong>{data.latestVersion}</strong>
-				<p>Version 0.48 adds Swift corpus coverage, route evidence, and recovery corrections.</p>
+				<p>Version 0.54.0 makes compact parsing opt-in and fixes incremental reuse and error shapes.</p>
 				<a href={data.latestReleaseURL} target="_blank" rel="noopener noreferrer">Read the release notes ↗</a>
 			</aside>
 		</header>
@@ -53,7 +53,7 @@ func Page() Node {
 					<h2 id="campaign-thread-title">From recovery repair to parser ownership.</h2>
 				</div>
 				<p>
-					The v0.48 tag records the campaign results. New main entries remain separate from immutable release evidence.
+					The v0.54.0 tag records the release scope. The source snapshot preserves each release and its evidence.
 				</p>
 			</div>
 			<ol class="change-thread-list">
@@ -163,6 +163,9 @@ func Page() Node {
 										<a href={section.sourceURL} target="_blank" rel="noopener noreferrer">source ↗</a>
 										<span class="change-section-count">{section.entryCount}</span>
 									</header>
+									<If when={section.hasIntroduction}>
+										<div class="change-entry-copy">{section.introduction}</div>
+									</If>
 									<ol class="change-entry-list">
 										<Each as="entry" of={section.entries}>
 											<li class="change-entry">

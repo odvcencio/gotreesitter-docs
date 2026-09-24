@@ -10,7 +10,9 @@ application-authored JavaScript.
 
 Live site: [gotreesitter.m31labs.dev](https://gotreesitter.m31labs.dev/)
 
-The site links its displayed parser version to the pinned module build. The
+The site documents gotreesitter **v0.54.0**, released on 2026-09-23.
+The site links its displayed parser version to the pinned module build.
+The [release audit](docs/release-v0.54.0-audit.md) lists the content changes and their sources. The
 server-rendered [/changelog](https://gotreesitter.m31labs.dev/changelog) route
 turns the source changelog into a searchable release archive with tag, code,
 pull request, issue, commit, and exact source-line evidence.
@@ -18,7 +20,7 @@ pull request, issue, commit, and exact source-line evidence.
 ## GopherCon slide deck
 
 The repository also contains a self-contained `gosx-slides` presentation in
-[`slides/`](slides/README.md). It carries the 20-slide talk, presenter notes,
+[`slides/`](slides/README.md). It carries the 21-slide talk, presenter notes,
 the supplied paper-and-ink visual system, and a live GLR benchmark island.
 
 ## Local development
@@ -52,15 +54,21 @@ It checks every internal link and validates the authoring asset surface. Its Chr
 that playground source never enters a request. It also proves that internal navigation does not
 request a new document. The `gosx` binary on `PATH` must exactly match the version in `go.mod`.
 
-Browser performance budgets are optional because they require a local Chrome installation:
+Run the browser performance budgets when Chrome is available:
 
 ```sh
 RUN_BROWSER_PERF=1 ./scripts/verify-production.sh
 ```
 
+The playground has a 320 KiB decoded-JavaScript limit for the pinned GoSX engine, Go shim,
+navigation, and analytics. The v0.54.0 audit measured about 297 KiB; the prior 160 KiB limit
+was below the required framework payload. The 5,200 KiB network limit is unchanged.
+The build writes a Brotli variant of the parser WASM, and the server negotiates that variant
+without changing the decoded bytes or the versioned URL.
+
 The public CI workflow installs the exact GoSX and TinyGo versions declared by this repository,
 then runs module verification, tests, vet, GoSX source checks, the production build/export, and the
-same route, browser-privacy, navigation, asset, and cache-policy gate.
+same route, browser-privacy, navigation, asset, cache-policy, and performance-budget gate.
 
 ## Deployment contract
 
@@ -102,7 +110,7 @@ This documentation site is available under the [MIT License](LICENSE).
 
 ## Performance claims
 
-User-visible numbers must match gotreesitter's current
-[`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md). In particular, the
+User-visible numbers must match gotreesitter's tagged
+[`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/BENCH.md). In particular, the
 withdrawn 1.54 ms no-tree diagnostic must never be presented as materialized full-parse
 performance.

@@ -56,6 +56,7 @@ fi
 
 rm -rf build dist
 go run ./cmd/build-playground-wasm
+test -s public/playground/runtime.wasm.br
 go run ./cmd/build-authoring-wasm
 while IFS= read -r source; do
   gosx check "$source"
@@ -130,18 +131,18 @@ done < <(
 curl --silent --show-error --fail --output "$page_body" "$base/"
 grep -Fq 'Certified fresh parsing' "$page_body" || fail "landing route contract missing from /"
 curl --silent --show-error --fail --output "$page_body" "$base/docs/performance"
-grep -Fq '5.526× C' "$page_body" || fail "performance geomean (5.526× C) missing from /docs/performance"
+grep -Fq '4.815' "$page_body" || fail "sealed v9 production ratio missing from /docs/performance"
 external_scanners_html="$(curl --silent --show-error --fail "$base/docs/external-scanners")"
 grep -Fq 'Certified checkpointed reuse for clean old trees.' <<<"$external_scanners_html" ||
   fail "Markdown clean-tree reuse contract missing from /docs/external-scanners"
 grep -Fq 'Fallback (uncertified) for edited parses.' <<<"$external_scanners_html" ||
   fail "Markdown Inline fallback contract missing from /docs/external-scanners"
 curl --silent --show-error --fail --output "$page_body" "$base/docs/performance"
-grep -Fq '127.5' "$page_body" || fail "v0.53.0 restored edit timing missing from /docs/performance"
-grep -Fq -- '-26.43%' "$page_body" || fail "v0.53.0 full-parse improvement missing from /docs/performance"
+grep -Fq '439,825' "$page_body" || fail "dated single-byte edit result missing from /docs/performance"
+grep -Fq 'GTS_ADMISSION_CANDIDATE=1' "$page_body" || fail "v0.54.0 opt-in route missing from /docs/performance"
 curl --silent --show-error --fail --output "$page_body" "$base/changelog"
 grep -q 'History you can interrogate' "$page_body" || fail "changelog hero missing from /changelog"
-grep -q 'v0.48.0' "$page_body" || fail "v0.48.0 missing from /changelog"
+grep -Fq "$gts_version" "$page_body" || fail "$gts_version missing from /changelog"
 grep -q 'href="/changelog" aria-current="page"' "$page_body" || fail "active changelog navigation state is missing"
 
 languages_html="$(curl --silent --show-error --fail "$base/docs/languages")"
@@ -162,6 +163,9 @@ wasm_url="$(grep -oE '/playground/runtime\.wasm\?v=[0-9a-f]{12}' "$page_body" | 
 [[ -n "$wasm_url" ]] || fail "content-versioned playground WASM URL is missing"
 curl --silent --show-error --fail --head "$base$wasm_url" | grep -Fqi 'content-type: application/wasm' || fail "playground engine is not served as application/wasm"
 
+curl --silent --show-error --fail --head -H 'Accept-Encoding: br' "$base$wasm_url" |
+  grep -Fqi 'content-encoding: br' || fail "playground engine Brotli transport is missing"
+
 PLAYGROUND_BASE_URL="$base" go run ./cmd/verify-playground-browser
 
 curl --silent --show-error --fail --output "$page_body" "$base/authoring"
@@ -179,9 +183,10 @@ curl --silent --show-error --fail "$base$authoring_bases_url" | grep -Eq '"name"
   fail "authoring base index does not include calc"
 
 if [[ "${RUN_BROWSER_PERF:-0}" == "1" ]]; then
-  for route in / /docs/getting-started /docs/performance /playground /authoring; do
+  for route in / /docs/getting-started /docs/performance; do
     gosx perf --coverage --budget perf-budget.json --budget-profile docs "$base$route"
   done
+  gosx perf --coverage --budget perf-budget.json --budget-profile playground "$base/playground"
 fi
 
 echo "production verification passed"

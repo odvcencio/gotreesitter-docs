@@ -13,7 +13,7 @@ named structure apart from literal punctuation.
 ## Install
 
 ```sh
-go get github.com/odvcencio/gotreesitter
+go get github.com/odvcencio/gotreesitter@v0.54.0
 ```
 
 That one command is enough. The parsing engine (`github.com/odvcencio/gotreesitter`) and the 206

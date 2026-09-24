@@ -239,7 +239,6 @@ func releaseContains(release Release, text string) bool {
 	return strings.Contains(release.SummaryMarkdown, text)
 }
 
-
 // releaseByTag finds a release by tag so content assertions do not depend on
 // slice position, which shifts by one with every release.
 func releaseByTag(t *testing.T, catalog Catalog, tag string) Release {
@@ -251,4 +250,33 @@ func releaseByTag(t *testing.T, catalog Catalog, tag string) Release {
 	}
 	t.Fatalf("release %s is not in the catalog", tag)
 	return Release{}
+}
+
+func TestArchivedReleaseSourceLinesMatchSnapshots(t *testing.T) {
+	catalog, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, release := range catalog.Releases {
+		data := sourceMarkdown
+		if release.SourcePath != "CHANGELOG.md" {
+			data, err = archiveFiles.ReadFile(strings.TrimPrefix(release.SourcePath, "docs/changelog/"))
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		lines := strings.Split(string(data), "\n")
+		if release.SourceLine < 1 || release.SourceLine > len(lines) ||
+			!strings.HasPrefix(lines[release.SourceLine-1], "## ["+release.Version+"]") {
+			t.Fatalf("%s has incorrect source location %s:%d", release.Version, release.SourcePath, release.SourceLine)
+		}
+		for _, section := range release.Sections {
+			for _, entry := range section.Entries {
+				if entry.SourceLine < 1 || entry.SourceLine > len(lines) ||
+					strings.Split(entry.Markdown, "\n")[0] != lines[entry.SourceLine-1] {
+					t.Fatalf("%s has incorrect entry location %s:%d", release.Version, release.SourcePath, entry.SourceLine)
+				}
+			}
+		}
+	}
 }

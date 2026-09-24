@@ -25,7 +25,7 @@ func Layout() Node {
 			<span class="status">
 				<i aria-hidden="true"></i>
 				{gtsVersion}
-				· 206/206 curated parity
+				· 206 grammars · curated parity gates
 			</span>
 			<TopNavLink href="/changelog" label="Changelog"></TopNavLink>
 			<TopNavLink href="/playground" label="Playground"></TopNavLink>

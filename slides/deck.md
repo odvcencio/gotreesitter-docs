@@ -2,6 +2,10 @@
 title: "Pure-Go Tree-sitter: from zero to self-hosted infra"
 theme: swiss
 transition: fade
+aspect-ratio: 16:9
+caption-safe-bottom: 20%
+duration-minutes: 25
+offline-required: true
 line-numbers: false
 event: "GopherCon 2026"
 footer: gotreesitter · gophercon 2026
@@ -85,16 +89,16 @@ Go.
 # The scale
 
 - **206** grammars in the registry
-- **116** external scanners, rewritten in Go
-- **156/156** highlight queries compile
-- **1** human on the project
+- **119** external scanners, rewritten in Go
+- **204/206** highlight parity on the 2026-09-08 board; 2 have no C reference
+- **v0.54.0** release scope, 2026-09-23
 
 Five months of work, now self-hosting with its own LALR(1) grammar compiler.
 The rest of this talk is **how** — and how to know the code is actually
 getting better.
 
 <Notes>
-Set the scale before the how. This is not a toy: 206 grammars, 116
+Set the scale before the how. This is not a toy: 206 grammars, 119
 hand-written Go external scanners, every shipped highlight and tags query
 compiles. One person plus agents.
 </Notes>
@@ -204,7 +208,7 @@ measured a no-tree diagnostic path — so the numbers were withdrawn.
 - **Withdrawn** The published `1.54 ms` full parse and `1.895x` C ratio —
   parser-core diagnostics, not a materialized parse.
 - **Replaced** A locked matrix of real, human-authored Go files against the
-  fingerprinted C oracle: `4.851050x` geomean, every receipt in `BENCH.md`.
+  fingerprinted C oracle: `4.815x` geomean, sealed v9, 2026-08-02, in `BENCH.md`.
 
 Honest numbers are a testing mechanism. If the benchmark can lie, the agent
 will optimize the lie.
@@ -325,6 +329,7 @@ to 4.41x. Step with the on-slide buttons.
 ```yaml
 class: dark
 accent: "var(--color-green)"
+fallback: "Read the visible ratios and continue if the button does not respond."
 ```
 
 > Part 2 · Evidence
@@ -336,10 +341,9 @@ because **C itself proves the action**.
 
 <Benchmark Before={5.95} After={4.41} Baseline={1.00}/>
 
-JavaScript grammar, Go-vs-C wall ratio — PR #90, gated by parity + benchstat
+JavaScript grammar, historical Go/C ratio — PR #90, 2026-05-28. The final median was not re-confirmed in that report.
 
-the trade: full parses give up raw speed for portability; incremental editor
-workloads beat the C path
+Historical PR #90 experiment. Current measurements and their limits are in the tagged BENCH.md.
 
 <Citation href="https://github.com/odvcencio/gotreesitter/pull/90" label="PR #90 · JavaScript GLR fork reduction"/>
 
@@ -428,25 +432,15 @@ gosx, which renders these slides.
 
 # The adoption
 
-Zero promotion. Engineers — and their AI assistants — found it, evaluated it,
-and **built on it in public**.
+The runtime supports editor and analysis integrations without a C toolchain.
 
-1. **99** public source importers
-2. **8** product categories
-3. **5** months of work
-
-- **OpenTendril** — replaced containerized parsing, gated by its own parity
-  tests
-- **tld · Stacklit · RepoNerve** — architecture diagrams, repo maps, and code
-  memory for agents
-- **QML Language Server** — a full LSP with no CGo anywhere
+- Parse once, then query, highlight, and extract symbols from the tree.
+- Test your grammar, queries, and edit sequences against your own inputs.
+- Keep performance results tied to the measured revision and workload.
 
 <Notes>
-Zero marketing — engineers and their AI assistants find it, evaluate it
-against product needs, and make public architectural decisions. OpenTendril
-replaced containerized parsing with it as the default engine, gated by their
-own parity tests. And my users have users: these products ship binaries whose
-end users run gotreesitter without knowing its name.
+Use the native API. Check ownership and cancellation rules before integration.
+Do not infer a current adoption count from historical examples.
 </Notes>
 
 ---
@@ -494,6 +488,7 @@ Land the three threads as one idea each. Pause on each.
 layout: title
 class: dark
 accent: "var(--color-green)"
+fallback: "Read the visible ratios and continue if the button does not respond."
 footer: gophercon 2026
 ```
 

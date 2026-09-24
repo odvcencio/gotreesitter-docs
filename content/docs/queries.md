@@ -161,28 +161,19 @@ assign to any grammar rule (the same nodes `node.IsError()` reports — see
 at compile time, so patterns like `(ERROR (identifier) @salvaged)` work for picking recognizable
 pieces out of broken regions.
 
-**The `MISSING` node — not supported.** Upstream's query language can match zero-width missing
-nodes with `(MISSING)`, `(MISSING identifier)`, or `(MISSING ";")`. gotreesitter's compiler
-currently accepts the `MISSING` keyword but compiles it to a plain any-node wildcard — the matcher
-never checks missing-ness, so `(MISSING)` silently matches everything and the child form matches
-the wrong shape entirely. Do not use it; find missing nodes by walking the tree and checking
-`node.IsMissing()` instead.
+**Missing nodes.** `(MISSING)`, `(MISSING identifier)`, and `(MISSING ";")`
+match missing nodes. Use `Node.IsMissing()` for direct tree inspection.
 
-**Supertypes — not supported in patterns.** Upstream grammars declare supertype rules (like
-`expression`), and upstream queries can write `(expression)` to match any of its subtypes, or
-qualify one as `expression/identifier`. gotreesitter does not expand supertypes at pattern
-positions: `(expression)` matches only a node literally named `expression`, and a `parent/child`
-name silently resolves to just the rightmost segment — `expression/identifier` behaves exactly
-like `(identifier)`. The supertype tables do exist on the `Language` (they power ancestor-type
-predicates), but pattern-position matching does not consult them. Spell out the subtypes you want
-in an alternation `[...]` instead.
+**Supertypes.** A supertype pattern requires the corresponding hidden supertype.
+`supertype/subtype` also constrains the subtype. Grammar metadata affects these checks;
+the [dated parity boards](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/c-parity-boards.md)
+record known map and query differences. Do not assume all supertype queries match C.
 
 The pattern language is upstream tree-sitter's, and upstream's query docs are the canonical spec
 for it: [syntax](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html),
 [operators](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/2-operators.html), and
 [predicates and directives](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/3-predicates-and-directives.html).
-Where gotreesitter's engine differs — the two unsupported cases above, and predicate evaluation
-below — this page states it explicitly.
+The parity boards record known differences. Predicate evaluation is described below.
 
 ## Predicates
 
@@ -213,13 +204,16 @@ q, _ := gts.NewQuery(`
 `, lang)
 ```
 
-Two directives are also recognized but not enforced by the matcher itself: `#set!` attaches
-arbitrary key/value metadata to a pattern, read back with `QueryMatch.SetValues(q, key)` (this is
-how gotreesitter's injection parser reads an `injection.language` directive out of a query
-match), and `#offset!` is parsed and stored but not applied automatically. `#select-adjacent!` and
-`#strip!` *are* applied: the former filters a capture list down to nodes byte-adjacent to an
-anchor capture, and the latter rewrites a capture's returned text by stripping a regexp match
-(through `QueryCapture.TextOverride`, surfaced by `cap.Text(source)`).
+`#set!` attaches pattern metadata, read with `QueryMatch.SetValues(q, key)`.
+`#offset!` applies row and column offsets to capture ranges. In v0.54.0,
+`QueryCapture.ByteRange()`, `PointRange()`, and `Range()` return the effective range.
+`Text(source)` respects the offset and any `#strip!` text override. The captured `Node`
+keeps its original range. Use capture accessors when you consume an offset capture.
+
+`#select-adjacent!` filters captures by adjacency. `#strip!` removes a regular-expression
+match from returned text. See the
+[tagged capture API](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/query.go)
+and [offset implementation](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/query_offset.go).
 
 ## Running a query
 
@@ -254,7 +248,7 @@ from `q.Exec(...)` (the `*Query` itself is fine to share).
 Each `QueryMatch` carries `PatternIndex` (which top-level pattern in the source matched — useful
 with multi-pattern queries and `q.PredicatesForPattern(idx)`) and `Captures []QueryCapture`, where
 each `QueryCapture` has `Name`, `Node *gts.Node`, and a `Text(source []byte) string` method that
-respects any `#strip!` override.
+respects offset ranges and any `#strip!` override.
 
 If you keep queries in `.scm` files, `cmd/tsquery` generates a typed Go wrapper from one
 (`tsquery -input FILE.scm -lang LANG -output FILE.go -package PKG`). Use it as a code generator

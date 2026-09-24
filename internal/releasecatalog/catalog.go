@@ -5,7 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/sha256"
-	_ "embed"
+	"embed"
 	"encoding/hex"
 	"fmt"
 	"regexp"
@@ -17,20 +17,32 @@ import (
 
 const (
 	// SourceCommit is the gotreesitter release commit that supplied CHANGELOG.md.
-	SourceCommit = "c871b1f576866c40b1695677fe3512243e266d39"
+	SourceCommit = "90a9c277a928aca1f100f170c57b869c4686f068"
 
 	// LatestReleasedVersion is the newest immutable release in the snapshot.
-	LatestReleasedVersion = "v0.53.0"
+	LatestReleasedVersion = "v0.54.0"
 
 	// SourceURL links to the exact source used to build this catalog.
 	SourceURL = "https://github.com/odvcencio/gotreesitter/blob/" + SourceCommit + "/CHANGELOG.md"
 
 	// SourceSHA256 authenticates the embedded changelog bytes.
-	SourceSHA256 = "9eaad3120292ded33b6d61a9728fd4cb469f96900ffafa5895befa57b505bed9"
+	SourceSHA256 = "4db068c0abacf2c2f158806fcf3988697e2eff95930932cec8a0136f691edef0"
 )
 
 //go:embed CHANGELOG.md
 var sourceMarkdown []byte
+
+//go:embed archive-*.md
+var archiveFiles embed.FS
+
+var archiveSnapshots = []struct {
+	Name   string
+	SHA256 string
+}{
+	{"archive-1.md", "9c69c319b868c8e3a47309fbbcf2d2857dca9f1b5fd3376fe83498128273b483"},
+	{"archive-2.md", "c1d0d22d99b1fbc4444b37c711ccabe069a911bc987f2497e73b8773feac011b"},
+	{"archive-3.md", "942ec405f1cd0e60da2ac330c4373ab230f55783616400f275e187517c302f03"},
+}
 
 var (
 	releaseHeadingPattern = regexp.MustCompile(`^## \[([^\]]+)\](?: - ([0-9]{4}-[0-9]{2}-[0-9]{2}))?$`)
@@ -66,6 +78,7 @@ type Release struct {
 	Date            string
 	Status          Status
 	SourceLine      int
+	SourcePath      string
 	SummaryMarkdown string
 	Sections        []Section
 }
@@ -102,6 +115,34 @@ func Load() (Catalog, error) {
 	releases, err := Parse(sourceMarkdown)
 	if err != nil {
 		return Catalog{}, err
+	}
+	for i := range releases {
+		releases[i].SourcePath = "CHANGELOG.md"
+	}
+	for _, snapshot := range archiveSnapshots {
+		data, err := archiveFiles.ReadFile(snapshot.Name)
+		if err != nil {
+			return Catalog{}, err
+		}
+		sum := sha256.Sum256(data)
+		if hex.EncodeToString(sum[:]) != snapshot.SHA256 {
+			return Catalog{}, fmt.Errorf("archive %s checksum mismatch", snapshot.Name)
+		}
+		older, err := parseMarkdown(data, false)
+		if err != nil {
+			return Catalog{}, fmt.Errorf("archive %s: %w", snapshot.Name, err)
+		}
+		for i := range older {
+			older[i].SourcePath = "docs/changelog/" + snapshot.Name
+		}
+		releases = append(releases, older...)
+	}
+	seen := make(map[string]bool)
+	for _, release := range releases {
+		if seen[release.Version] {
+			return Catalog{}, fmt.Errorf("duplicate release %s across snapshots", release.Version)
+		}
+		seen[release.Version] = true
 	}
 	catalog := Catalog{
 		Source: Source{
@@ -181,6 +222,10 @@ func (c Catalog) Filter(filter Filter) []Release {
 
 // Parse converts a Keep a Changelog-style document into release data.
 func Parse(markdown []byte) ([]Release, error) {
+	return parseMarkdown(markdown, true)
+}
+
+func parseMarkdown(markdown []byte, requireUnreleased bool) ([]Release, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(markdown))
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 
@@ -255,6 +300,9 @@ func Parse(markdown []byte) ([]Release, error) {
 			continue
 		}
 
+		if line == "## Older releases" {
+			break // The archive index is not a release section.
+		}
 		if strings.HasPrefix(line, "## ") {
 			return nil, fmt.Errorf("line %d: invalid release heading %q", lineNumber, line)
 		}
@@ -310,7 +358,7 @@ func Parse(markdown []byte) ([]Release, error) {
 	flushEntry()
 	flushSectionText()
 	flushReleaseText()
-	if err := validateReleases(releases); err != nil {
+	if err := validateReleases(releases, requireUnreleased); err != nil {
 		return nil, err
 	}
 	return releases, nil
@@ -340,11 +388,11 @@ func parseReleaseHeading(version, date string, lineNumber int) (Release, error) 
 	}, nil
 }
 
-func validateReleases(releases []Release) error {
-	if len(releases) < 2 {
+func validateReleases(releases []Release, requireUnreleased bool) error {
+	if len(releases) == 0 || (requireUnreleased && len(releases) < 2) {
 		return fmt.Errorf("changelog must contain Unreleased and at least one release")
 	}
-	if releases[0].Status != StatusUnreleased {
+	if requireUnreleased && releases[0].Status != StatusUnreleased {
 		return fmt.Errorf("first changelog section must be Unreleased")
 	}
 	for _, release := range releases {
