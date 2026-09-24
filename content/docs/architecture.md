@@ -58,6 +58,13 @@ not care which one produced a given grammar. That convergence is also the no-for
 `grammars.RegisterExtension` lets a consumer add or override a language from their own module
 without forking gotreesitter — see [Authoring Languages](/docs/authoring-languages).
 
+## Default route in v0.54.0
+
+Production GLR parsing is the default. Compact parsing is opt-in through
+`GTS_ADMISSION_CANDIDATE=1`. The
+[release roadmap](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/roadmap.md)
+describes the route change and the remaining graduation work.
+
 ## Anatomy of a parse
 
 ```go
@@ -84,10 +91,9 @@ loop:
 
 1. **Tokens.** A `TokenSource` (one method, `Next() Token`) feeds the loop. Most grammars use the
    generic DFA walker (`dfaTokenSource`, `parser_dfa_token_source.go`), which executes the lex
-   DFA table baked into the `Language` ahead of time. Grammars whose tokens need context a DFA
-   cannot express — Python's indentation, Go's automatic semicolons, YAML's nesting — supply a
-   hand-written Go `TokenSource` instead (7 shipped, for example `grammars.AuthzedTokenSource`).
-   119 grammars additionally attach an `ExternalScanner` (`Create`/`Destroy`/`Serialize`/
+   DFA table baked into the `Language` ahead of time. Seven hand-written Go `TokenSource` implementations also ship,
+   for example `grammars.AuthzedTokenSource`. Context-sensitive tokens, such as indentation or
+   heredocs, can use an `ExternalScanner` (119 implementations) (`Create`/`Destroy`/`Serialize`/
    `Deserialize`/`Scan`) for individual context-sensitive tokens inside an otherwise DFA-driven
    grammar.
 2. **GLR dispatch.** Each token drives a lookup in `Language.ParseActions`. One action, one stack
@@ -107,8 +113,8 @@ carries the parser state it had *before* its children were reduced (`Node.preGot
 parser can skip a whole reused subtree and resume in the right state without re-deriving its
 contents. A narrower fast path (`tryTokenInvariantLeafEdit`, `incremental_leaf_fastpath.go`)
 recognizes edits that do not shift any token boundary and patches a single leaf directly — this is
-the path behind the 0-allocation incremental numbers on the [Introduction](/docs/introduction)
-page.
+a path for authenticated same-width reuse. Edited parsing allocates in the current dated
+control; only no-edit reuse has zero allocations. See [Performance](/docs/performance).
 
 ## The GLR core and the graph-structured stack
 
@@ -136,9 +142,7 @@ opt-in fast path, curated per grammar (`builtinForestDefaults`) or opted into di
 complete parse; it has no recovery of its own, though a smaller curated subset
 (`languageWantsForestRecover`) also carries a narrower forest-side recovery path certified against
 the C oracle. A language joins the default set only once its output is checked
-byte-range-identical to the ordinary path (or to C) on real corpus. Where it applies, the payoff
-is large — measured speedups from 3× to over 800× on the languages hit hardest by stack-merge
-blowup.
+byte-range-identical to the ordinary path (or to C) on real corpus. Measure the effect on your corpus. See [Performance](/docs/performance) for dated published results.
 
 ## Recovery: the C-faithful port, and the fallback
 

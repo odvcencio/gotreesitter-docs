@@ -140,6 +140,10 @@ func buildReleaseViews(releases []releasecatalog.Release) ([]map[string]any, int
 		fullIndex := catalogReleaseIndex(release.Version)
 		sections := make([]map[string]any, 0, len(release.Sections))
 		for _, section := range release.Sections {
+			introduction, err := docsapp.RenderMarkdownFragmentWithBase(section.IntroductionMarkdown, repositoryURL+"/blob/"+releasecatalog.SourceCommit+"/")
+			if err != nil {
+				return nil, 0, fmt.Errorf("render %s %s introduction: %w", release.Version, section.Name, err)
+			}
 			entries := make([]map[string]any, 0, len(section.Entries))
 			for _, entry := range section.Entries {
 				content, err := docsapp.RenderMarkdownFragmentWithBase(entry.BodyMarkdown, repositoryURL+"/blob/"+releasecatalog.SourceCommit+"/")
@@ -157,19 +161,21 @@ func buildReleaseViews(releases []releasecatalog.Release) ([]map[string]any, int
 					"content":     content,
 					"references":  references,
 					"hasRefs":     len(references) > 0,
-					"sourceURL":   sourceLineURL(entry.SourceLine),
+					"sourceURL":   sourceLineURL(entry.SourceLine, release.SourcePath),
 					"sourceLabel": "Source line " + strconv.Itoa(entry.SourceLine),
 				})
 				resultCount++
 			}
 			sections = append(sections, map[string]any{
-				"name":       section.Name,
-				"id":         versionAnchor(release) + "-" + slug(section.Name),
-				"color":      categoryColor(section.Name),
-				"impact":     sectionImpact(section.Name),
-				"entries":    entries,
-				"entryCount": len(entries),
-				"sourceURL":  sourceLineURL(section.SourceLine),
+				"name":            section.Name,
+				"introduction":    introduction,
+				"hasIntroduction": section.IntroductionMarkdown != "",
+				"id":              versionAnchor(release) + "-" + slug(section.Name),
+				"color":           categoryColor(section.Name),
+				"impact":          sectionImpact(section.Name),
+				"entries":         entries,
+				"entryCount":      len(entries),
+				"sourceURL":       sourceLineURL(section.SourceLine, release.SourcePath),
 			})
 		}
 
@@ -191,7 +197,7 @@ func buildReleaseViews(releases []releasecatalog.Release) ([]map[string]any, int
 			"hasNarrative":    narrativeBody != "",
 			"evidenceURL":     releaseEvidenceURL(release),
 			"codeURL":         releaseCodeURL(release, fullIndex),
-			"sourceURL":       sourceLineURL(release.SourceLine),
+			"sourceURL":       sourceLineURL(release.SourceLine, release.SourcePath),
 			"previous":        adjacentVersion(fullIndex + 1),
 			"next":            adjacentVersion(fullIndex - 1),
 			"hasPrevious":     fullIndex+1 < len(catalog.Releases),
@@ -359,11 +365,15 @@ func statusLabel(release releasecatalog.Release) string {
 	return "Released · immutable"
 }
 
-func sourceLineURL(line int) string {
-	if line <= 0 {
-		return catalog.Source.URL
+func sourceLineURL(line int, sourcePath ...string) string {
+	url := catalog.Source.URL
+	if len(sourcePath) > 0 && sourcePath[0] != "" {
+		url = repositoryURL + "/blob/" + releasecatalog.SourceCommit + "/" + sourcePath[0]
 	}
-	return catalog.Source.URL + "#L" + strconv.Itoa(line)
+	if line <= 0 {
+		return url
+	}
+	return url + "#L" + strconv.Itoa(line)
 }
 
 func releaseEvidenceURL(release releasecatalog.Release) string {
@@ -477,6 +487,9 @@ func releaseImpactClass(release releasecatalog.Release) string {
 
 func releaseNarrative(release releasecatalog.Release) (string, string) {
 	switch displayVersion(release) {
+	case "v0.54.0":
+		return "Production parsing by default, with reuse fixes.",
+			"Version 0.54.0 makes compact parsing opt-in through GTS_ADMISSION_CANDIDATE=1. It adds FactProgram.ExtractInto, reduces scanner overhead, and fixes GLR cache invalidation, incremental token-source resume, reuse-budget stops, missing-edit fallback, and YAML error shapes. Groovy incremental calls use a fresh parse. Compact parser graduation remains incomplete."
 	case "v0.53.0":
 		return "Safer trees, restored speed, and closer C parity.",
 			"This release fixes timeout, tree-handle, and incremental-reuse contract faults an audit found. It restores the same-width token-invariant shortcut behind authenticated proofs, so single-byte edits fall to about 127.5 microseconds. The default memory budget now scales with input size, and reserved-word and query-predicate handling match C in more cases. Compact parser graduation remains unfinished."

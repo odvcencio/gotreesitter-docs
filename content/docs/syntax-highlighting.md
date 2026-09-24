@@ -97,14 +97,14 @@ edit-first contract as [incremental parsing](/docs/incremental-parsing):
    as the [incremental parsing](/docs/incremental-parsing) page describes.
 3. Call `hl.HighlightIncremental(newSource, oldTree)`. You get the **full** new range set for the
    whole document (not a delta) plus the new tree.
-4. You own the returned tree: keep it for the next call, and call `Release()` on the old one when
-   the returned tree is a different object.
+4. You own each returned handle. Compute changed ranges before releasing the old handle.
+   Release that handle even when the returned pointer is the same.
 
 ```go
 newRanges, newTree := hl.HighlightIncremental(newSrc, oldTree)
-if newTree != oldTree {
-    oldTree.Release()
-}
+changed := gts.DiffChangedRanges(oldTree, newTree)
+_ = changed // apply ranges before releasing oldTree
+oldTree.Release()
 oldTree, ranges = newTree, newRanges // carry forward for the next edit
 ```
 
@@ -122,7 +122,7 @@ UTF-16 columns.
 ## Custom token sources
 
 A few languages in the registry lex through a hand-written `TokenSource` instead of the grammar's
-DFA (Go itself uses a `go/scanner` bridge). The registry exposes this as
+DFA. Check the entry for the required factory. The registry exposes this as
 `LangEntry.TokenSourceFactory`, a two-argument `func([]byte, *Language) TokenSource`; the
 highlighter option takes a one-argument factory, so adapt with a closure — and only when the entry
 actually has one:

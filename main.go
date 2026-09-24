@@ -62,6 +62,7 @@ func main() {
 	}
 
 	app := server.New()
+	app.Use(playgroundWASMCompression(root))
 	router.SetRevalidator(app.Revalidator())
 	app.EnableISR()
 	app.EnableNavigation()

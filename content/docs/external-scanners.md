@@ -131,6 +131,18 @@ Every scanner in this repo therefore keeps two constant sets (see `grammars/svel
 the pattern): token indexes for gating, and symbol IDs for results. Resolve the symbols from the
 `Language` at construction time, rather than hard-coding them.
 
+### Scanner binding in v0.54.0
+
+The scanner ports now bind result symbols through `ExternalScannerForLanguage` on the loaded
+grammar. Do not copy symbol IDs from another blob. The
+[scanner implementation directory](https://github.com/odvcencio/gotreesitter/tree/v0.54.0/grammars/runtime)
+contains the binding methods. `ExternalLexer` also avoids redundant read-frontier updates.
+This reduces scanner work without changing the public `ExternalScanner` interface.
+
+`LexState.AcceptEOF` records explicit acceptance of the end token. This is distinct from
+`AcceptToken`, where zero does not identify an ordinary token. See
+[language.go](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/language.go).
+
 ### The lexer API
 
 From `external_lexer.go`, with C equivalents:
@@ -313,8 +325,8 @@ covers insert, delete, and changed-length replace edits at the start, middle,
 and end of 8 KiB clean documents. It also requires 25% reused bytes for a
 middle replace in a 256 KiB document. It does not promise O(edit) time.
 
-The `markdown_inline` scanner remains uncertified. Version 0.53.0 restores the
-same-width token-invariant shortcut behind authenticated lexical dependency proofs,
+The `markdown_inline` scanner remains uncertified in v0.54.0. The
+same-width token-invariant shortcut uses authenticated lexical dependency proofs,
 but the shortcut does not cover `markdown_inline`. Its changed edits use the production
 full-parse fallback. The Markdown proof does not apply to `markdown_inline` or
 error-bearing old Markdown trees.

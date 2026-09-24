@@ -244,3 +244,46 @@ func TestChangelogPageUsesNativeAccessibleControls(t *testing.T) {
 		}
 	}
 }
+
+func TestArchivedReleaseViewsLinkToArchiveLines(t *testing.T) {
+	release := releaseByTag(t, "v0.48.0")
+	views, _, err := buildReleaseViews([]releasecatalog.Release{release})
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefix := repositoryURL + "/blob/" + releasecatalog.SourceCommit + "/docs/changelog/archive-1.md#L"
+	if !strings.HasPrefix(views[0]["sourceURL"].(string), prefix) {
+		t.Fatalf("release source URL = %v", views[0]["sourceURL"])
+	}
+	for _, section := range views[0]["sections"].([]map[string]any) {
+		if !strings.HasPrefix(section["sourceURL"].(string), prefix) {
+			t.Fatalf("section source URL = %v", section["sourceURL"])
+		}
+		for _, entry := range section["entries"].([]map[string]any) {
+			if !strings.HasPrefix(entry["sourceURL"].(string), prefix) {
+				t.Fatalf("entry source URL = %v", entry["sourceURL"])
+			}
+		}
+	}
+}
+
+func TestReleasePerformanceTableIsRendered(t *testing.T) {
+	views, _, err := buildReleaseViews([]releasecatalog.Release{releaseByTag(t, "v0.54.0")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, section := range views[0]["sections"].([]map[string]any) {
+		if section["name"] != "Performance evidence" {
+			continue
+		}
+		if section["hasIntroduction"] != true {
+			t.Fatal("release table is hidden")
+		}
+		html := gosx.RenderHTML(section["introduction"].(gosx.Node))
+		if !strings.Contains(html, "5.42x") || !strings.Contains(html, "2.87x") || !strings.Contains(html, `class="tbl"`) {
+			t.Fatalf("missing performance table: %s", html)
+		}
+		return
+	}
+	t.Fatal("missing performance section")
+}

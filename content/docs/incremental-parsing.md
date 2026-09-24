@@ -12,34 +12,21 @@ tree-sitter (and gotreesitter) avoid that: you tell the parser exactly what byte
 and it reuses every subtree the edit did not touch, re-lexing and re-parsing only the invalidated
 span.
 
-Version 0.53.0 restores the same-width token-invariant shortcut behind authenticated lexical
-dependency proofs ([PR #1093](https://github.com/odvcencio/gotreesitter/pull/1093)).
-Ordinary subtree reuse and no-edit reuse remain available.
-The paired release comparison measures single-byte edits at 127.5 microseconds, down from
-2,294.1 microseconds in v0.52.0, with 5 allocations per operation instead of 95.
-The no-edit lane still allocates zero and now takes 4.043 nanoseconds.
-Read the [release performance evidence](/docs/performance) for the full paired comparison.
+Version v0.54.0 retains authenticated same-width edit reuse. It also fixes token-source
+resume for C and Java and applies the reuse-budget stop to plain `ParseIncremental`.
+Groovy incremental calls now use a fresh full parse. If the source length changes without a
+recorded `Tree.Edit`, the parser also uses a fresh parse. Always record edits; this fallback
+is not a replacement for the edit contract.
 
-The following historical pinned-host benchmark used a generated 500-function, 19,294-byte Go file,
-`GOMAXPROCS=1`, median of 10 runs):
+The 2026-09-23 control receipt at revision `4637be52a` reports 439.825 µs and five allocations
+for a single-byte edit, and 27.4 ns with zero allocations for no-edit reuse. It uses a generated
+Go file on an Intel Xeon D-2141I. These are not exact-tag measurements.
+See [Performance](/docs/performance) for the complete dated evidence and host settings.
+The behavior changes are in the
+[v0.54.0 release notes](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/CHANGELOG.md#0540---2026-09-23).
 
-| Parse | Median time | Allocs/op |
-|---|---:|---:|
-| Full parse, materialized | 10.907 ms | 9 |
-| Incremental, one byte edited | 1.98 µs | 0 |
-| Incremental, no edit | 9.9 ns | 0 |
-
-In that historical receipt, a single-byte edit ran about **5,500× faster** than the sealed straight-LR full-parse control.
-A no-op check ran about **1.1 million× faster**. Both incremental lanes allocated zero. These
-host-specific control ratios do not describe v0.53.0 edited parsing or v0.48 fresh full-parse dispatch. Earlier releases
-published speedup multipliers against the cgo binding. The project withdrew those calibration rows.
-The binding used a mismatched grammar. Full
-figures and methodology live in the project's canonical
-[`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md).
-
-This page assumes you already have a `*gotreesitter.Tree` from a first `parser.Parse` call. See
-[Syntax Trees and Nodes](/docs/syntax-trees-and-nodes) if you need that first, or
-[Tree Cursors](/docs/tree-cursors) for traversal patterns that keep working across reparses.
+This page assumes you have a tree from `Parser.Parse`.
+See [Syntax Trees and Nodes](/docs/syntax-trees-and-nodes) for tree ownership.
 
 ## The workflow
 
@@ -127,10 +114,14 @@ skip an entire unchanged subtree — a whole function body, say — without re-d
 node by node. The parser re-lexes and re-parses only the invalidated span, then stitches the
 result back together with the reused subtrees around it.
 
-When no edit was recorded at all — `source` is byte-identical to `oldTree`'s source and no `Edit`
-call happened — `ParseIncremental` returns `oldTree` itself on a pointer check, in single-digit
-nanoseconds with zero allocations (9.9 ns on the pinned receipt). This makes it cheap to call
-`ParseIncremental` speculatively, rather than tracking "did anything actually change" yourself.
+When the source is unchanged, no edit is pending, and included ranges still match,
+`ParseIncremental` can return the same tree with an additional retained handle.
+Release each returned handle, even when the old and new pointers are equal.
+The dated no-edit control result is on [Performance](/docs/performance).
+
+An incremental parse can update parent links on reused nodes. Do not read the old tree
+concurrently with the reparse. After `Tree.Edit`, do not apply the same edit through `Node.Edit`;
+that moves spans twice.
 
 UTF-16, custom token sources, and profiling all have incremental counterparts:
 `ParseIncrementalUTF16`, `ParseIncrementalWithTokenSource`, `ParseIncrementalProfiled` (returns an

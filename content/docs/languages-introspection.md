@@ -24,9 +24,13 @@ runs the reverse lookup:
 ```go
 lang := grammars.GoLanguage()
 
-len(lang.SymbolNames)                     // 233 symbol IDs for Go
-lang.SymbolNames[86]                       // "identifier"
-sym, ok := lang.SymbolByName("identifier") // (86, true)
+fmt.Println(len(lang.SymbolNames))
+sym, ok := lang.SymbolByName("identifier")
+if ok {
+    fmt.Println(sym, lang.SymbolNames[sym])
+}
+
+
 ```
 
 `SymbolByName` builds a lookup map on first call and runs O(1) after that; `(0, false)` means no
@@ -41,8 +45,12 @@ assembling a query string dynamically.
 reserved as `""` (no field). `FieldByName` runs the reverse lookup:
 
 ```go
-lang.FieldNames[1]                         // "name"
-fid, ok := lang.FieldByName("name")        // (1, true)
+fid, ok := lang.FieldByName("name")
+if ok {
+    fmt.Println(fid, lang.FieldNames[fid])
+}
+
+
 ```
 
 These tables back `Node.ChildByFieldName` and `Node.FieldNameForChild`. Enumerating the
@@ -51,8 +59,7 @@ non-empty entries lists every field a grammar declares — to check whether a gr
 
 ## Supertypes
 
-Some grammars group related node types under a supertype: Go's `_simple_type` covers
-`pointer_type`, `slice_type`, `map_type`, and nine more; `_statement` covers every statement form.
+Some grammars group related node types under a supertype: Go declares `_simple_type` and `_statement`. Inspect the loaded table for their members.
 Two methods expose the hierarchy:
 
 - `IsSupertype(sym Symbol) bool` — reports whether a symbol is a supertype.
@@ -67,11 +74,10 @@ for _, sub := range lang.SupertypeChildren(super) {
 }
 ```
 
-One caveat carries over from [Queries](/docs/queries): these tables power the `#has-ancestor?`
-predicate family, but the query compiler does **not** expand supertypes at pattern positions —
-`(_simple_type)` in a pattern matches only a node literally named `_simple_type`, never its
-members. When you want "any simple type," read the members here with `SupertypeChildren` and
-spell them out in an alternation `[...]`.
+Supertype patterns use these tables and the node's hidden supertype metadata.
+A `supertype/subtype` pattern also checks the subtype. See [Queries](/docs/queries).
+The [dated parity boards](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/c-parity-boards.md)
+record map differences. Verify the grammar and query you need.
 
 ## Coming from node-types.json
 

@@ -30,8 +30,8 @@ go test ./... -run '^$' -count=1   # compiles every test binary; runs nothing
 ```
 
 For anything beyond that, narrow with `-run`: `go test . -run '^TestName$' -count=1 -v`. Do
-**not** run `go test ./...` or `go test ./... -race` broadly on your own machine — both the
-README's Testing section and `AGENTS.md` call this out explicitly, since a wide host-side sweep
+**not** run `go test ./...` or `go test ./... -race` broadly on your own machine — the
+repository testing guide and `AGENTS.md` describe the required isolation, since a wide host-side sweep
 can exhaust memory on a dev machine. Use CI, or the Docker runners below, for anything wider than
 a focused package run. `go run ./cmd/parity_report` gives a quick smoke-correctness status across
 all 206 grammars.
@@ -114,35 +114,19 @@ for a downstream consumer — see [Authoring Languages](/docs/authoring-language
 path there is `grammargen.ImportGrammarJSON` → `grammargen.GenerateLanguageAndBlob` →
 `grammars.Register`/`RegisterExtension`.
 
-## Correctness gates a PR must pass
+## Gates at v0.54.0
 
-CI (`.github/workflows/ci.yml`) runs a `build` job on every push and PR:
+Use the [tagged CI workflow](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/.github/workflows/ci.yml)
+and [testing guide](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/testing-guide.md)
+for the exact job graph. Compilation, package execution, grammar freshness, C parity, and
+performance checks have separate jobs. Path and draft rules select the work for each change.
+The exhaustive parity sweep also has a nightly schedule; it is not manual-only.
 
-- `go build ./...` and `go vet ./...`.
-- `go test ./... -run '^$' -count=1` — compiles every test binary without running any of them, so
-  the run catches a test file that fails to compile before the expensive `-race` run below.
-- `GOTREESITTER_GRAMMAR_BLOB_DIR=grammars/grammar_blobs go run -tags grammar_blobs_external ./cmd/parity_report`.
-
-Once a PR leaves draft status, the same job also runs the full race suite —
-`go test $(go list ./... | grep -v '/grammargen$') -race -count=1 -timeout 35m -p 1` — plus a
-non-blocking `go test ./grammargen -race` visibility run (`grammargen` carries a known
-pre-existing backlog and does not block yet). While a PR is still a draft, it instead gets a
-small hand-picked focused test list, plus a separate `draft-correctness` job that runs
-`go test . ./grammars -count=1 -timeout 25m` (no `-race`) on every push. This keeps regressions
-visible before the PR is marked ready, rather than only once the full suite finally runs.
-
-Three more jobs gate every PR:
-
-- **`freshness`** regenerates `grammars/linguist_gen.go` and fails if it changed. It also checks
-  that `grammars/languages.lock`, `grammars/grammar_blobs/*.bin`, and `embedded_grammars_gen.go`
-  all agree on the same set of grammars.
-- **`parity-cgo`** runs a `GTS_PARITY_MODE=smoke` C-oracle gate in Docker on every PR and on
-  `main`. The full exhaustive sweep (`parity-cgo-exhaustive`) runs only on manual
-  `workflow_dispatch`.
-- **`perf-regression`** benchmarks the PR against its base with `cmd/benchgate` (max +8% ns/op,
-  +5% B/op, +5% allocs/op, +10% RSS on the bench trio above, plus an RSS check on a large
-  full-parse run). It is a non-blocking warning while the PR is a draft, and a hard gate once the
-  PR is marked ready for review.
+The v0.54.0 `admission_route_performance_sanity` job compares compact and production parsing
+in process, with interleaved runs on a fixed nine-language corpus. The
+[roadmap](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/roadmap.md)
+distinguishes correctness requirements from currently advisory performance checks.
+Do not treat an old threshold list as the current release gate.
 
 `AGENTS.md` at the repo root has the fuller day-to-day workflow these gates assume — Docker
 isolation, one language at a time, correctness before performance.

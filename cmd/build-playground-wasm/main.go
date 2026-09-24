@@ -7,6 +7,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+
+	"github.com/andybalholm/brotli"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -49,6 +52,9 @@ func main() {
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
 	if err := command.Run(); err != nil {
+		fatal(err)
+	}
+	if err := compressWASM(output); err != nil {
 		fatal(err)
 	}
 	info, err := os.Stat(output)
@@ -119,4 +125,28 @@ func repositoryRoot() (string, error) {
 func fatal(err error) {
 	fmt.Fprintln(os.Stderr, "build-playground-wasm:", err)
 	os.Exit(1)
+}
+
+// compressWASM creates the negotiated transport variant from the same build.
+func compressWASM(path string) error {
+	src, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	dst, err := os.Create(path + ".br")
+	if err != nil {
+		return err
+	}
+	writer := brotli.NewWriterLevel(dst, 9)
+	_, copyErr := io.Copy(writer, src)
+	encodeErr := writer.Close()
+	closeErr := dst.Close()
+	if copyErr != nil {
+		return copyErr
+	}
+	if encodeErr != nil {
+		return encodeErr
+	}
+	return closeErr
 }

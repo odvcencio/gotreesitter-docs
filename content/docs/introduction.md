@@ -23,7 +23,7 @@ pre-compiled grammars. Each grammar comes from its real upstream repository; non
 hand-approximated.
 
 This double effort has a payoff. gotreesitter produces syntax trees that are byte-exact matches
-against the C runtime (tree-sitter v0.25.1), wherever the two implementations have been compared.
+against the C runtime (tree-sitter v0.25.1), on the curated cases that pass the comparison. Other cases have known differences.
 Its error-recovery engine is checked decision-by-decision against that same C runtime, for every
 language that has gone through the process (see below).
 
@@ -55,47 +55,34 @@ build a single static binary for any target Go supports.
 
 - **206 embedded grammars.** There is no separate install step, and no `.so` or `.wasm` file to
   fetch at runtime.
-- **206/206 curated structural parity** against the pinned C oracle. No known-degraded structural
-  skips remain, as of v0.23.0.
+- **A curated structural gate for 206 grammars** against the pinned C oracle, with no
+  allowed known-degraded structural entries. The dated boards describe other tested scopes.
 - **A single static binary.** `go build` is the whole pipeline. There is no C toolchain to
   provision in CI or on a teammate's machine.
 - **Byte-exact syntax trees**, verified against the C runtime where checked.
 - **Oracle-gated recovery and ambiguity handling.** Curated and real-corpus suites compare the
   selected Go tree with a pinned C runtime. The suites report correctness and performance
   separately.
-- **Incremental parsing that is orders of magnitude faster than a full parse.** Reparsing after a
-  no-op edit runs on the engine's 0 B / 0-allocation hot path and returns in single-digit
-  nanoseconds. A real edit still reuses almost the whole tree and finishes in a small fraction of
-  the time a full parse takes.
-- **Honest full-parse receipts.** The sealed v0.45.0 receipts measure two routes on four
-  human-authored, forking Go fixtures. Production measures 5.526× C. Compact measures 2.9975× C.
-  Version 0.48 selects compact parsing only for eligible fresh full parses. It uses production
-  parsing after a compact decline. Do not use the two route values as one parser headline.
+- **Incremental reuse.** The 2026-09-23 generated-Go control measured 439.825 µs and five
+  allocations for a single-byte edit. No-edit reuse measured 27.4 ns with zero allocations.
+- **Dated full-parse evidence.** The sealed v9 receipt from 2026-08-02 measured 4.815× C for
+  production and 3.986× C for compact parsing on four frozen Go files.
 
-## The honest asterisks
+Version v0.54.0 makes the production GLR route the default. Set
+`GTS_ADMISSION_CANDIDATE=1` to enable compact parsing. Graduation remains incomplete.
+The benchmark results above apply to their pinned revisions, not the exact v0.54.0 tag.
+See [Performance](/docs/performance) for the source, host, method, and limits.
 
-This project states where it still falls short, rather than let you find that out in production.
+## Scope
 
-- **Peak memory per node is higher than C's.** The Go node header has fallen from 144 to 104
-  bytes, and the Poppler retained heap is cut by 52.5%. The pointer-rich tree still costs more
-  than C's compact representation.
-- **A handful of very large, generated files can still hit the default memory budget.** The
-  asm.js-class extreme of a JS/TS corpus is one example.
-- **The full-parse ratchet covers 204 of 206 grammars.** D and F# remain explicit held-outs. 101
-  rows in the 2026-07-11 ledger were above 3× C.
-- **Poppler correctness and hard-containment are banked, but ordinary-budget economy is not.**
-  The 3.4 MB JavaScript witness reaches exact parity inside a hard 2 GiB container. The normal
-  512 MiB policy still stops the parse, and its successful full parse remains 3.50× C.
+The [tagged README](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/README.md)
+reports 206 grammars and 119 Go external scanners. Smoke success does not prove parity for
+every input. The project publishes separate boards for queries, highlighting, recovery,
+and real-code inputs. See [Recovery and Correctness](/docs/recovery-and-correctness).
 
-The discipline behind these claims is the same discipline that finds them: compile C tree-sitter
-v0.25.1 with printf instrumentation, replay the Go parser's decisions against it one at a time,
-and fix every divergence until the trees are byte-exact. That process keeps turning up
-"performance cliffs" that turn out to be correctness bugs wearing a performance costume. One bash
-file took 46.4 seconds and produced a whole-file error tree; the parser was silently evicting the
-correct parse lineage. After the fix, the same file parses in about 8 ms, byte-exact. The same
-pattern — slow because wrong, not slow because hard — has repeated in PHP, Rust, and Kotlin. A
-profiler shows you where time goes. Only an oracle comparison shows you that the timed work
-should not have happened at all.
+The [roadmap](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/roadmap.md)
+keeps memory work and compact parser graduation open. It identifies 1.5× C on the locked
+real-code matrix as a future target, not a result.
 
 ## Who it's for
 

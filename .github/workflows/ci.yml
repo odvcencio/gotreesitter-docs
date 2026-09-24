@@ -74,6 +74,8 @@ jobs:
         shell: bash
         env:
           PLAYGROUND_CHROME: ${{ steps.chrome.outputs.chrome-path }}
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          RUN_BROWSER_PERF: "1"
         run: ./scripts/verify-production.sh
 
       - name: Confirm tracked sources remain clean

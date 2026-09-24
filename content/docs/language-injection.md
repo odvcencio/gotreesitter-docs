@@ -55,6 +55,14 @@ embeddings), and a detected region whose language is **not registered** still pr
 `Injection` entry, with `Tree == nil`. You see that the region exists and what language it claims
 to be; you just do not get a parse of it.
 
+## Timeouts and cancellation in v0.54.0
+
+`InjectionParser.SetTimeoutMicros(uint64)` applies a timeout to each parent and child parse.
+Zero disables it. This is a separate limit for each parse, not one deadline for the whole document.
+`SetCancellationFlag(*uint32)` shares a caller-owned cancellation flag with those parsers.
+Update the flag with `atomic.StoreUint32`. Both settings apply to cached parsers and parsers
+created later. See the [source contract](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/injection.go).
+
 ## The injection query
 
 The query runs against the parent tree and uses two capture conventions — the same ones upstream

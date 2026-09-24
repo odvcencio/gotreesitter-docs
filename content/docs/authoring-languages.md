@@ -45,7 +45,7 @@ The relevant functions are all public:
 |---|---|---|
 | `grammargen.ImportGrammarJSON(data []byte) (*Grammar, error)` | `grammargen/import_grammarjson.go` | Parse a resolved `grammar.json` (the output of `tree-sitter generate`) into the grammar IR. Rules, extras, conflicts, externals, inline, word, precedences, reserved sets, supertypes are all imported. |
 | `grammargen.GenerateLanguage(g *Grammar) (*gotreesitter.Language, error)` | `grammargen/encode.go` | Compile the IR into runtime parse tables. |
-| `grammargen.GenerateLanguageAndBlob(g *Grammar) (*gotreesitter.Language, []byte, error)` | `grammargen/encode.go` | Same, plus a serialized language blob in one pass. Blobs without `LargeStateGotos` keep the legacy gob+gzip format. Map-bearing blobs use a deterministic versioned envelope. Load either form with `gotreesitter.LoadLanguage`. `...WithContext` variants exist for cancellation. |
+| `grammargen.GenerateLanguageAndBlob(g *Grammar) (*gotreesitter.Language, []byte, error)` | `grammargen/encode.go` | Same, plus a serialized language blob in one pass. New blobs have a runtime-version header. The inner payload is gzip+gob, with a deterministic envelope for map-bearing blobs. Load either form with `gotreesitter.LoadLanguage`. `...WithContext` variants exist for cancellation. |
 | `grammargen.EmitGrammarGo(g *Grammar, pkgName, funcName string) ([]byte, error)` | `grammargen/emit_grammar_go.go` | Emit Go DSL source that reconstructs the grammar — useful for vendoring the grammar as reviewable Go code instead of JSON. |
 | `gotreesitter.LoadLanguage(data []byte) (*Language, error)` | `load_language.go` | Deserialize a blob at runtime. The only function needed to load a pre-compiled grammar — no grammargen import, no registry. |
 | `grammars.LoadLanguage(name string, data []byte)` | `grammars/embedded_loader.go` | Like the above, but also attaches any external scanner / external lex-state tables registered for `name` in the `grammars` registry. |
@@ -108,8 +108,8 @@ must still register a compatible Go external scanner for runtime parsing.
 The older `-js` flag remains a best-effort pure-Go importer. It does not execute
 JavaScript, but it cannot resolve all helpers or `require()` calls.
 
-See the [CLI resolver](https://github.com/odvcencio/gotreesitter/blob/main/cmd/grammargen/grammar_js_cli.go),
-the [pure-Go importer](https://github.com/odvcencio/gotreesitter/blob/main/grammargen/import_grammarjs.go),
+See the [CLI resolver](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/cmd/grammargen/grammar_js_cli.go),
+the [pure-Go importer](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/grammargen/import_grammarjs.go),
 [pull request #520](https://github.com/odvcencio/gotreesitter/pull/520),
 and [runtime diagnostic pull request #537](https://github.com/odvcencio/gotreesitter/pull/537)
 for implementation details.
@@ -344,8 +344,8 @@ Semantics worth knowing (all from `grammars/registry.go`, and covered in more de
 - **Extension collisions.** For file-suffix detection, the first registered entry owning a suffix
   wins (`buildExtIndex`). Built-ins register before your `init` runs, so a suffix already claimed
   by a built-in stays theirs unless you `Register` over that language name itself.
-- **`RegisterExtension` has no `Shebangs`, `TagsQuery`, or `TokenSourceFactory` fields.** If you
-  need those, call `grammars.Register` directly with a full `grammars.LangEntry` — all of those
+- **`RegisterExtension` accepts `TagsQuery` and highlight inheritance.** For `Shebangs` or
+  `TokenSourceFactory`, call `grammars.Register` directly with a full `grammars.LangEntry` — all of those
   are public fields, including `TokenSourceFactory func(src []byte, lang *gotreesitter.Language)
   gotreesitter.TokenSource` for hand-written token sources.
 - **Runtime language gating.** If the process sets `GOTREESITTER_GRAMMAR_SET` (a comma-separated
@@ -464,31 +464,34 @@ Scale reality check: pawnkit's real tree-sitter-pawn parser has 6,818 states, 33
 tokens, and 5 external tokens — comfortably inside every budget above. You need a COBOL-class
 grammar before state budgets become your problem.
 
-## Blob provenance discipline
+## Blob provenance in v0.54.0
 
-This is hard-learned; treat it as policy.
+New `EncodeLanguageBlob` output has a version header outside the gzip payload or deterministic
+envelope. The header contains its schema version, minimum blob runtime version, and generator
+identity. `BlobRuntimeVersion` is 1. This is separate from the tree-sitter grammar ABI.
 
-- A blob is `gob`+`gzip` of the `Language` struct. Gob tolerates field drift silently: fields
-  added since the blob was written decode as zero values, and removed fields are skipped. A
-  stale blob usually still *loads* — and then misparses or loses features (a pre-0.20.8 blob has
-  `WantsForest == false` forever; older blobs lack `ZeroWidthTokens`, `ConflictPolicies`, and
-  other later fields). `Language.CompatibleWithRuntime()` only checks the tree-sitter ABI version
-  (`LanguageVersion`, where 0 means unknown and compatible); it does **not** detect engine/blob
-  skew.
-- Therefore: **blobs are not portable across engine vintages. Regenerate the blob from
-  `grammar.json` with the exact gotreesitter module version your binary links.** Check in the
-  `grammar.json` next to the blob, and make regeneration a one-command script:
+`EncodeLanguageBlobWithGenerator(lang, generatorVersion)` records a caller-supplied identity.
+`DefaultBlobGeneratorVersion` is `"gotreesitter"`. `Language.BlobInfo()` returns
+`LanguageBlobInfo{HasHeader, SchemaVersion, GeneratorVersion, MinRuntimeVersion}`.
+The exported `WrapLanguageBlobVersionHeader` and `UnwrapLanguageBlobVersionHeader` helpers
+support custom encoders. Prefer `LoadLanguage` for ordinary loading.
 
-  ```sh
-  go run github.com/odvcencio/gotreesitter/cmd/grammargen emit \
-      -json grammar.json -bin pawn.bin
-  ```
+The loader rejects unsupported headers and a minimum runtime version newer than it supports.
+It still accepts legacy blobs without headers. A header does not prove that a grammar's tables
+or scanner are correct. Keep the grammar source and regenerate with the pinned engine version:
 
-  Run it whenever you bump the gotreesitter dependency, and diff parse output over your corpus as
-  the acceptance test.
-- Decode paths differ slightly: `gotreesitter.LoadLanguage` and the `grammars` loader both run
-  `InferGeneratedRepeatAuxMetadata`, but only the `grammars` loader applies its additional repair
-  passes and scanner attachment. Load through one door consistently.
+```sh
+go run github.com/odvcencio/gotreesitter/cmd/grammargen@v0.54.0 emit \
+    -json grammar.json -bin pawn.bin
+```
+
+`MaxDecompressedBlobSize` defaults to 64 MiB. Set it before loading if your application needs
+a different limit. Do not mutate this global during concurrent loads.
+Use `errors.Is(err, gts.ErrDecompressedBlobTooLarge)` to detect an oversized gzip stream.
+
+Sources: [header API](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/language_blob_version_header.go),
+[encoder](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/language_blob_encode.go),
+and [loader](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/load_language.go).
 
 ## Known gaps
 

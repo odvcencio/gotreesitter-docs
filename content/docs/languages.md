@@ -65,7 +65,7 @@ for _, e := range entries {
 | `Extensions` | `[]string` | File suffixes with the leading dot, e.g. `[".go"]` or `[".js", ".mjs", ".cjs"]` for JavaScript. Feeds `DetectLanguage`. |
 | `Shebangs` | `[]string` | Exact shebang-line prefixes to match. Unset on every built-in today — shebang detection instead runs off an internal linguist-interpreter table (`#!/usr/bin/env python3` → `python`), which `DetectLanguageByShebang` also consults. The field is for a language that needs an exact, non-table match. |
 | `Language` | `func() *gotreesitter.Language` | The lazy loader: first call decodes the grammar, later calls return the cached result. This is what an `XLanguage()` function like `GoLanguage()` actually is. |
-| `GrammarSource` | `GrammarSource` | How the grammar was produced: `"ts2go_blob"` (extracted from upstream C `parser.c`, 203 of 206), `"grammargen_blob"` (built by gotreesitter's own pipeline, shipped as a blob — `go`, `regex`, `swift`), or `"grammargen"` (generated at runtime with no embedded blob — how out-of-tree `RegisterExtension` callers typically register). |
+| `GrammarSource` | `GrammarSource` | How the grammar was produced: `"ts2go_blob"` (extracted from upstream C `parser.c`), `"grammargen_blob"` (compiled by gotreesitter and shipped as a blob), or `"grammargen"` (generated at runtime with no embedded blob — how out-of-tree `RegisterExtension` callers typically register). |
 | `HighlightQuery` | `string` | The tree-sitter `highlights.scm` text, for syntax-highlighting integrations. |
 | `InheritHighlights` | `string` | Parent language whose highlight query gets prepended to this one's (child overrides win). Unset on every built-in; meant for an extension language composing with an existing grammar. |
 | `TagsQuery` | `string` | A `tags.scm` query for symbol extraction, when explicitly authored. No built-in ships one explicitly — call `grammars.ResolveTagsQuery(entry)` instead of reading the field directly; it infers a query from the grammar's symbols and caches the result. |
@@ -103,7 +103,7 @@ not — you are building a plugin system, serving grammars to WASM on demand, or
 your own module generated — load a blob at runtime instead:
 
 ```go
-blob := grammars.BlobByName("python")       // raw gzip+gob bytes; nil if not embedded
+blob := grammars.BlobByName("python")       // encoded blob; nil if not embedded
 lang, err := grammars.LoadLanguage("python", blob)
 if err != nil {
 	panic(err)
@@ -132,6 +132,17 @@ loader also attaches scanners. Pick one door and load through it consistently.
 
 Writing and shipping your own grammar this way — with the pipeline that produces the blob in the
 first place — is the subject of [Authoring Languages](/docs/authoring-languages).
+
+### Blob metadata and certification in v0.54.0
+
+New blobs carry a version header. `lang.BlobInfo()` reports it after loading.
+The loader still accepts legacy blobs and limits decompressed data to 64 MiB by default.
+See [Authoring Languages](/docs/authoring-languages) for encoding and limit controls.
+
+`grammars.DecodeAndCertifyLanguageBlob(name, data)` is also exported in v0.54.0.
+It uses the built-in loader's repair and certification path, then attaches the registered
+scanner and external lex states. This does not certify arbitrary grammar data as C-equivalent.
+See [the implementation](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/grammars/runtime/embedded_loader.go).
 
 ## Why `Type`, `SExpr`, and field lookups take a `*Language`
 
@@ -169,25 +180,17 @@ lang := entry.Language()
 fmt.Println(lang.CRecoveryCostCompetitionEnabledByDefault) // true: rust is elected
 ```
 
-Checking this across every registered language (`entry.Language().CRecoveryCostCompetitionEnabledByDefault`
-for each of the 206) is how this page's own catalog numbers below were verified: **124 of 206**
-languages are certified today, matching the project's public "\~124 elected" figure exactly. The
-other 82 use the resync recovery path described on the Recovery and Correctness page — safe and
-non-hanging, just not certified byte-identical to C on damaged input.
+Inspect these flags on each loaded language. This page does not claim a current aggregate
+recovery-election count. Certification is specific to the grammar and tested inputs.
 
 ## The full catalog
 
-This list comes from calling `grammars.AllLanguages()` and printing every `Name`, sorted — not
-hand-typed, so it stays honest as the set grows. Here is the scan behind it:
+The [v0.54.0 language guide](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/languages.md)
+reports 206 registry grammars, 119 external scanners, and seven hand-written token-source
+implementations. A token-source implementation is not the same as a non-nil factory on every
+registry entry. Build tags can change the registry. Inspect `AllLanguages` for your build.
 
-| | |
-|---|---|
-| Total registered languages | **206** |
-| `ts2go_blob` (extracted from upstream `parser.c`) | 203 |
-| `grammargen_blob` (built by gotreesitter's own pipeline) | 3 (`go`, `regex`, `swift`) |
-| File extensions mapped across all entries | 273 |
-| Entries with a hand-written `TokenSourceFactory` | 5 |
-| Elected into C-faithful recovery (measured, see above) | 124 |
+The default catalog is listed below.
 
 ```langlist
 ada                csv                forth              json               pem                starlark
@@ -239,6 +242,5 @@ from the extension.
   forking gotreesitter.
 - [External Scanners](/docs/external-scanners) — when a grammar needs hand-written Go lexing, and
   how to port one.
-- [Recovery and Correctness](/docs/recovery-and-correctness) — the full election model behind the
-  124-language figure above.
+- [Recovery and Correctness](/docs/recovery-and-correctness) — the election model and dated parity boards.
 - [Syntax Trees and Nodes](/docs/syntax-trees-and-nodes) — the complete `Node` API.

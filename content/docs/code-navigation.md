@@ -123,7 +123,7 @@ the tagged node to its preceding sibling comment through the
 - **`TagIncremental(source, oldTree) ([]Tag, *Tree)`** — the editor path. It follows the same
   edit-first contract as everything else in the engine: call `oldTree.Edit(...)` with the
   [`InputEdit`](/docs/incremental-parsing), then `TagIncremental` returns the full new tag set
-  plus the new tree, which you own (release the old one when it is a different object).
+  plus the new tree, which you own. Release the old handle even when the returned pointer is the same.
 
 All three have UTF-16 mirrors for LSP-shaped callers — `TagUTF16`, `TagUTF16Bytes`,
 `TagTreeUTF16`, `TagIncrementalUTF16`, `TagIncrementalUTF16Bytes` — returning `UTF16Tag` with
@@ -144,6 +144,26 @@ declaration and call shapes, and they return compact language-neutral records (`
 unknown languages and shapes instead of guessing, and they are not query-configurable. Reach for
 them in batch-indexing tools where you want the cheap 90%, and reach for the `Tagger` when you
 want control over what counts as a symbol.
+
+## Reuse fact storage in v0.54.0
+
+`FactProgram` extracts definitions, calls, heritage, and imports in one tree traversal.
+The new `ExtractInto(tree, dst)` method replaces the destination contents and reuses its slices.
+
+```go
+program, err := gts.NewFactProgram(lang, gts.FactAll)
+if err != nil {
+    log.Fatal(err)
+}
+var facts gts.FactSet
+program.ExtractInto(tree, &facts)
+```
+
+Use trees built with the same `Language` value as the program. A nil program, invalid tree,
+or language mismatch clears the destination but retains its capacity. A nil destination does
+nothing. Copy result slices before the next extraction if you need to retain them.
+Use a separate destination for each concurrent extraction. Assign `gts.FactSet{}` to release
+retained storage. See the [source contract](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/fact_program.go).
 
 ## Compile-checked example
 

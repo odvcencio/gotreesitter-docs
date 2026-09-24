@@ -120,12 +120,9 @@ At runtime the gate additionally revalidates the table shape before engaging. On
 capability *and* certification *and* runtime validation all pass does a parse run the C-faithful
 loop; otherwise it falls back.
 
-About **124 languages are elected** into C-faithful recovery today (123 as of v0.21.0, plus C#
-added in a later wave). For the remainder, gotreesitter uses a **resync recovery path** — a
-coarser, structurally safe fallback that predates the default-on C recovery. It never fails a
-parse and never hangs, but it can wrap a larger span in `ERROR` than C's local cost competition
-would; the tree stays safe to consume, though not necessarily byte-identical to C on that damaged
-region. The project stages the rest of the long tail for election as it verifies each language.
+The tag does not publish a current aggregate election count. Inspect
+`CRecoveryCostCompetitionCapable` and `CRecoveryCostCompetitionEnabledByDefault` on the loaded
+language. Unelected grammars can use the resync fallback, whose error shape can differ from C.
 
 One safety net captures the project's stance. A narrow language-agnostic check guards a specific
 defect class in the port: if the version-competition step ever selects a *clean* final tree whose
@@ -135,22 +132,30 @@ fires, the parse re-runs with the resync fallback and adopts its verdict. The gu
 deliberately scoped to "`HasError()` is honest," not "the shape is C-perfect" — and the code
 documents that gap rather than hiding it.
 
-## The gates that keep it true
+## Dated parity evidence in v0.54.0
 
-Parity is not a one-time achievement; it is a ratchet. The cgo parity suites
-(`TestParityFreshParse`, `TestParityIncrementalParse`, `TestParityHasNoErrors`, the GLR canary and
-cap-pressure suites) run the node-exact comparison against the C oracle in CI. A coverage-ratchet
-test locks the gate so it can only tighten: the curated structural set must stay at **206
-languages**, all **206 must pass**, the ratchet pins the known-degraded structural list at
-**zero**, highlight coverage stays at 200 with its own degraded ceiling, and the ratchet pins the
-count of tolerated parity skips at **zero**. Loosening any of those numbers requires editing the
-ratchet on purpose, in the open.
+The [curated gate ratchet](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/cgo_harness/parity_gate_ratchet_test.go)
+requires at least 206 structural languages, zero known-degraded structural entries, and zero
+parity skips. Its highlight floor is 200. These are test thresholds, not a result for all inputs.
 
-A separate tier model scores every grammar on real-corpus files, with a hard rule stated in the
-tooling: **parity versus the C oracle is the gate; performance is only a sub-rank.** A grammar
-that regresses below its recorded parity floor fails the tier ratchet. Correctness and speed stay
-deliberately separate gates — the harness framework spells it out: *do not infer correctness from
-performance numbers.*
+The [C parity boards](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/c-parity-boards.md)
+publish separate, dated results:
+
+| Board | Date | Published scope and result |
+|---|---|---|
+| Query semantics | 2026-09-08 | 103 cases; 101 agree; 2 known differences |
+| Highlight parity | 2026-09-08 | 206 languages; 204 agree; 2 skip because hurl and mojo have no C reference build; 0 tolerance entries |
+| Supertype maps | 2026-09-08 | 69 grammars; 40 agree; 29 differ |
+| Recovery | 2026-09-19 | 79 cases; 39 agree on the default route after the leaf-extra fix |
+
+These are the board's published dates. They are not a new sweep of the v0.54.0 tag.
+The highlight skip count belongs to that board; do not confuse it with the curated gate's
+zero-skip threshold.
+
+The [v0.54.0 release notes](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/CHANGELOG.md#0540---2026-09-23)
+record the YAML bare-opener error-shape fix and the incremental fixes. They retain a COBOL
+column-dependency gap that causes extra invalidation. This page does not count the pending
+Python list-splat or duplicate escape-sequence fixes as shipped.
 
 ## Swift real-code corpus
 
@@ -163,35 +168,11 @@ Issues [#574](https://github.com/odvcencio/gotreesitter/issues/574) through
 [#578](https://github.com/odvcencio/gotreesitter/issues/578) record them. Do not add a Go-only
 repair for those cases. It would break locked C parity.
 
-## The campaign lesson: cliffs are correctness bugs in disguise
+## Check correctness before timing
 
-The most important thing this project learned about correctness came from chasing *performance*.
-Several dramatic "performance cliffs" turned out not to be slow code — they were **wrong** code
-that happened to be slow.
-
-- A **bash** file took **46.4 seconds** and came back wrapped in a whole-file `ERROR`. A profiler
-  pointed at the parser working furiously. The real cause was a correctness bug: bash program
-  bodies are long repeated statement lists, and the engine was forking `{shift, reduce}` at
-  *every* statement boundary instead of folding the list spine, so it reached end-of-input with
-  no accepting lineage and declined into a whole-file error. Fixed to fold the spine the way C
-  does, the file parses in about **8 ms** and produces the C-oracle shape. A regression test now
-  pins the exact child count of that recovered tree.
-- **kotlin** silently mislexed every safe-navigation `?.` operator — an external scanner bound to
-  the wrong symbol produced a spurious `ERROR`, which sent recovery into O(n²) work. It read as a
-  speed problem; it was a lexing bug. Correcting the binding took one large file from **5,036 ms
-  to 74 ms**, at node-for-node C parity.
-- A cluster of languages (**cpp, haskell, scala, crystal, typescript**) showed a subtler shape: a
-  parse that returns *without* error and *without* stopping early, but whose root covers only a
-  fraction of the input — a silently truncated tree. A timing sweep happily reports such a file
-  as "fast." Only a comparison against the oracle reveals that the tree is wrong.
-
-The through-line: a profiler shows you where time goes, not whether the work is legitimate. A
-parser burning cycles might be correctly parsing a hard file, or it might be thrashing because it
-already made a wrong decision and cannot recover. **Only oracle discipline distinguishes the
-two.** Comparing to C, not reading a flame graph, found every one of these bugs. Related wins from
-the same campaign — php going from 8/8 timeouts to 8/8 clean parses at about 1.66× C, rust from
-about 71.7 s to about 2.4 s, java from about 5.19 s to about 521 ms on the worst sampled files —
-trace back to the same habit of treating a divergence as a bug until proven otherwise.
+A parse can return without an error yet cover only part of the input. A timing result for
+that tree does not establish correct parsing. Compare node types, fields, spans, flags, and
+children against the pinned C oracle. Keep the correctness result with the performance evidence.
 
 ## Honest scope
 

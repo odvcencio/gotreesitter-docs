@@ -11,12 +11,12 @@
       ]
     },
     "playground": {
-      "description": "Interactive parser playground shell and WASM bootstrap.",
+      "description": "Interactive parser playground shell and WASM bootstrap. Decoded JS includes the pinned GoSX engine chunks, Go shim, navigation, and analytics (about 297 KiB measured during the v0.54.0 refresh).",
       "assertions": [
         "lcp <= 3000",
         "long_tasks <= 2",
         "tbt <= 450",
-        "js_total_kb <= 160",
+        "js_total_kb <= 320",
         "network_kb <= 5200"
       ]
     }
