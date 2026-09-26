@@ -57,7 +57,7 @@ var landingFeatures = []map[string]any{
 	{"tok": "noC", "ttl": "No CGo, no C toolchain", "body": "Parser, lexer, scanners, query engine — all Go. Nothing to link, nothing to install.", "color": "c-cyan"},
 	{"tok": "→*", "ttl": "Cross-compiles anywhere", "body": "Any GOOS/GOARCH Go supports, wasip1 included. No per-target C cross-toolchain.", "color": "c-blue"},
 	{"tok": "206", "ttl": "206 grammars in the box", "body": "Extracted from upstream parser.c by ts2go, compressed to blobs, lazy-loaded with an LRU cache.", "color": "c-violet"},
-	{"tok": "route", "ttl": "Certified fresh parsing", "body": "Version v0.54.0 uses production GLR parsing by default. Set GTS_ADMISSION_CANDIDATE=1 to enable compact parsing. Compact parser graduation remains incomplete.", "color": "c-green"},
+	{"tok": "route", "ttl": "Certified fresh parsing", "body": "Version v0.55.1 uses production GLR parsing by default. Set GTS_ADMISSION_CANDIDATE=1 to enable compact parsing. Compact parser graduation remains incomplete.", "color": "c-green"},
 	{"tok": "ns", "ttl": "Restored edit reuse, authenticated", "body": "Authenticated lexical proofs protect same-width edit reuse. The 2026-09-23 control receipt measures five allocations per single-byte edit. No-edit reuse allocates zero. See the performance page for the revision and host.", "color": "c-orange"},
 	{"tok": "GLR", "ttl": "C-oracle recovery gates", "body": "The GLR and recovery paths are verified separately from performance, with curated and real-corpus parity receipts.", "color": "c-red"},
 	{"tok": "U16", "ttl": "Native UTF-16 for editors", "body": "Parse UTF-16 code units or endian byte buffers; nodes, edits & queries map back to UTF-16 offsets.", "color": "c-pink"},
