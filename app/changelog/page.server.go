@@ -487,6 +487,12 @@ func releaseImpactClass(release releasecatalog.Release) string {
 
 func releaseNarrative(release releasecatalog.Release) (string, string) {
 	switch displayVersion(release) {
+	case "v0.55.1":
+		return "Restore Python speed and correct large C parses.",
+			"This patch restores Python parsing speed on files without unpacking. It fixes false C errors beyond the string-call limit. It also reduces Scala alias work and extends the Dart reuse guard. Transient-error incremental trees remain unresolved. The linked notes state the measured results and their limits."
+	case "v0.55.0":
+		return "Correct Python trees and reduce pathological parse work.",
+			"This release fixes Python escape spans and splat binding. It reduces pathological C# election work and bounds Make, HTTP, and Dart work. It also fixes query capture ordering and makes explicit route settings override the admission allowlist. The highlighter route option applies to injected parsers."
 	case "v0.54.0":
 		return "Production parsing by default, with reuse fixes.",
 			"Version 0.54.0 makes compact parsing opt-in through GTS_ADMISSION_CANDIDATE=1. It adds FactProgram.ExtractInto, reduces scanner overhead, and fixes GLR cache invalidation, incremental token-source resume, reuse-budget stops, missing-edit fallback, and YAML error shapes. Groovy incremental calls use a fresh parse. Compact parser graduation remains incomplete."
