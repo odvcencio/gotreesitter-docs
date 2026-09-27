@@ -8,17 +8,16 @@ import (
 func init() {
 	RegisterStaticDocsPage(
 		"Overview",
-		"A pure-Go, byte-exact reimplementation of tree-sitter — no CGo, no C toolchain, 206 grammars built in.",
+		"Parse Tree-sitter grammars in pure Go. Explore real syntax trees across 206 languages, with no CGo in the runtime.",
 		"/",
 		route.FileModuleOptions{
 			Bindings: func(ctx *route.RouteContext, page route.FilePage, data any) route.FileTemplateBindings {
 				return route.FileTemplateBindings{
 					Values: map[string]any{
-						"features":   landingFeatures,
-						"langTeaser": landingLangTeaser,
+						"features": landingFeatures,
 					},
 					Funcs: map[string]any{
-						"heroCode": heroCodeNode,
+						"parserDemo": func() gosx.Node { return landingParserDemoNode(ctx.Nonce()) },
 					},
 				}
 			},
@@ -26,50 +25,10 @@ func init() {
 	)
 }
 
-// heroSnippet is the hero `.codebody` sample on the landing page
-// (app/page.gsx) — the same parse/walk/print shape used throughout the
-// docs' own README-style examples.
-const heroSnippet = `lang := grammars.GoLanguage()
-parser := gotreesitter.NewParser(lang)
-tree, err := parser.Parse(src)
-if err != nil { panic(err) }
-defer tree.Release()
-fmt.Println(tree.RootNode().SExpr(lang))
-
-// (source_file (function_declaration ...))`
-
-// heroCodeNode runs heroSnippet through the same gotreesitter-backed
-// highlighter every markdown ```go fence uses (highlightSource, in
-// highlight.go → renderCodeBlock's convention in render_blocks.go), so the
-// hero sample gets real `tk-*` syntax highlighting instead of the plain,
-// unhighlighted literal it used to be. Falls back to plain text — never a
-// render error — if highlighting can't classify anything.
-func heroCodeNode() gosx.Node {
-	if highlighted, ok := highlightSource("go", heroSnippet); ok {
-		return gosx.RawHTML(highlighted)
-	}
-	return gosx.Text(heroSnippet)
-}
-
-// landingFeatures backs the "A whole parsing toolkit" `.grid3` on the
-// landing page (app/page.gsx): tok/ttl/body/color in display order.
+// landingFeatures backs the compact feature grid on the landing page.
 var landingFeatures = []map[string]any{
-	{"tok": "noC", "ttl": "No CGo, no C toolchain", "body": "Parser, lexer, scanners, query engine — all Go. Nothing to link, nothing to install.", "color": "c-cyan"},
-	{"tok": "→*", "ttl": "Cross-compiles anywhere", "body": "Any GOOS/GOARCH Go supports, wasip1 included. No per-target C cross-toolchain.", "color": "c-blue"},
-	{"tok": "206", "ttl": "206 grammars in the box", "body": "Extracted from upstream parser.c by ts2go, compressed to blobs, lazy-loaded with an LRU cache.", "color": "c-violet"},
-	{"tok": "route", "ttl": "Certified fresh parsing", "body": "Version v0.55.1 uses production GLR parsing by default. Set GTS_ADMISSION_CANDIDATE=1 to enable compact parsing. Compact parser graduation remains incomplete.", "color": "c-green"},
-	{"tok": "ns", "ttl": "Restored edit reuse, authenticated", "body": "Authenticated lexical proofs protect same-width edit reuse. The 2026-09-23 control receipt measures five allocations per single-byte edit. No-edit reuse allocates zero. See the performance page for the revision and host.", "color": "c-orange"},
-	{"tok": "GLR", "ttl": "C-oracle recovery gates", "body": "The GLR and recovery paths are verified separately from performance, with curated and real-corpus parity receipts.", "color": "c-red"},
-	{"tok": "U16", "ttl": "Native UTF-16 for editors", "body": "Parse UTF-16 code units or endian byte buffers; nodes, edits & queries map back to UTF-16 offsets.", "color": "c-pink"},
-	{"tok": "gen", "ttl": "Typed query codegen", "body": "tsquery turns .scm files into type-safe Go structs — one per pattern, fully typed captures.", "color": "c-yellow"},
-	{"tok": "{ }", "ttl": "Injection parsing", "body": "Parse HTML+JS+CSS, Markdown fences, Vue/Svelte templates. Static & dynamic, recursive, incremental.", "color": "c-violet"},
-	{"tok": "rw", "ttl": "Atomic source rewriter", "body": "Collect replace/insert/delete edits, apply in one pass, get InputEdit records for incremental reparse.", "color": "c-blue"},
-	{"tok": "+L", "ttl": "Add languages, no fork", "body": "grammar.json → blob → LoadLanguage / RegisterExtension. Ship a grammar as its own Go module.", "color": "c-green"},
-	{"tok": "race", "ttl": "Visible to -race", "body": "No CGo boundary means the race detector, coverage, and fuzzer see the entire runtime.", "color": "c-cyan"},
-}
-
-// landingLangTeaser backs the "206 grammars, embedded" `.langteaser` chip row.
-var landingLangTeaser = []string{
-	"go", "rust", "python", "typescript", "cobol", "zig", "swift", "haskell",
-	"cpp", "ruby", "kotlin", "elixir", "nix", "wgsl", "solidity", "ocaml",
+	{"tok": "Go", "ttl": "No CGo in the runtime", "body": "The parser and query engine run as Go code. The project is released under the MIT license.", "color": "c-cyan"},
+	{"tok": "206", "ttl": "206 grammar entries", "body": "The pinned v0.55.1 registry includes 206 languages, with 119 Go external scanners and 7 token sources.", "color": "c-violet"},
+	{"tok": ".scm", "ttl": "Tree-sitter queries", "body": "Use familiar query patterns to find named nodes and captures in a parsed tree.", "color": "c-blue"},
+	{"tok": "Δ", "ttl": "Incremental parsing", "body": "Apply edits to an existing tree and reparse the changed source.", "color": "c-green"},
 }

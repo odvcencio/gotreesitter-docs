@@ -115,6 +115,11 @@ for index in "${!routes[@]}"; do
   curl --silent --show-error --fail --output "$route_page" "$base$route"
   grep -Fq '<html data-gosx-document="true" lang="en"' "$route_page" ||
     fail "document language is missing from $route"
+  grep -Fq 'gotreesitter</title>' "$route_page" ||
+    fail "lowercase gotreesitter title brand is missing from $route"
+  if grep -Fq 'GoTreeSitter Docs</title>' "$route_page"; then
+    fail "legacy page title brand remains on $route"
+  fi
   grep -Fq 'rel="canonical"' "$route_page" || fail "canonical metadata missing from $route"
   grep -Fq "href=\"https://gotreesitter.m31labs.dev$route\"" "$route_page" ||
     fail "canonical metadata does not match $route"
@@ -131,7 +136,7 @@ done < <(
 )
 
 curl --silent --show-error --fail --output "$page_body" "$base/"
-grep -Fq 'Certified fresh parsing' "$page_body" || fail "landing route contract missing from /"
+grep -Fq 'Read the code. Follow the tree.' "$page_body" || fail "landing route contract missing from /"
 curl --silent --show-error --fail --output "$page_body" "$base/docs/performance"
 grep -Fq '4.815' "$page_body" || fail "sealed v9 production ratio missing from /docs/performance"
 external_scanners_html="$(curl --silent --show-error --fail "$base/docs/external-scanners")"

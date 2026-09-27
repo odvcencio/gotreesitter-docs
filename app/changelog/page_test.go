@@ -205,6 +205,21 @@ func TestExtractReferencesLinksNumericCommit(t *testing.T) {
 	}
 }
 
+func TestExtractReferencesSkipsExternalCommitsCIIDsAndUnknownTags(t *testing.T) {
+	const externalCommit = "172ada1cc4117d0260d9340680b4134adba2bc2c"
+	references := extractReferences("Grammar commit `" + externalCommit +
+		"`; CI run `32609724840`; exception v0.52.0-only; release v0.55.1.")
+	for _, reference := range references {
+		href := reference["href"].(string)
+		if strings.Contains(href, externalCommit) || strings.Contains(href, "32609724840") || strings.Contains(href, "v0.52.0-only") {
+			t.Errorf("reference points to the wrong upstream object: %#v", reference)
+		}
+	}
+	if len(references) != 1 || references[0]["href"] != repositoryURL+"/releases/tag/v0.55.1" {
+		t.Fatalf("references = %#v, want only the known v0.55.1 release", references)
+	}
+}
+
 func TestChangelogMetadataUsesInspectedSocialCard(t *testing.T) {
 	meta := changelogMetadata()
 	if meta.OpenGraph == nil || len(meta.OpenGraph.Images) != 1 {

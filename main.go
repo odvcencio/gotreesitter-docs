@@ -31,14 +31,33 @@ func main() {
 
 	router := route.NewRouter()
 	router.SetLayout(func(ctx *route.RouteContext, body gosx.Node) gosx.Node {
-		// Space Grotesk + JetBrains Mono are the current site's two typefaces.
-		// This is the
-		// site's actual head (app/layout.gsx only renders the body shell), so
-		// the fonts are wired in here rather than in the .gsx layout.
 		ctx.AddHead(
-			gosx.El("link", gosx.Attrs(gosx.Attr("rel", "preconnect"), gosx.Attr("href", "https://fonts.googleapis.com"))),
-			gosx.El("link", gosx.Attrs(gosx.Attr("rel", "preconnect"), gosx.Attr("href", "https://fonts.gstatic.com"), gosx.BoolAttr("crossorigin"))),
-			server.Stylesheet("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap"),
+			server.Font(server.FontProps{
+				Family:  "Space Grotesk",
+				Src:     docsapp.PublicAssetURL("fonts/space-grotesk-latin.woff2"),
+				Type:    "font/woff2",
+				Format:  "woff2",
+				Weight:  "400 700",
+				Display: "optional",
+			}),
+			server.Font(server.FontProps{
+				Family:  "JetBrains Mono",
+				Src:     docsapp.PublicAssetURL("fonts/jetbrains-mono-latin.woff2"),
+				Type:    "font/woff2",
+				Format:  "woff2",
+				Weight:  "400 700",
+				Display: "optional",
+			}),
+			server.Font(server.FontProps{
+				Family:    "JetBrains Mono",
+				Src:       docsapp.PublicAssetURL("fonts/jetbrains-mono-latin-italic.woff2"),
+				Type:      "font/woff2",
+				Format:    "woff2",
+				Weight:    "400",
+				Style:     "italic",
+				Display:   "optional",
+				NoPreload: true,
+			}),
 		)
 		ctx.AddHead(server.Stylesheet(docsapp.PublicAssetURL("docs.css")))
 		ctx.AddHead(gosx.El("link", gosx.Attrs(
@@ -54,7 +73,7 @@ func main() {
 			gosx.Attr("data-cf-beacon", `{"token": "0282fc84c88d4a37820b398987f22b2d"}`),
 		)))
 		ctx.SetLanguage("en")
-		return server.HTMLDocument(ctx.Document("GoTreeSitter Docs", body))
+		return server.HTMLDocument(ctx.Document("gotreesitter", body))
 	})
 
 	if err := router.AddDir(filepath.Join(root, "app"), route.FileRoutesOptions{}); err != nil {

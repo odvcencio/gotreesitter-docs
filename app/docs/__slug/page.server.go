@@ -71,7 +71,7 @@ func init() {
 				description, _ := values["description"].(string)
 				slug, _ := values["slug"].(string)
 				meta := docsapp.CanonicalMetadata("/docs/" + slug)
-				meta.Title = server.Title{Default: title + " | GoTreeSitter Docs"}
+				meta.Title = server.Title{Default: title + " | gotreesitter"}
 				meta.Description = description
 				return meta, nil
 			},

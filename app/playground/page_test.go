@@ -5,6 +5,29 @@ import (
 	"testing"
 )
 
+func TestInitialPlaygroundSamplePreselectsOnlyIndexedLanguages(t *testing.T) {
+	language, sample := initialPlaygroundSample("rust")
+	if language != "rust" {
+		t.Fatalf("initial language = %q, want rust", language)
+	}
+	if !strings.Contains(sample.Source, "struct Greeter") {
+		t.Fatalf("Rust starter sample = %q, want the Rust sample", sample.Source)
+	}
+	if !strings.Contains(sample.Query, "function_item") {
+		t.Fatalf("Rust query = %q, want a Rust function_item query", sample.Query)
+	}
+
+	for _, invalid := range []string{"Rust", "not-a-language", "package main"} {
+		language, sample = initialPlaygroundSample(invalid)
+		if language != "go" {
+			t.Errorf("initial language for %q = %q, want go", invalid, language)
+		}
+		if !strings.Contains(sample.Source, "package main") {
+			t.Errorf("initial Go sample for %q = %q", invalid, sample.Source)
+		}
+	}
+}
+
 func TestPlaygroundIsGoSXManagedBrowserWASM(t *testing.T) {
 	contents := readEmbeddedSource(t, "page.gsx")
 	for _, snippet := range []string{

@@ -26,6 +26,16 @@ var (
 	issuePattern       = regexp.MustCompile(`(?i)\bissue\s+#([0-9]+)`)
 	commitPattern      = regexp.MustCompile("`([0-9a-f]{7,40})`")
 	tagPattern         = regexp.MustCompile(`\bv[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?\b`)
+	// These hashes are explicitly identified in the changelog as commits from
+	// grammar repositories, not commits in the gotreesitter repository.
+	nonRepositoryCommitIDs = map[string]struct{}{
+		"172ada1cc4117d0260d9340680b4134adba2bc2c": {},
+		"41d6e5fe811ec94229ee71771174a8cce558dfee": {},
+		"48ab75f29abaa315fad7fa7b8338f92bb07376a7": {},
+		"5739fd79bcfc75ba7526773d0cf634521f8aca3c": {},
+		"587f30d184b058450be2a2330878210c5f33b3f9": {},
+		"61a7c75e225e3035390be32d635545e40d8c5faf": {},
+	}
 )
 
 func init() {
@@ -44,7 +54,7 @@ func init() {
 
 func changelogMetadata() server.Metadata {
 	const (
-		title       = "Changelog — GoTreeSitter"
+		title       = "Changelog | gotreesitter"
 		description = "Explore GoTreeSitter releases, current work, upgrade impact, and source evidence."
 	)
 	image := server.MediaAsset{
@@ -62,7 +72,7 @@ func changelogMetadata() server.Metadata {
 		OpenGraph: &server.OpenGraph{
 			Type:        "website",
 			URL:         docsapp.SiteURL + "/changelog",
-			SiteName:    "GoTreeSitter",
+			SiteName:    "gotreesitter",
 			Title:       title,
 			Description: description,
 			Images:      []server.MediaAsset{image},
@@ -551,12 +561,31 @@ func extractReferences(markdown string) []map[string]any {
 		appendReference("Issue #"+match[1], repositoryURL+"/issues/"+match[1], "issue")
 	}
 	for _, match := range commitPattern.FindAllStringSubmatch(markdown, -1) {
+		if _, external := nonRepositoryCommitIDs[match[1]]; external || isLongNumericID(match[1]) {
+			continue
+		}
 		appendReference("Commit "+match[1], repositoryURL+"/commit/"+match[1], "commit")
 	}
 	for _, tag := range tagPattern.FindAllString(markdown, -1) {
+		if !hasReleaseTag(tag) {
+			continue
+		}
 		appendReference(tag, repositoryURL+"/releases/tag/"+tag, "release")
 	}
 	return references
+}
+
+func isLongNumericID(value string) bool {
+	return len(value) >= 10 && strings.Trim(value, "0123456789") == ""
+}
+
+func hasReleaseTag(tag string) bool {
+	for _, release := range catalog.Releases {
+		if release.Tag == tag {
+			return true
+		}
+	}
+	return false
 }
 
 func historicalTrail(release releasecatalog.Release) []map[string]any {

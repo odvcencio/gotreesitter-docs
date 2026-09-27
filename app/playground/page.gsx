@@ -22,7 +22,7 @@ func Page() Node {
 				<label class="pg-picker">
 					<span class="pg-picklabel">language</span>
 					<select id="pg-language" class="pg-select" aria-label="Language" disabled>
-						<option value="go" selected>loading grammar index…</option>
+						<option value={data.language} selected>loading grammar index…</option>
 					</select>
 				</label>
 				<label class="pg-anonlabel pg-anon-light" title="Include anonymous nodes in the rendered tree">
@@ -39,7 +39,7 @@ func Page() Node {
 						<span class="cdot y"></span>
 						<span class="cdot g"></span>
 						source
-						<span id="pg-language-label" class="hlcredit">go</span>
+						<span id="pg-language-label" class="hlcredit">{data.language}</span>
 					</div>
 					<div class="panelbd pg-editorwrap">
 						<pre id="pg-hl" class="pg-hlpre mono" aria-hidden="true">{data.source}</pre>

@@ -201,8 +201,31 @@ func mountPlayground(ctx enginewasm.Context) (enginewasm.Handle, error) {
 	}
 
 	h.mount.Get("dataset").Set("privacyBoundary", "browser-only")
+	h.nameKeyboardInput()
 	go h.bootstrap(props.GrammarIndexURL)
 	return h, nil
+}
+
+// GoSX adds a transparent contenteditable to engine mounts that accept text
+// input. It receives keyboard and IME events for the playground surface, so
+// give that textbox an accessible name after the host installs it.
+func (h *playgroundHandle) nameKeyboardInput() {
+	var callback js.Func
+	callback = js.FuncOf(func(js.Value, []js.Value) any {
+		defer callback.Release()
+		h.stateMu.Lock()
+		disposed := h.disposed
+		h.stateMu.Unlock()
+		if disposed {
+			return nil
+		}
+		input := h.mount.Call("querySelector", `[contenteditable="true"]`)
+		if input.Truthy() && !input.Call("hasAttribute", "aria-label").Bool() {
+			input.Call("setAttribute", "aria-label", "Playground keyboard input")
+		}
+		return nil
+	})
+	js.Global().Call("setTimeout", callback, 0)
 }
 
 func (h *playgroundHandle) Dispose() {
@@ -243,12 +266,16 @@ func (h *playgroundHandle) bootstrap(indexURL string) {
 	h.stateMu.Unlock()
 
 	selectBox := h.find("#pg-language")
+	selectedLanguage := selectBox.Get("value").String()
+	if _, ok := h.assets[selectedLanguage]; !ok {
+		selectedLanguage = "go"
+	}
 	selectBox.Set("textContent", "")
 	for _, asset := range assets {
 		option := element("option")
 		option.Set("value", asset.Name)
 		option.Set("textContent", fmt.Sprintf("%s · %s", asset.Name, formatBytes(asset.Bytes)))
-		if asset.Name == "go" {
+		if asset.Name == selectedLanguage {
 			option.Set("selected", true)
 		}
 		selectBox.Call("appendChild", option)
