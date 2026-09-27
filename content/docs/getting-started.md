@@ -6,27 +6,27 @@ order: 2
 layout: steps
 ---
 
-Try a grammar before you install anything in the [browser playground](/playground). Choose Go,
-edit the sample, and inspect the syntax tree.
+Start in the [browser playground](/playground): choose Go, edit the sample, and inspect its
+syntax tree. You can try a grammar before installing anything.
 
 ## Requirements
 
-For the v0.55.1 module, use Go 1.22.0 or newer. That is the go directive in its
+You need Go 1.22.0 or newer for the v0.55.1 module. You can confirm the minimum in its
 [go.mod](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/go.mod).
 
 ## Install
 
-Add gotreesitter v0.55.1 to your module:
+Add v0.55.1 to your module:
 
 ```sh
 go get github.com/odvcencio/gotreesitter@v0.55.1
 ```
 
-The parser and the 206 built-in grammars are in the same module.
+You get the parser and all 206 built-in grammars in the same module.
 
 ## Parse a Go file
 
-This program parses a small Go file and prints its named syntax tree:
+This complete program parses a small Go file and prints its named syntax tree:
 
 ```go title=main.go
 package main
@@ -54,47 +54,99 @@ func main() {
 }
 ```
 
-Running it prints:
-
 ```text
 (source_file (package_clause (package_identifier)) (function_declaration (identifier) (parameter_list) (block)))
 ```
 
-grammars.GoLanguage loads Go's parse tables. NewParser binds a parser to that language.
-Parse returns a tree, and RootNode gives you the top node. SExpr prints named nodes;
-punctuation and keywords are left out. Release a tree when you are done with it.
+You load Go's parse tables with `grammars.GoLanguage` and bind a parser to them with
+`NewParser`. `Parse` returns a tree, and `RootNode` gives you its top node. `SExpr` prints named
+nodes while leaving punctuation and keywords out; call `Release` when you are done with the tree.
 
 ## Read a node
 
-Use a named child to find the function declaration. Node positions are byte offsets into src,
-and Text returns the source covered by that node:
+Use `NamedChild` to select the function declaration. This program prints its node type, byte
+range, and source text:
 
-```go
-fn := root.NamedChild(1)
-fmt.Println(fn.Type(lang))
-fmt.Println(fn.StartByte(), fn.EndByte())
-fmt.Println(fn.Text(src))
-```
+```go title=read-node.go
+package main
 
-Type uses the language to turn a numeric symbol into a name. NamedChild skips punctuation;
-Child includes every grammar child.
+import (
+	"fmt"
 
-## Walk children
+	gts "github.com/odvcencio/gotreesitter"
+	"github.com/odvcencio/gotreesitter/grammars"
+)
 
-Walk every child when you need to see keywords and punctuation too:
+func main() {
+	src := []byte("package main\n\nfunc main() {}\n")
+	lang := grammars.GoLanguage()
+	tree, err := gts.NewParser(lang).Parse(src)
+	if err != nil {
+		panic(err)
+	}
+	defer tree.Release()
 
-```go
-for i := 0; i < fn.ChildCount(); i++ {
-	child := fn.Child(i)
-	fmt.Printf("%s named=%v\n", child.Type(lang), child.IsNamed())
+	fn := tree.RootNode().NamedChild(1)
+	fmt.Println(fn.Type(lang))
+	fmt.Println(fn.StartByte(), fn.EndByte())
+	fmt.Println(fn.Text(src))
 }
 ```
 
-Use NamedChildCount and NamedChild when you only need grammar structure.
+```text
+function_declaration
+14 28
+func main() {}
+```
+
+You see the declaration name, its byte offsets into `src`, and the source covered by that node.
+`Type` uses the language to turn a numeric symbol into a name. `NamedChild` skips punctuation;
+`Child` includes every grammar child.
+
+## Walk children
+
+Use `Child` when you want to see keywords and punctuation as well as named nodes:
+
+```go title=walk-children.go
+package main
+
+import (
+	"fmt"
+
+	gts "github.com/odvcencio/gotreesitter"
+	"github.com/odvcencio/gotreesitter/grammars"
+)
+
+func main() {
+	src := []byte("package main\n\nfunc main() {}\n")
+	lang := grammars.GoLanguage()
+	tree, err := gts.NewParser(lang).Parse(src)
+	if err != nil {
+		panic(err)
+	}
+	defer tree.Release()
+
+	fn := tree.RootNode().NamedChild(1)
+	for i := 0; i < fn.ChildCount(); i++ {
+		child := fn.Child(i)
+		fmt.Printf("%s named=%v\n", child.Type(lang), child.IsNamed())
+	}
+}
+```
+
+```text
+func named=false
+identifier named=true
+parameter_list named=true
+block named=true
+```
+
+You see the `func` keyword, followed by three named nodes. Use `NamedChildCount` and `NamedChild`
+when you only need the grammar structure.
 
 ## Choose a language by filename
 
-When a file's language is not known ahead of time, use the registry:
+When you do not know the language ahead of time, ask the registry to detect it:
 
 ```go
 entry := grammars.DetectLanguage("main.go")
@@ -110,12 +162,12 @@ if err != nil {
 defer tree.Release()
 ```
 
-DetectLanguage checks registered filenames and extensions. It returns nil when no grammar
-matches. Calling entry.Language loads that grammar.
+`DetectLanguage` checks registered filenames and extensions. It returns nil when no grammar
+matches; `entry.Language()` loads the matching grammar.
 
 ## Check for syntax errors
 
-A source file with syntax errors can still produce a tree. Check the root node:
+A file with syntax errors can still produce a tree. Check its root node:
 
 ```go
 tree, err := parser.Parse([]byte("package main\nfunc main( {\n"))
@@ -128,8 +180,8 @@ if tree.RootNode().HasError() {
 }
 ```
 
-Parse errors report setup problems. HasError reports ERROR or MISSING nodes in the parsed
-tree.
+Errors returned by `Parse` report setup problems. `HasError` reports `ERROR` or `MISSING` nodes in
+the parsed tree.
 
 ## Keep going
 

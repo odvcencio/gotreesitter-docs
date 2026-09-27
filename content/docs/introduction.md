@@ -44,7 +44,7 @@ Upstream measured the exact v0.55.1 source, commit
 on 2026-09-27 at gts-bench-1: C3-standard-8, Xeon Platinum 8481C, four cores with SMT off,
 Ubuntu 24.04, Go 1.26.4, pinned to CPU 2. The medians used 20 shuffled seeds, one process per
 seed, GOMAXPROCS=1, -benchtime=750ms, and -benchmem. Upstream's
-[benchmark receipt](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md#primary-trio-baseline)
+[benchmark receipt](https://github.com/odvcencio/gotreesitter/blob/8ef769e7b7ce258fae1d43bb609e2db66911d2db/BENCH.md#primary-trio-baseline)
 and [PR #1355](https://github.com/odvcencio/gotreesitter/pull/1355) give the method.
 
 | Benchmark | Median | Allocations/op |
