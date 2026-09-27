@@ -133,7 +133,9 @@ import pathlib
 import re
 import sys
 
-email = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
+# Require an alphabetic final domain label so Go module versions such as
+# gotreesitter@v0.55.1 are not mistaken for email addresses.
+email = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
 for path in pathlib.Path(sys.argv[1]).glob("*.html"):
     html = path.read_text()
     outside = re.sub(r"<!--email_off-->.*?<!--/email_off-->", "", html, flags=re.S)
@@ -170,7 +172,7 @@ grep -Fq "$gts_version" "$page_body" || fail "$gts_version missing from /changel
 grep -q 'href="/changelog" aria-current="page"' "$page_body" || fail "active changelog navigation state is missing"
 
 languages_html="$(curl --silent --show-error --fail "$base/docs/languages")"
-lang_search_url="$(grep -oE '/gosx/islands/LangSearch\.json\?v=[0-9a-f]{12}' <<<"$languages_html" | head -n 1)"
+lang_search_url="$(grep -oE '/_app/islands/LangSearch\.json\?v=[0-9a-f]{12}' <<<"$languages_html" | head -n 1)"
 [[ -n "$lang_search_url" ]] || fail "cannot find content-versioned LangSearch island URL"
 curl --silent --show-error --fail "$base$lang_search_url" | grep -q 'LangSearch'
 

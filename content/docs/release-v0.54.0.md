@@ -1,5 +1,5 @@
 ---
-title: History: v0.54.0 Release
+title: "v0.54.0 release (history)"
 description: Release scope, API additions, and behavior changes shipped on 2026-09-23.
 nav_group: Project
 order: 3

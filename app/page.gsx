@@ -21,7 +21,7 @@ func Page() Node {
 			<div class="home-install">
 				<span class="install-label">Add the current release</span>
 				<div class="install" aria-label="Install gotreesitter v0.55.1">
-					<code class="cmd mono"><span class="pr" aria-hidden="true">$ </span>go get github.com/odvcencio/gotreesitter@v0.55.1</code>
+					<code class="cmd mono" tabindex="0" aria-label="Installation command; scroll horizontally to read the full command"><span class="pr" aria-hidden="true">$ </span>go get github.com/odvcencio/gotreesitter@v0.55.1</code>
 				</div>
 			</div>
 		</section>

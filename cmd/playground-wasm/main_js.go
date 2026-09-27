@@ -35,8 +35,10 @@ type grammarAsset struct {
 }
 
 type playgroundHandle struct {
-	mount     js.Value
-	listeners []browserListener
+	mount                     js.Value
+	listeners                 []browserListener
+	keyboardInputObserver     js.Value
+	keyboardInputObserverFunc js.Func
 
 	stateMu  sync.Mutex
 	timer    *time.Timer
@@ -207,11 +209,13 @@ func mountPlayground(ctx enginewasm.Context) (enginewasm.Handle, error) {
 
 // GoSX adds a transparent contenteditable to engine mounts that accept text
 // input. It receives keyboard and IME events for the playground surface, so
-// give that textbox an accessible name after the host installs it.
+// observe the mount and name the textbox when the host installs it.
 func (h *playgroundHandle) nameKeyboardInput() {
-	var callback js.Func
-	callback = js.FuncOf(func(js.Value, []js.Value) any {
-		defer callback.Release()
+	constructor := js.Global().Get("MutationObserver")
+	if constructor.Type() != js.TypeFunction {
+		return
+	}
+	h.keyboardInputObserverFunc = js.FuncOf(func(js.Value, []js.Value) any {
 		h.stateMu.Lock()
 		disposed := h.disposed
 		h.stateMu.Unlock()
@@ -222,9 +226,17 @@ func (h *playgroundHandle) nameKeyboardInput() {
 		if input.Truthy() && !input.Call("hasAttribute", "aria-label").Bool() {
 			input.Call("setAttribute", "aria-label", "Playground keyboard input")
 		}
+		if input.Truthy() {
+			h.keyboardInputObserver.Call("disconnect")
+		}
 		return nil
 	})
-	js.Global().Call("setTimeout", callback, 0)
+	h.keyboardInputObserver = constructor.New(h.keyboardInputObserverFunc)
+	h.keyboardInputObserver.Call("observe", h.mount, js.ValueOf(map[string]any{
+		"childList": true,
+		"subtree":   true,
+	}))
+	h.keyboardInputObserverFunc.Invoke()
 }
 
 func (h *playgroundHandle) Dispose() {
@@ -236,6 +248,12 @@ func (h *playgroundHandle) Dispose() {
 		h.timer = nil
 	}
 	h.stateMu.Unlock()
+	if h.keyboardInputObserver.Truthy() {
+		h.keyboardInputObserver.Call("disconnect")
+	}
+	if h.keyboardInputObserverFunc.Value.Type() == js.TypeFunction {
+		h.keyboardInputObserverFunc.Release()
+	}
 	for _, listener := range h.listeners {
 		listener.target.Call("removeEventListener", listener.event, listener.fn)
 		listener.fn.Release()

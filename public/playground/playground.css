@@ -109,6 +109,16 @@
 	.pg-input-grid .pg-qsrc,.pg-qresult-body{height:320px;min-height:320px}
 }
 
+@media(max-width:600px){
+	.pg-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}
+	.pg-picker{grid-column:1/-1;display:flex;width:100%;min-width:0;flex:none}
+	.pg-picklabel{flex:none;white-space:nowrap}
+	.pg-select{width:100%;max-width:none;min-width:0;flex:1}
+	.pg-toolbar .tspacer{display:none}
+	.pg-anonlabel{grid-column:1;margin-left:0;color:var(--ink)}
+	.pg-submit{grid-column:2}
+}
+
 /* Keep the browser controls readable and large enough to use on touch screens. */
 .pg-badge{color:var(--ink)}
 .pg-tline{min-height:24px}

@@ -87,7 +87,8 @@ Space Grotesk and JetBrains Mono are self-hosted as Latin WOFF2 files in
 `font-display: optional`, so fallback text remains visible while fonts load.
 
 Accent fills carry ink text. Small text and muted labels use readable ink
-colors; decorative bright accents stay out of text roles. The mobile header
+colors; decorative bright accents stay out of text roles. Links on the dark v1
+strip use the light yellow `#f6d36d` with an underline. The mobile header
 keeps to 64 pixels and places secondary links in the existing native
 `details` menu. Tables and the install command scroll inside their own
 containers on narrow screens. Honor `prefers-reduced-motion` by removing

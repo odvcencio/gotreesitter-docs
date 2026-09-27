@@ -15,7 +15,7 @@ import (
 
 const (
 	langSearchIslandName  = "LangSearch"
-	LangSearchProgramPath = "/gosx/islands/LangSearch.json"
+	LangSearchProgramPath = "/_app/islands/LangSearch.json"
 )
 
 //go:embed lang_search.gsx

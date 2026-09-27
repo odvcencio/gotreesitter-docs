@@ -124,7 +124,7 @@ func buildLandingParserDemoMarkup() (string, error) {
 	b.WriteString(`<div class="parser-demo"><style nonce="__GTS_NONCE__">`)
 	for _, example := range landingParseCache {
 		key := html.EscapeString(example.Name)
-		b.WriteString(`.parser-demo:has(#parser-lang-` + key + `:checked) #parser-sample-` + key + `{visibility:visible;opacity:1;pointer-events:auto;transition:opacity 150ms ease,visibility 0s}`)
+		b.WriteString(`.parser-demo:has(#parser-lang-` + key + `:checked) #parser-sample-` + key + `{display:flex;opacity:1;pointer-events:auto;transition:opacity 150ms ease}`)
 		for _, node := range example.Nodes {
 			selector := `.parser-sample[data-language-panel="` + key + `"]:has(.parser-source-token[data-node-id="` + node.ID + `"]:`
 			b.WriteString(selector + `hover) .parser-tree-row[data-node-id="` + node.ID + `"],`)
