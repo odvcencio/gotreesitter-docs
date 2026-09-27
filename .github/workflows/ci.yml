@@ -51,7 +51,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          go install m31labs.dev/gosx/cmd/gosx@v0.31.4
+          go install m31labs.dev/gosx/cmd/gosx@v0.57.1
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Verify toolchain pins
@@ -59,7 +59,7 @@ jobs:
         run: |
           set -euo pipefail
           go version
-          [[ "$(gosx version)" == 'gosx v0.31.4' ]]
+          [[ "$(gosx version)" == 'gosx v0.57.1' ]]
           tinygo version | grep -Fq 'tinygo version 0.41.1'
 
       - name: Verify module graph and Go code

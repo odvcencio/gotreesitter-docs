@@ -31,7 +31,6 @@ func main() {
 
 	router := route.NewRouter()
 	router.SetLayout(func(ctx *route.RouteContext, body gosx.Node) gosx.Node {
-		ctx.AddHead(server.NavigationScript())
 		// Space Grotesk + JetBrains Mono are the current site's two typefaces.
 		// This is the
 		// site's actual head (app/layout.gsx only renders the body shell), so
@@ -54,7 +53,8 @@ func main() {
 			gosx.Attr("src", "https://static.cloudflareinsights.com/beacon.min.js"),
 			gosx.Attr("data-cf-beacon", `{"token": "0282fc84c88d4a37820b398987f22b2d"}`),
 		)))
-		return server.HTMLDocument(ctx.Title("GoTreeSitter Docs"), ctx.Head(), body)
+		ctx.SetLanguage("en")
+		return server.HTMLDocument(ctx.Document("GoTreeSitter Docs", body))
 	})
 
 	if err := router.AddDir(filepath.Join(root, "app"), route.FileRoutesOptions{}); err != nil {
