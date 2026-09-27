@@ -17,7 +17,7 @@ on 2026-09-27. The medians below are from gts-bench-1: C3-standard-8, Xeon
 Platinum 8481C, four cores with SMT off, Ubuntu 24.04, and Go 1.26.4. The input
 is a generated Go file with 500 functions that never forks. It is a control,
 not a typical source file. The
-[upstream BENCH.md receipt](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md#primary-trio-baseline)
+[upstream BENCH.md receipt](https://github.com/odvcencio/gotreesitter/blob/8ef769e7b7ce258fae1d43bb609e2db66911d2db/BENCH.md#primary-trio-baseline)
 and [PR #1355](https://github.com/odvcencio/gotreesitter/pull/1355) describe the measurement.
 
 | Benchmark | Median | Allocations/op |
@@ -32,7 +32,7 @@ The host was pinned to CPU 2. Upstream used 20 shuffled seeds, one process per
 seed, GOMAXPROCS=1, -benchtime=750ms, and -benchmem.
 
 To run the same control on gotreesitter main, upstream used this command and
-[benchmark script](https://github.com/odvcencio/gotreesitter/blob/main/scripts/bench_baseline.sh):
+[benchmark script](https://github.com/odvcencio/gotreesitter/blob/8ef769e7b7ce258fae1d43bb609e2db66911d2db/scripts/bench_baseline.sh):
 
 ```sh
 GOMAXPROCS=1 GOWORK=off taskset -c 2 bash scripts/bench_baseline.sh <out>
@@ -47,7 +47,7 @@ at build 492cd600, inside an AMD SEV Confidential Space VM. Its equal-fixture
 geometric mean was 4.815x C for production and 3.986x C for compact. This is
 not a v0.55.1 measurement. The signed receipt cannot be rerun outside
 Confidential Space. Upstream keeps its scope and limits in the
-[sealed receipt](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md#sealed-epoch--v9-hardware-attested-authoritative).
+[sealed receipt](https://github.com/odvcencio/gotreesitter/blob/8ef769e7b7ce258fae1d43bb609e2db66911d2db/BENCH.md#sealed-epoch--v9-hardware-attested-authoritative).
 
 ## v1.0 speed targets
 
