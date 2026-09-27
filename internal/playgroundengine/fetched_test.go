@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/odvcencio/gotreesitter/grammars"
+	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
 func TestVerifyFetchedGrammarBlob(t *testing.T) {
@@ -31,9 +32,8 @@ func TestVerifyFetchedGrammarBlob(t *testing.T) {
 func TestFetchedSQLBlobParsesExternalScannerCases(t *testing.T) {
 	const childEnv = "PLAYGROUNDENGINE_FETCHED_SQL_TEST_CHILD"
 	if os.Getenv(childEnv) != "1" {
-		// LoadFetchedLanguage replaces gotreesitter's process-global aggregate
-		// catalog with the playground's fetched-blob catalog. Isolate that test
-		// so it cannot change the catalog used by the other engine tests.
+		// LoadFetchedLanguage wraps gotreesitter's process-global aggregate
+		// catalog. Isolate this test so it cannot affect other engine tests.
 		cmd := exec.Command(os.Args[0], "-test.run=^TestFetchedSQLBlobParsesExternalScannerCases$")
 		cmd.Env = append(os.Environ(), childEnv+"=1")
 		if output, err := cmd.CombinedOutput(); err != nil {
@@ -51,6 +51,13 @@ func TestFetchedSQLBlobParsesExternalScannerCases(t *testing.T) {
 	language, err := LoadFetchedLanguage("sql", fetchedBlob)
 	if err != nil {
 		t.Fatalf("load fetched SQL grammar: %v", err)
+	}
+
+	// Loading one fetched grammar must leave the package catalog available to
+	// same-process consumers asking for a different, not-yet-fetched grammar.
+	goLanguage := grammarruntime.Language("go")
+	if goLanguage == nil || goLanguage.Name != "go" {
+		t.Fatalf("load unfetched Go grammar through package catalog: got %#v", goLanguage)
 	}
 
 	for _, source := range []string{"SELECT 1;", "SELECT $$x$$;"} {

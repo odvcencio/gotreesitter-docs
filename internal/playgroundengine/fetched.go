@@ -58,6 +58,8 @@ func LoadFetchedLanguage(name string, blob []byte) (*gts.Language, error) {
 	// that normalized name, and this catalog provides the same fetched bytes
 	// because grammars' aggregate catalog otherwise takes precedence over
 	// individual providers (and tries the filesystem in external-blob builds).
+	// readFetchedGrammarBlob falls back to grammars.BlobByName for other names
+	// so consumers sharing this process retain the package catalog behavior.
 	grammarruntime.RegisterBlob(blobName, func() []byte { return blob })
 	fetchedGrammarCatalogOnce.Do(func() {
 		grammarruntime.RegisterCatalog(readFetchedGrammarBlob, canonicalFetchedGrammarName)
@@ -89,10 +91,14 @@ func readFetchedGrammarBlob(name string) ([]byte, func(), error) {
 	fetchedGrammarBlobs.RLock()
 	data, ok := fetchedGrammarBlobs.byName[name]
 	fetchedGrammarBlobs.RUnlock()
-	if !ok {
-		return nil, nil, fmt.Errorf("fetched grammar blob %q is not registered", name)
+	if ok {
+		return data, nil, nil
 	}
-	return data, nil, nil
+
+	if data := grammars.BlobByName(strings.TrimSuffix(name, ".bin")); len(data) > 0 {
+		return data, nil, nil
+	}
+	return nil, nil, fmt.Errorf("grammar blob %q is not registered as fetched or in the package catalog", name)
 }
 
 func canonicalFetchedGrammarName(name string) string {
