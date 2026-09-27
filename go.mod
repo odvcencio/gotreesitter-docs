@@ -2,7 +2,7 @@ module github.com/odvcencio/gotreesitter-docs
 
 go 1.26
 
-toolchain go1.26.0
+toolchain go1.26.4
 
 require (
 	github.com/andybalholm/brotli v1.2.1
@@ -10,7 +10,7 @@ require (
 	github.com/chromedp/chromedp v0.15.1
 	github.com/odvcencio/gotreesitter v0.55.1
 	github.com/odvcencio/mdpp v0.2.5
-	m31labs.dev/gosx v0.31.4
+	m31labs.dev/gosx v0.57.1
 )
 
 require (
@@ -19,7 +19,6 @@ require (
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.4.0 // indirect
-	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/odvcencio/corkscrewdb v0.2.0 // indirect
 	github.com/odvcencio/turboquant v0.1.3 // indirect
@@ -36,6 +35,6 @@ require (
 	m31labs.dev/eos v0.1.4 // indirect
 	m31labs.dev/mll v0.1.0 // indirect
 	m31labs.dev/prism v0.1.3 // indirect
-	m31labs.dev/selena v0.4.0 // indirect
-	m31labs.dev/turboquant v0.2.0 // indirect
+	m31labs.dev/selena v0.5.2 // indirect
+	m31labs.dev/turboquant v0.2.1 // indirect
 )

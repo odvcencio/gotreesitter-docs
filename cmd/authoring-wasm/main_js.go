@@ -25,7 +25,7 @@ import (
 //   - GoSX's engine/wasm island runtime (this package) is a DOM-binding
 //     abstraction; its Context has no meaning inside a Worker's global
 //     scope (no document, no mount).
-//   - GoSX v0.31.4 does define an engine.KindWorker ("background compute,
+	//   - GoSX v0.57.1 does define an engine.KindWorker ("background compute,
 //     no DOM"), reachable from .gsx via <Worker runtime="go-wasm" ...>, but
 //     nothing in the framework's own client bootstrap (checked in
 //     build/bootstrap-feature-engines.js — no `new Worker(` anywhere in the

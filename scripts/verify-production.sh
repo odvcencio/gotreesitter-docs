@@ -65,8 +65,8 @@ done < <(find app -name '*.gsx' -type f | sort)
 go mod verify
 go test ./...
 go vet ./...
-gosx build --prod .
 gosx export .
+gosx build --prod .
 gosx size --json dist
 
 test -x dist/run.sh
@@ -113,6 +113,8 @@ for index in "${!routes[@]}"; do
   route="${routes[$index]}"
   route_page="$route_pages/$index.html"
   curl --silent --show-error --fail --output "$route_page" "$base$route"
+  grep -Fq '<html data-gosx-document="true" lang="en"' "$route_page" ||
+    fail "document language is missing from $route"
   grep -Fq 'rel="canonical"' "$route_page" || fail "canonical metadata missing from $route"
   grep -Fq "href=\"https://gotreesitter.m31labs.dev$route\"" "$route_page" ||
     fail "canonical metadata does not match $route"
