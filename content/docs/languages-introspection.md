@@ -76,7 +76,7 @@ for _, sub := range lang.SupertypeChildren(super) {
 
 Supertype patterns use these tables and the node's hidden supertype metadata.
 A `supertype/subtype` pattern also checks the subtype. See [Queries](/docs/queries).
-The [dated parity boards](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/c-parity-boards.md)
+The [dated parity boards](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/docs/c-parity-boards.md)
 record map differences. Verify the grammar and query you need.
 
 ## Coming from node-types.json

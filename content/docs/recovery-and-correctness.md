@@ -1,18 +1,14 @@
 ---
 title: Recovery and Correctness
-description: How gotreesitter reproduces C tree-sitter's parse trees byte-for-byte — including error recovery — and how that fidelity is kept true.
+description: What the published C-oracle comparisons cover for parse trees and recovery, and where known differences remain.
 nav_group: Internals
 order: 1
 ---
 
-gotreesitter is a pure-Go reimplementation of tree-sitter, not a binding. Nothing here calls into
-C at runtime. That raises an obvious question: how do you know a from-scratch parser produces the
-*same* tree the C runtime would?
-
-Here is the answer this project holds itself to: **byte-for-byte identical trees, verified against
-C tree-sitter v0.25.1** — and not just on well-formed code. **Error recovery is included in that
-bar.** This page explains what that means, why it is hard, and the machinery that keeps it
-honest.
+The published recovery board records agreement on 39 of 79 cases, measured on 2026-09-19.
+Results are specific to each test set: a match on one fixture does not establish parity for every
+input. This page explains how the project compares Go trees with the pinned C tree-sitter v0.25.1
+oracle and summarizes the published scope.
 
 ## What error recovery is
 
@@ -21,8 +17,8 @@ the parser spends much of its life looking at a half-typed function, an unbalanc
 paste that dropped a line. A parser that only accepted grammatically perfect input would be
 useless for tooling.
 
-tree-sitter never fails. When the input does not fit the grammar, it produces a tree anyway and
-marks the damage with two special node kinds:
+When the input does not fit the grammar, tree-sitter can recover and return a tree marked with
+two special node kinds:
 
 - **`ERROR`** — a span the parser could not fit into any grammar rule. Its children are the
   tokens it salvaged inside that span.
@@ -39,7 +35,7 @@ tree, _ := parser.Parse([]byte(`[1, 2`))
 fmt.Println(tree.RootNode().HasError()) // true
 ```
 
-The tree gotreesitter returns for `[1, 2` is:
+This is the recovery tree gotreesitter returns for `[1, 2`:
 
 ```text
 document [0-5]
@@ -52,9 +48,9 @@ document [0-5]
 ```
 
 The parser inserted a zero-width `]` at byte 5 so the `array` rule could close. That is a
-*recovery decision*: which token to insert, where to resynchronize, how much to wrap in `ERROR`.
-C tree-sitter makes the identical decision. So must gotreesitter — the `MISSING ]` lands at byte
-5, the `array` spans `[0-5]`, and the child list matches, node for node.
+*recovery decision*: which token to insert, where to resynchronize, and how much to wrap in
+`ERROR`. The published 39-of-79 board records the tested agreement with the C oracle; this single
+example describes gotreesitter output and does not expand that board.
 
 At the API level, recovery surfaces through the node predicates: `HasError()` (this subtree
 contains damage), `IsError()` (this node *is* an `ERROR`), and `IsMissing()` (this node was
@@ -71,10 +67,9 @@ version-competition loop, and a set of constants, and the emergent behavior of t
 the reference.
 
 So the reference is the C source, pinned to an exact version. gotreesitter's recovery core is
-written as a deliberate port of the C functions that drive it — `ts_parser__handle_error`,
-`ts_parser__recover`, `ts_parser__compare_versions`, `ts_parser__condense_stack`, and their
-helpers — with the C code named as the spec. The cost constants are copied from C's
-`error_costs.h` (cost-per-recovery 500, cost-per-missing 110, cost-per-skipped-tree 100, and
+written in Go and follows the decision steps in the C functions that drive it —
+`ts_parser__handle_error`, `ts_parser__recover`, `ts_parser__compare_versions`,
+`ts_parser__condense_stack`, and their helpers. The cost constants follow C's `error_costs.h` (cost-per-recovery 500, cost-per-missing 110, cost-per-skipped-tree 100, and
 similar values), and the maximum cost difference the version competition tolerates is pinned to
 the v0.25.1 value, with a warning in the code *not* to "correct" it to the older v0.24 value —
 doing so would silently break parity against the exact runtime this port was verified against.
@@ -82,8 +77,8 @@ That is how tight the coupling is: an off-by-one in a tie-break threshold is a d
 
 ## How we verify: the instrumented-oracle method
 
-The correctness discipline behind the byte-exact claim is differential testing against C, driven
-down to individual decisions. Here is the method:
+The project uses differential tests against C, including checks that trace recovery decisions.
+Here is the method:
 
 1. **Compile C tree-sitter v0.25.1 as an oracle** and link it into a cgo test harness alongside
    the pure-Go engine. The harness parses the same bytes with both.
@@ -101,8 +96,8 @@ and every node after it shifts. Catching the *first* point of disagreement — r
 eyeballing two large trees — is what makes this tractable. The same lockstep walk runs across the
 whole curated corpus, on fresh parses and on incremental reparses of edited source, always
 against a C oracle built from the exact grammar commits the project pins. When the C source is
-the only specification, replaying its decisions against an instrumented build is the only way to
-confirm a match.
+the only specification, replaying its decisions against an instrumented build is one way to
+check a match.
 
 ## The election model
 
@@ -132,14 +127,15 @@ fires, the parse re-runs with the resync fallback and adopts its verdict. The gu
 deliberately scoped to "`HasError()` is honest," not "the shape is C-perfect" — and the code
 documents that gap rather than hiding it.
 
-## Dated parity evidence in v0.54.0
+## Published parity evidence
 
-The [curated gate ratchet](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/cgo_harness/parity_gate_ratchet_test.go)
+The v0.55.1 [curated gate ratchet](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/cgo_harness/parity_gate_ratchet_test.go)
 requires at least 206 structural languages, zero known-degraded structural entries, and zero
 parity skips. Its highlight floor is 200. These are test thresholds, not a result for all inputs.
 
-The [C parity boards](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/c-parity-boards.md)
-publish separate, dated results:
+The [C parity boards](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/docs/c-parity-boards.md)
+publish separate, dated results. The figures below are the board's recorded results, not a new
+sweep of the v0.55.1 tag:
 
 | Board | Date | Published scope and result |
 |---|---|---|
@@ -148,14 +144,12 @@ publish separate, dated results:
 | Supertype maps | 2026-09-08 | 69 grammars; 40 agree; 29 differ |
 | Recovery | 2026-09-19 | 79 cases; 39 agree on the default route after the leaf-extra fix |
 
-These are the board's published dates. They are not a new sweep of the v0.54.0 tag.
-The highlight skip count belongs to that board; do not confuse it with the curated gate's
-zero-skip threshold.
-
-The [v0.54.0 release notes](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/CHANGELOG.md#0540---2026-09-23)
-record the YAML bare-opener error-shape fix and the incremental fixes. They retain a COBOL
-column-dependency gap that causes extra invalidation. This page does not count the pending
-Python list-splat or duplicate escape-sequence fixes as shipped.
+The highlight skip count belongs to that board; it is separate from the curated gate's zero-skip
+threshold. The v0.55.0 release notes record Python escape-span and list-splat fixes
+([#1276](https://github.com/odvcencio/gotreesitter/pull/1276) and
+[#1277](https://github.com/odvcencio/gotreesitter/pull/1277)). The v0.55.1 notes still list six
+Django tree differences and open recovery gaps, including ERROR roots whose HasError value is
+false ([#1280](https://github.com/odvcencio/gotreesitter/pull/1280)).
 
 ## Swift real-code corpus
 
@@ -174,16 +168,13 @@ A parse can return without an error yet cover only part of the input. A timing r
 that tree does not establish correct parsing. Compare node types, fields, spans, flags, and
 children against the pinned C oracle. Keep the correctness result with the performance evidence.
 
-## Honest scope
+## What the results cover
 
-Byte-exact parity against C is **verified**, not assumed, and the scope is finite: it holds
-across the curated parity corpus and for the elected languages, checked fresh and incrementally
-against the pinned C oracle in CI. On the broader real-corpus sweep — dozens of files per
-language, drawn from upstream repositories — the project is still genuinely closing the long
-tail: some languages are fully parity-clean, others have known divergences that the project
-tracks, ratchets, and works down one reduced fixture at a time. The claim is not "every tree from every input is
-identical to C." It is "where a language is elected and on the corpus we test, the tree matches C
-byte-for-byte, including recovery — and the gates make it expensive to quietly lose that."
+The tests compare named structure, fields, spans, flags, and children on their recorded fixtures.
+Some clean parses match C while recovery and other cases still differ. The recovery board's
+published result is 39 matches among 79 cases (2026-09-19). The v0.55.1 release notes separately
+list open gaps; neither set of results promises identical trees for all languages or inputs.
+Keep each correctness result with its fixture, source revision, and oracle version.
 
 > [!CAUTION] Don't read parity and speed as one signal
 > For how the same discipline shows up on the speed axis — and where the honest performance

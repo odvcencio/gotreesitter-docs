@@ -134,6 +134,14 @@ before your node shifts the column by its UTF-8 byte width, not by one:
 
 ```go
 src := []byte("package main\n\nvar x = \"café\" + y\n")
+lang := grammars.GoLanguage()
+tree, err := gts.NewParser(lang).Parse(src)
+if err != nil {
+	panic(err)
+}
+defer tree.Release()
+root := tree.RootNode()
+_ = root
 // "café" is 4 runes but 5 bytes (é is 2 bytes in UTF-8).
 // The `y` identifier that follows sits at StartPoint{Row: 2, Column: 18} —
 // 18 is its byte offset from the start of the row, not its rune offset.
@@ -231,6 +239,7 @@ at that position is a common enough operation that it does not require a manual 
 
 ```go
 identNode := root.NamedDescendantForByteRange(23, 27) // -> "café"'s content node
+_ = identNode
 ```
 
 For the common case of "what node is under this single cursor position," `Tree` has convenience

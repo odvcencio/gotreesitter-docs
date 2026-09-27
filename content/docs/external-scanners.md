@@ -1,6 +1,6 @@
 ---
 title: External Scanners
-description: When a tree-sitter grammar needs hand-written Go lexing, and the porting contract for writing one that matches C tree-sitter byte-for-byte.
+description: When a grammar needs hand-written Go lexing, and how to check a scanner against C tree-sitter.
 nav_group: Languages
 order: 4
 ---
@@ -13,8 +13,7 @@ gotreesitter it is a Go type that implements `gotreesitter.ExternalScanner`, att
 
 This page has two parts. Part 1 helps you decide whether you need a scanner at all — most
 grammars that think they do, don't. Part 2 covers the Go porting contract, including behavioral
-requirements this project learned the hard way while chasing byte-exact parity with C
-tree-sitter.
+requirements for checking scanner results against the C tree-sitter oracle on recorded fixtures.
 
 See [Authoring Languages](/docs/authoring-languages) for the grammar → blob → runtime pipeline
 this fits into.
@@ -135,13 +134,13 @@ the pattern): token indexes for gating, and symbol IDs for results. Resolve the 
 
 The scanner ports now bind result symbols through `ExternalScannerForLanguage` on the loaded
 grammar. Do not copy symbol IDs from another blob. The
-[scanner implementation directory](https://github.com/odvcencio/gotreesitter/tree/v0.54.0/grammars/runtime)
+[scanner implementation directory](https://github.com/odvcencio/gotreesitter/tree/v0.55.1/grammars/runtime)
 contains the binding methods. `ExternalLexer` also avoids redundant read-frontier updates.
 This reduces scanner work without changing the public `ExternalScanner` interface.
 
 `LexState.AcceptEOF` records explicit acceptance of the end token. This is distinct from
 `AcceptToken`, where zero does not identify an ordinary token. See
-[language.go](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/language.go).
+[language.go](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/language.go).
 
 ### The lexer API
 
@@ -173,7 +172,7 @@ that `Previous()` returns. Store required token-boundary history in scanner payl
 A scanner that calls `Previous()` cannot claim `StatelessExternalScanner`: it fails the stateless
 quiescence proof used for incremental reuse admission.
 
-### A faithful Go port of Pawn's scanner (condensed)
+### A condensed scanner example
 
 ```go
 package pawn
@@ -215,15 +214,11 @@ func (s *PawnScanner) Scan(payload any, lx *gts.ExternalLexer, valid []bool) boo
 		lx.SetResultSymbol(s.syms[tokCallbackSignatureStart])
 		return true
 	}
-	if valid[tokStatementLineTerminator] && scanStatementLineTerminator(lx) {
-		lx.SetResultSymbol(s.syms[tokStatementLineTerminator])
-		return true
-	}
 	if valid[tokDirectiveLineTerminator] && scanDirectiveLineTerminator(lx) {
 		lx.SetResultSymbol(s.syms[tokDirectiveLineTerminator])
 		return true
 	}
-	// ... the two recovery tokens follow the same shape ...
+	// Add the grammar-specific recovery-token cases here.
 	return false
 }
 
@@ -254,12 +249,45 @@ func scanCallbackSignatureStart(lx *gts.ExternalLexer) bool {
 	}
 	lx.Advance(false)
 	lx.MarkEnd()
-	// ... whitespace-skip, then accept ">", "_", "%ident", or an identifier,
-	// then ">", then reject if the line effectively ends (EOF/'\n'/';'/line
-	// comment) — consuming freely, because the mark already froze the span.
-	// Port the C control flow 1:1; do not "simplify" the reject conditions.
-	...
+	for lx.Lookahead() == ' ' || lx.Lookahead() == '\t' {
+		lx.Advance(true)
+	}
+	hasContent := lx.Lookahead() != '>'
+	if hasContent {
+		if lx.Lookahead() == '%' {
+			lx.Advance(true)
+		}
+		if !pawnIdentifierStart(lx.Lookahead()) {
+			return false
+		}
+		for pawnIdentifierContinue(lx.Lookahead()) {
+			lx.Advance(true)
+		}
+		for lx.Lookahead() == ' ' || lx.Lookahead() == '\t' {
+			lx.Advance(true)
+		}
+	}
+	if lx.Lookahead() != '>' {
+		return false
+	}
+	lx.Advance(true)
+	if hasContent {
+		for lx.Lookahead() == ' ' || lx.Lookahead() == '\t' {
+			lx.Advance(true)
+		}
+		if lx.Lookahead() == 0 || lx.Lookahead() == '\n' || lx.Lookahead() == ';' || lx.Lookahead() == '/' {
+			return false
+		}
+	}
 	return true
+}
+
+func pawnIdentifierStart(r rune) bool {
+	return r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z'
+}
+
+func pawnIdentifierContinue(r rune) bool {
+	return pawnIdentifierStart(r) || r >= '0' && r <= '9'
 }
 ```
 
@@ -276,7 +304,9 @@ The simplest way, registry-free, is to assign the public field:
 
 ```go
 lang, err := gts.LoadLanguage(pawnBlob)
-...
+if err != nil {
+	panic(err)
+}
 lang.ExternalScanner = NewPawnScanner(lang)
 ```
 
@@ -287,7 +317,9 @@ If you distribute through the `grammars` registry (`grammars.RegisterExternalSca
 repo**, the attach path (`AdaptScannerForLanguage`) can bind your scanner only if it implements
 
 ```go
-ExternalScannerForLanguage(lang *gts.Language) gts.ExternalScanner
+type ExternalScannerProvider interface {
+	ExternalScannerForLanguage(lang *gts.Language) gts.ExternalScanner
+}
 ```
 
 (the `languageBoundExternalScanner` hook). Without it, the adapter tries to load the in-repo
@@ -325,7 +357,7 @@ covers insert, delete, and changed-length replace edits at the start, middle,
 and end of 8 KiB clean documents. It also requires 25% reused bytes for a
 middle replace in a 256 KiB document. It does not promise O(edit) time.
 
-The `markdown_inline` scanner remains uncertified in v0.54.0. The
+The `markdown_inline` scanner remains uncertified in v0.55.1. The
 same-width token-invariant shortcut uses authenticated lexical dependency proofs,
 but the shortcut does not cover `markdown_inline`. Its changed edits use the production
 full-parse fallback. The Markdown proof does not apply to `markdown_inline` or
@@ -404,9 +436,8 @@ optional, structurally matched methods (all exported names, so out-of-tree types
 
 ## Before you ship a scanner port
 
-- [ ] Run your grammar's full corpus through both the C parser and the Go port, and compare
-      S-expressions **byte-exact** — not "no errors," exact. tree-sitter-pawn keeps its corpus
-      under `test/corpus/`; treat that as the oracle.
+- [ ] Run your grammar's full corpus through both the C parser and the Go port. Compare tree
+      structure on the same fixtures and keep the comparison results with the port.
 - [ ] Test EOF edges specifically: a file ending exactly at your token, ending in whitespace,
       ending mid-construct, an empty file, and a file with only a BOM.
 - [ ] Test **error inputs**, not just clean ones. Recovery is where (a), (b), and (c) show up, and

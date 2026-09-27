@@ -20,14 +20,14 @@ func Page() Node {
 					<b>
 						gotreesitter is its runtime, reimplemented in pure Go
 					</b>
-					— the same parse-table format, the same
+					— the tree-sitter parse-table format, familiar
 					<span class="mono">.scm</span>
-					queries, ABI 15, no C toolchain.
+					queries, ABI 15 reserved-word tables, no C toolchain.
 				</p>
 				<div class="install">
 					<div class="cmd mono">
 						<span class="pr">$</span>
-						go get github.com/odvcencio/gotreesitter@v0.54.0
+						go get github.com/odvcencio/gotreesitter<span>@</span>v0.55.1
 					</div>
 				</div>
 				<div class="pillrow">
@@ -37,11 +37,11 @@ func Page() Node {
 					</span>
 					<span class="pill">
 						<b class="t-green">0</b>
-						lines of C
+						CGo
 					</span>
 					<span class="pill">
-						<b class="t-blue">0</b>
-						no-edit allocations
+						<b class="t-blue">Go</b>
+						runtime
 					</span>
 					<span class="pill">MIT</span>
 				</div>
@@ -58,23 +58,19 @@ func Page() Node {
 			</div>
 		</div>
 		<h2 class="h2">
-			Tree-sitter's four promises,
-			<span class="t-pink">kept in Go.</span>
+			Tree-sitter's design,
+			<span class="t-pink">implemented in Go.</span>
 		</h2>
 		<div class="underbar"></div>
 		<p class="p mut">
-			tree-sitter set out to be general, fast, robust, and dependency-free. gotreesitter holds every one — as pure Go, against the same parse tables.
+			gotreesitter uses tree-sitter parse tables with a Go parser, lexer, query engine, and grammar registry.
 		</p>
 		<div class="winrow">
 			<div class="win">
 				<div class="wtop c-cyan"></div>
 				<h4>① General</h4>
 				<p>
-					Parse any language. gotreesitter loads the
-					<b>same parse-table format</b>
-					as the C runtime — 206 grammars in the registry, the same
-					<span class="mono">.scm</span>
-					queries, ABI 15 reserved-word sets.
+					The registry contains 206 grammars and uses the same parse-table format as the C runtime. The runtime supports ABI 15 reserved-word tables.
 				</p>
 				<span class="pillref">
 					tree-sitter → "general enough to parse any programming language"
@@ -84,10 +80,9 @@ func Page() Node {
 				<div class="wtop c-green"></div>
 				<h4>② Fast</h4>
 				<p>
-					The 2026-09-23 control receipt measures a single-byte edit at
-					<b>439.825 µs</b>
-					with 5 allocations. No-edit reuse takes 27.4 ns with zero allocations.
-					These timings apply to revision 4637be52a on one host. See the
+					On the 2026-09-27 control, a single-byte edit took
+					<b>177,281 ns</b>
+					and no-edit reuse took 8.318 ns. The generated input never forks. See the
 					<a href="/docs/performance" data-gosx-link="true">dated benchmark evidence</a>.
 
 				</p>
@@ -125,24 +120,24 @@ func Page() Node {
 		<h2 class="h2">The numbers</h2>
 		<div class="underbar"></div>
 		<p class="p mut">
-			Version v0.54.0 uses production parsing by default. Compact parsing requires GTS_ADMISSION_CANDIDATE=1.
+			Version v0.55.1 uses production GLR parsing by default. Set GTS_ADMISSION_CANDIDATE=1 to try compact parsing; the language allowlist is empty.
 		</p>
 		<p class="p mut">
-			The 2026-08-02 sealed v9 receipt measures four frozen Go files. Its production ratio is 4.815× C; its compact ratio is 3.986× C. It does not measure the v0.54.0 tag. See the
+			The quiet-host control measured the exact v0.55.1 source, 92db945f, on 2026-09-27 at gts-bench-1. Full parse took 8,686,195 ns/op with 8 allocations; a single-byte edit took 177,281 ns/op with 5 allocations; no-edit reuse took 8.318 ns/op with 0 allocations. Its generated 500-function Go file never forks, so it is a control, not typical code. See the performance page for the command and host details. The hardware-attested v9 receipt measured four frozen Go files on 2026-08-02 at build 492cd600 in an AMD SEV Confidential Space VM: 4.815x C for production and 3.986x C for compact. It is not a v0.55.1 measurement and cannot be rerun outside Confidential Space. See the
 			<a href="/docs/performance" data-gosx-link="true">performance page</a> for methods and limits.
 		</p>
 		<div class="mult" style="background:#ffedd0">
-			<div class="big t-orange">v0.54.0</div>
-			<div class="sub">Production GLR is the default. Compact parser graduation remains incomplete.</div>
+			<div class="big t-orange">v0.55.1</div>
+			<div class="sub">Production GLR is the default. Compact parser graduation remains in progress.</div>
 		</div>
 		<div class="multrow">
 			<div class="mult c-pink" style="background:#ffe0ec">
-				<div class="big t-pink">439.825 µs</div>
-				<div class="sub">Single-byte edit: 410 B/op, 5 allocations. Generated Go control, 2026-09-23, revision 4637be52a.</div>
+				<div class="big t-pink">177,281 ns</div>
+				<div class="sub">Single-byte edit: 5 allocations. Generated Go control, 2026-09-27, exact source 92db945f, gts-bench-1.</div>
 			</div>
 			<div class="mult" style="background:#d6f7ea">
-				<div class="big t-green">27.4 ns</div>
-				<div class="sub">No-edit reuse: 0 B/op, 0 allocations. Same dated control receipt.</div>
+				<div class="big t-green">8.318 ns</div>
+				<div class="sub">No-edit reuse: 0 allocations. Same control receipt; generated input never forks.</div>
 			</div>
 		</div>
 
@@ -160,7 +155,7 @@ func Page() Node {
 		<h2 class="h2">206 grammars, embedded</h2>
 		<div class="underbar"></div>
 		<p class="p">
-			The v0.54.0 language guide lists 206 registry grammars, 119 Go external scanners, and 7 token-source implementations. The curated structural gate allows no known-degraded entries.
+			The v0.55.1 language guide lists 206 registry grammars, 119 Go external scanners, and 7 token-source implementations. Its smoke samples do not establish parity for every input.
 			<a href="/docs/languages" data-gosx-link="true">Browse the full registry →</a>
 		</p>
 		<div class="langteaser">
