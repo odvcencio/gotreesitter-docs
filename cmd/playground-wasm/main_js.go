@@ -13,7 +13,6 @@ import (
 
 	gts "github.com/odvcencio/gotreesitter"
 	"github.com/odvcencio/gotreesitter-docs/internal/playgroundengine"
-	"github.com/odvcencio/gotreesitter/grammars"
 	enginewasm "m31labs.dev/gosx/engine/wasm"
 )
 
@@ -344,41 +343,14 @@ func (h *playgroundHandle) loadLanguage(name string) (*gts.Language, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(blob) != asset.Bytes {
-		return nil, fmt.Errorf("grammar blob has %d bytes; expected %d", len(blob), asset.Bytes)
+	if err := playgroundengine.VerifyFetchedGrammarBlob(asset.URL, asset.Bytes, blob); err != nil {
+		return nil, err
 	}
-	language, err := loadFetchedLanguage(name, blob)
+	language, err := playgroundengine.LoadFetchedLanguage(name, blob)
 	if err != nil {
 		return nil, err
 	}
 	h.languages[name] = language
-	return language, nil
-}
-
-type languageBoundExternalScanner interface {
-	ExternalScannerForLanguage(*gts.Language) gts.ExternalScanner
-}
-
-// loadFetchedLanguage binds runtime support without asking gotreesitter to
-// reopen the same built-in blob from a filesystem. The fetched assets are the
-// exact pinned-module package blobs, so unbound scanners already use matching symbol
-// IDs; bound scanners derive their IDs directly from the decoded language.
-func loadFetchedLanguage(name string, blob []byte) (*gts.Language, error) {
-	language, err := gts.LoadLanguage(blob)
-	if err != nil {
-		return nil, err
-	}
-	language.Name = name
-	if scanner := grammars.LookupExternalScanner(name); scanner != nil {
-		if bound, ok := scanner.(languageBoundExternalScanner); ok {
-			language.ExternalScanner = bound.ExternalScannerForLanguage(language)
-		} else {
-			language.ExternalScanner = scanner
-		}
-	}
-	if states := grammars.LookupExternalLexStates(name); len(states) > 0 {
-		language.ExternalLexStates = states
-	}
 	return language, nil
 }
 
