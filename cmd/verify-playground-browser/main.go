@@ -41,20 +41,56 @@ var fallbackSamples = map[string]string{
 	"toml":     "name = \"gotreesitter\"\nlanguages = 28\n",
 	"html":     "<main>Hello</main>\n",
 	"markdown": "# Hello\n",
-	"sql":      "-- SQL sample\n",
-	"elixir":   "defmodule Hello do\n  def greet, do: \"hello\"\nend\n",
-	"zig":      "pub fn main() void {}\n",
-	"ocaml":    "let greet name = \"hello, \" ^ name\n",
+	"sql":      "SELECT id, name FROM users WHERE id = 1;\n",
+	"dot":      "digraph G { users -> database; }\n",
+	"doxygen":  "/**\n * @brief Load a user record.\n * @param id user identifier\n * @return the matching user\n */\n",
+	"dtd":      "<!ELEMENT greeting (#PCDATA)>\n",
+	"ebnf":     "expression = term, { (\"+\" | \"-\"), term };\n",
+	"eds":      "[app]\nname = \"gotreesitter\"\n",
+	"elsa":     "let identity = \\x -> x\n",
+	"facility": "service Greeting { method greet { name: string; }: { message: string; } }\n",
+	"faust":    "import(\"stdfaust.lib\");\nprocess = os.osc(440) * 0.5;\n",
+	"fidl":     "library example;\ntype Person = struct { name string; };\n",
+	"gomod":    "module example.com/hello\ngo 1.26\n",
+	"jsdoc":    "/**\n * @typedef {Object} User\n */\n",
+	"mermaid":  "flowchart TD\n  Request --> Parse\n",
+	"proto":    "syntax = \"proto3\";\nmessage User { string id = 1; }\n",
+	"smithy":   "$version: \"2\"\nnamespace example\nservice GreetingService { version: \"1.0\", operations: [SayHello] }\noperation SayHello { input: SayHelloInput, output: SayHelloOutput }\nstructure SayHelloInput { name: String }\nstructure SayHelloOutput { greeting: String }\n",
+	"tlaplus":  "---- MODULE Counter ----\nEXTENDS Naturals\nVARIABLE count\nInit == count = 0\nNext == count' = count + 1\n====\n",
+	"wat":      "(module (func (export \"main\") (result i32) i32.const 42))\n",
+	"devicetree": `/dts-v1/;
+
+/ {
+	model = "gotreesitter,playground";
+	compatible = "gotreesitter,playground";
+	#address-cells = <1>;
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0 0x1000>;
+	};
+};
+`,
+	"elixir": "defmodule Hello do\n  def greet, do: \"hello\"\nend\n",
+	"zig":    "pub fn main() void {}\n",
+	"ocaml":  "let greet name = \"hello, \" ^ name\n",
 }
 
-var genericSamples = []string{
-	"// gotreesitter sample\n",
-	"# gotreesitter sample\n",
-	"-- gotreesitter sample\n",
-	"/* gotreesitter sample */\n",
-	"<!-- gotreesitter sample -->\n",
-	"% gotreesitter sample\n",
-	"; gotreesitter sample\n",
+var realisticSamples = []string{
+	"const answer = 42;\n",
+	"function greet() {}\n",
+	"def greet():\n    pass\n",
+	"class Greeter {}\n",
+	"let answer = 42;\n",
+	"fn main() {}\n",
+	"answer = 42\n",
+	"{\"name\": \"gotreesitter\"}\n",
+	"name: gotreesitter\n",
+	"name = \"gotreesitter\"\n",
+	"<main>Hello</main>\n",
+	"# Hello\n",
+	"SELECT 1;\n",
+	"root { value = 1; }\n",
 }
 
 type requestRecord struct {
@@ -277,7 +313,7 @@ func main() {
 				continue
 			}
 			if strings.TrimSpace(source) == "" {
-				state, err = tryGenericSamples(ctx, language, treeTimeout)
+				state, err = tryRealisticSamples(ctx, language, treeTimeout)
 				elapsed = time.Since(started).Milliseconds()
 				if err != nil {
 					failedLanguages++
@@ -297,6 +333,20 @@ func main() {
 			continue
 		}
 		fmt.Printf("language %s PASS %dms\n", language, elapsed)
+		if language == "sql" {
+			started = time.Now()
+			state, err = parseSampleSource(ctx, language, "SELECT $$hello$$;\n", treeTimeout)
+			elapsed = time.Since(started).Milliseconds()
+			if err != nil {
+				failedLanguages++
+				fmt.Printf("language sql PostgreSQL dollar quote FAIL %dms: %v\n", elapsed, err)
+			} else if !state.Root || state.BadNode {
+				failedLanguages++
+				fmt.Printf("language sql PostgreSQL dollar quote FAIL %dms: tree has no clean root (status=%q rows=%d errors=%q)\n", elapsed, state.Status, state.Rows, state.Errors)
+			} else {
+				fmt.Printf("language sql PostgreSQL dollar quote PASS %dms\n", elapsed)
+			}
+		}
 	}
 	if failedLanguages != 0 {
 		fatal(fmt.Errorf("%d of %d playground language samples failed", failedLanguages, len(languages)))
@@ -331,23 +381,11 @@ func loadLanguageSample(ctx context.Context, language string) error {
 	return chromedp.Run(ctx, chromedp.Evaluate(script, nil))
 }
 
-func tryGenericSamples(ctx context.Context, language string, timeout time.Duration) (languageTreeState, error) {
+func tryRealisticSamples(ctx context.Context, language string, timeout time.Duration) (languageTreeState, error) {
 	var state languageTreeState
-	for _, source := range genericSamples {
-		script := `(() => {
-			const editor = document.querySelector("#pg-source");
-			const query = document.querySelector("#pg-query");
-			const parse = document.querySelector("#pg-parse");
-			editor.value = ` + strconv.Quote(source) + `;
-			query.value = "";
-			editor.dispatchEvent(new Event("input", { bubbles: true }));
-			parse.click();
-		})()`
-		if err := chromedp.Run(ctx, chromedp.Evaluate(script, nil)); err != nil {
-			return state, err
-		}
+	for _, source := range realisticSamples {
 		var err error
-		state, err = waitForLanguageTree(ctx, language, timeout)
+		state, err = parseSampleSource(ctx, language, source, timeout)
 		if err != nil {
 			return state, err
 		}
@@ -355,7 +393,25 @@ func tryGenericSamples(ctx context.Context, language string, timeout time.Durati
 			return state, nil
 		}
 	}
-	return state, fmt.Errorf("no generic sample parsed without ERROR or MISSING nodes")
+	return state, fmt.Errorf("no realistic statement or declaration parsed without ERROR or MISSING nodes")
+}
+
+func parseSampleSource(ctx context.Context, language, source string, timeout time.Duration) (languageTreeState, error) {
+	script := `(() => {
+		const picker = document.querySelector("#pg-language");
+		const editor = document.querySelector("#pg-source");
+		const query = document.querySelector("#pg-query");
+		picker.value = ` + strconv.Quote(language) + `;
+		editor.value = ` + strconv.Quote(source) + `;
+		query.value = "";
+		editor.dispatchEvent(new Event("input", { bubbles: true }));
+		picker.dispatchEvent(new Event("change", { bubbles: true }));
+		document.querySelector("#pg-parse").click();
+	})()`
+	if err := chromedp.Run(ctx, chromedp.Evaluate(script, nil)); err != nil {
+		return languageTreeState{}, err
+	}
+	return waitForLanguageTree(ctx, language, timeout)
 }
 
 func waitForLanguageTree(ctx context.Context, language string, timeout time.Duration) (languageTreeState, error) {
