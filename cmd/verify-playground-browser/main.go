@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +18,44 @@ import (
 )
 
 const privateMarker = "private_browser_only_marker"
+
+var sampledLanguages = []string{
+	"go", "python", "javascript", "typescript", "tsx", "rust", "c", "cpp", "java", "c_sharp",
+	"ruby", "php", "kotlin", "swift", "scala", "haskell", "lua", "bash", "json", "yaml",
+	"toml", "html", "css", "markdown", "sql", "elixir", "zig", "ocaml",
+}
+
+// The engine swaps its own starter sample on language changes for languages
+// present in cmd/playground-wasm/samples.go. Keep fallback text here so this
+// verifier does not change the playground's user-facing sample content.
+var fallbackSamples = map[string]string{
+	"tsx":      "const App = () => <main>Hello</main>;\n",
+	"c_sharp":  "class Program { static void Main() {} }\n",
+	"php":      "<?php echo \"hello\";\n",
+	"kotlin":   "fun main() { println(\"hello\") }\n",
+	"swift":    "let greeting = \"hello\"\n",
+	"scala":    "object Main { def main(args: Array[String]): Unit = println(\"hello\") }\n",
+	"haskell":  "main = putStrLn \"hello\"\n",
+	"lua":      "local greeting = \"hello\"\n",
+	"yaml":     "name: gotreesitter\nlanguages: 28\n",
+	"toml":     "name = \"gotreesitter\"\nlanguages = 28\n",
+	"html":     "<main>Hello</main>\n",
+	"markdown": "# Hello\n",
+	"sql":      "-- SQL sample\n",
+	"elixir":   "defmodule Hello do\n  def greet, do: \"hello\"\nend\n",
+	"zig":      "pub fn main() void {}\n",
+	"ocaml":    "let greet name = \"hello, \" ^ name\n",
+}
+
+var genericSamples = []string{
+	"// gotreesitter sample\n",
+	"# gotreesitter sample\n",
+	"-- gotreesitter sample\n",
+	"/* gotreesitter sample */\n",
+	"<!-- gotreesitter sample -->\n",
+	"% gotreesitter sample\n",
+	"; gotreesitter sample\n",
+}
 
 type requestRecord struct {
 	method     string
@@ -40,13 +79,19 @@ func main() {
 		chromedp.Headless,
 		chromedp.NoSandbox,
 		chromedp.DisableGPU,
+		chromedp.Flag("mute-audio", true),
 		chromedp.WindowSize(1280, 900),
 	)
 	allocator, cancelAllocator := chromedp.NewExecAllocator(context.Background(), opts...)
 	defer cancelAllocator()
 	ctx, cancel := chromedp.NewContext(allocator)
 	defer cancel()
-	ctx, cancelTimeout := context.WithTimeout(ctx, 90*time.Second)
+	timeout := 15 * time.Minute
+	allSamples := strings.EqualFold(strings.TrimSpace(os.Getenv("PLAYGROUND_SAMPLE")), "all")
+	if allSamples {
+		timeout = 60 * time.Minute
+	}
+	ctx, cancelTimeout := context.WithTimeout(ctx, timeout)
 	defer cancelTimeout()
 
 	var (
@@ -185,7 +230,163 @@ func main() {
 		fatal(fmt.Errorf("route change did not use the GoSX managed-navigation request; observed %#v", navigationRequests))
 	}
 	fmt.Println("managed navigation changed routes without a document refresh")
+	mu.Lock()
+	observe = false
+	requests = nil
+	mu.Unlock()
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(base+"/playground"),
+		chromedp.WaitVisible("#pg-language", chromedp.ByQuery),
+	); err != nil {
+		fatal(fmt.Errorf("reopen playground for language samples: %w", err))
+	}
+	if err := waitForText(ctx, "#pg-status", "Parsed locally"); err != nil {
+		fatal(fmt.Errorf("wait for playground after managed-navigation check: %w", err))
+	}
+
+	languages := sampledLanguages
+	if allSamples {
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`Array.from(document.querySelectorAll("#pg-language option")).map(option => option.value)`, &languages)); err != nil {
+			fatal(fmt.Errorf("read all language picker values: %w", err))
+		}
+	}
+	failedLanguages := 0
+	for _, language := range languages {
+		started := time.Now()
+		if err := loadLanguageSample(ctx, language); err != nil {
+			failedLanguages++
+			fmt.Printf("language %s FAIL %dms: %v\n", language, time.Since(started).Milliseconds(), err)
+			continue
+		}
+		treeTimeout := 25 * time.Second
+		if allSamples {
+			treeTimeout = 8 * time.Second
+		}
+		state, err := waitForLanguageTree(ctx, language, treeTimeout)
+		elapsed := time.Since(started).Milliseconds()
+		if err != nil {
+			failedLanguages++
+			fmt.Printf("language %s FAIL %dms: %v\n", language, elapsed, err)
+			continue
+		}
+		if allSamples && fallbackSamples[language] == "" {
+			var source string
+			if err := chromedp.Run(ctx, chromedp.Evaluate(`document.querySelector("#pg-source")?.value || ""`, &source)); err != nil {
+				failedLanguages++
+				fmt.Printf("language %s FAIL %dms: read sample source: %v\n", language, time.Since(started).Milliseconds(), err)
+				continue
+			}
+			if strings.TrimSpace(source) == "" {
+				state, err = tryGenericSamples(ctx, language, treeTimeout)
+				elapsed = time.Since(started).Milliseconds()
+				if err != nil {
+					failedLanguages++
+					fmt.Printf("language %s FAIL %dms: %v\n", language, elapsed, err)
+					continue
+				}
+			}
+		}
+		if !state.Root {
+			failedLanguages++
+			fmt.Printf("language %s FAIL %dms: tree has no root node (status=%q rows=%d text=%q errors=%q)\n", language, elapsed, state.Status, state.Rows, state.TreeText, state.Errors)
+			continue
+		}
+		if state.BadNode {
+			failedLanguages++
+			fmt.Printf("language %s FAIL %dms: tree contains ERROR or MISSING node\n", language, elapsed)
+			continue
+		}
+		fmt.Printf("language %s PASS %dms\n", language, elapsed)
+	}
+	if failedLanguages != 0 {
+		fatal(fmt.Errorf("%d of %d playground language samples failed", failedLanguages, len(languages)))
+	}
 	fmt.Println("browser verification passed: local parse, zero source egress, refresh-free navigation")
+}
+
+type languageTreeState struct {
+	Language string `json:"language"`
+	Status   string `json:"status"`
+	Root     bool   `json:"root"`
+	BadNode  bool   `json:"badNode"`
+	Rows     int    `json:"rows"`
+	TreeText string `json:"treeText"`
+	Errors   string `json:"errors"`
+}
+
+func loadLanguageSample(ctx context.Context, language string) error {
+	source := ""
+	if fallback, ok := fallbackSamples[language]; ok {
+		source = fallback
+	}
+	script := `(() => {
+		const picker = document.querySelector("#pg-language");
+		const editor = document.querySelector("#pg-source");
+		const query = document.querySelector("#pg-query");
+		picker.value = ` + strconv.Quote(language) + `;
+		editor.value = ` + strconv.Quote(source) + `;
+		query.value = "";
+		picker.dispatchEvent(new Event("change", { bubbles: true }));
+	})()`
+	return chromedp.Run(ctx, chromedp.Evaluate(script, nil))
+}
+
+func tryGenericSamples(ctx context.Context, language string, timeout time.Duration) (languageTreeState, error) {
+	var state languageTreeState
+	for _, source := range genericSamples {
+		script := `(() => {
+			const editor = document.querySelector("#pg-source");
+			const query = document.querySelector("#pg-query");
+			const parse = document.querySelector("#pg-parse");
+			editor.value = ` + strconv.Quote(source) + `;
+			query.value = "";
+			editor.dispatchEvent(new Event("input", { bubbles: true }));
+			parse.click();
+		})()`
+		if err := chromedp.Run(ctx, chromedp.Evaluate(script, nil)); err != nil {
+			return state, err
+		}
+		var err error
+		state, err = waitForLanguageTree(ctx, language, timeout)
+		if err != nil {
+			return state, err
+		}
+		if state.Root && !state.BadNode {
+			return state, nil
+		}
+	}
+	return state, fmt.Errorf("no generic sample parsed without ERROR or MISSING nodes")
+}
+
+func waitForLanguageTree(ctx context.Context, language string, timeout time.Duration) (languageTreeState, error) {
+	deadline := time.Now().Add(timeout)
+	script := `(() => {
+		const rows = Array.from(document.querySelectorAll("#pg-tree [role=treeitem]"));
+		const label = document.querySelector("#pg-language-label");
+		const status = document.querySelector("#pg-status");
+		return {
+			language: label ? label.textContent.trim() : "",
+			status: status ? status.textContent.trim() : "",
+			root: rows.some(row => row.getAttribute("aria-level") === "1"),
+			rows: rows.length,
+			treeText: document.querySelector("#pg-tree")?.textContent.trim() || "",
+			errors: document.querySelector("#pg-errors")?.textContent.trim() || "",
+			badNode: rows.some(row => row.classList.contains("pg-err") ||
+				(Array.from(row.querySelectorAll(".ttype")).some(node => node.textContent.trim() === "ERROR")) ||
+				row.querySelector(".tmissing") !== null)
+		};
+	})()`
+	for time.Now().Before(deadline) {
+		var state languageTreeState
+		if err := chromedp.Run(ctx, chromedp.Evaluate(script, &state)); err != nil {
+			return state, err
+		}
+		if state.Language == language && strings.HasPrefix(state.Status, "Parsed locally") {
+			return state, nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return languageTreeState{}, fmt.Errorf("tree for %s did not finish within %s", language, timeout)
 }
 
 func waitForText(ctx context.Context, selector, want string) error {
