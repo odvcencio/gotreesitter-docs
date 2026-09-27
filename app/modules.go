@@ -2,13 +2,26 @@ package docs
 
 import (
 	"log"
+	"os"
 	"strings"
 
 	"m31labs.dev/gosx/route"
 	"m31labs.dev/gosx/server"
 )
 
-const SiteURL = "https://gotreesitter.m31labs.dev"
+const productionSiteURL = "https://gotreesitter.m31labs.dev"
+
+// SiteURL defaults to production. Local preview servers can set
+// GTS_DOCS_SITE_URL so canonical links resolve against the preview origin.
+var SiteURL = siteURLFor(os.Getenv("GTS_DOCS_SITE_URL"))
+
+func siteURLFor(override string) string {
+	override = strings.TrimRight(strings.TrimSpace(override), "/")
+	if override == "" {
+		return productionSiteURL
+	}
+	return override
+}
 
 var docsPublicAssetURL func(string) string
 

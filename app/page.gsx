@@ -81,7 +81,7 @@ func Page() Node {
 				<span class="section-kicker">Road to v1</span>
 				<h2 id="road-title">M0 closed · M1–M4 open</h2>
 			</div>
-			<p>The global default flips only at v1.0.0-rc.1. <a href="/docs/v1" data-gosx-link="true">Read the v1 roadmap <span aria-hidden="true">→</span></a></p>
+			<p>Production GLR remains the default. Compact parsing is opt-in while M1–M4 are open; the default flips only at v1.0.0-rc.1. <a href="/docs/v1" data-gosx-link="true">Read the v1 roadmap <span aria-hidden="true">→</span></a></p>
 		</section>
 
 		<section class="home-features" aria-labelledby="features-title">

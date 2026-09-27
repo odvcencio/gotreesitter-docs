@@ -1,30 +1,32 @@
 ---
 title: Getting Started
-description: Install gotreesitter, parse your first file, and learn to read the syntax tree it gives back.
+description: Try gotreesitter in the browser, then parse and inspect your first file in Go.
 nav_group: Introduction
 order: 2
 layout: steps
 ---
 
-This page takes you from zero to a parsed syntax tree. It then covers the handful of `Node` and
-`Language` methods you will use constantly: reading a node, walking its children, and telling
-named structure apart from literal punctuation.
+Start in the [browser playground](/playground): choose Go, edit the sample, and inspect its
+syntax tree. You can try a grammar before installing anything.
+
+## Requirements
+
+You need Go 1.22.0 or newer for the v0.55.1 module. You can confirm the minimum in its
+[go.mod](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/go.mod).
 
 ## Install
 
+Add v0.55.1 to your module:
+
 ```sh
-go get github.com/odvcencio/gotreesitter@v0.54.0
+go get github.com/odvcencio/gotreesitter@v0.55.1
 ```
 
-That one command is enough. The parsing engine (`github.com/odvcencio/gotreesitter`) and the 206
-embedded grammars (`github.com/odvcencio/gotreesitter/grammars`) live in the same Go module. Once
-it is a dependency, you can import either package — there is no separate `go get` for the
-grammars subpackage.
+You get the parser and all 206 built-in grammars in the same module.
 
-## Your first parse
+## Parse a Go file
 
-Here is a complete program: it parses a small Go file and prints its syntax tree as an
-S-expression.
+This complete program parses a small Go file and prints its named syntax tree:
 
 ```go title=main.go
 package main
@@ -37,152 +39,153 @@ import (
 )
 
 func main() {
-	src := []byte(`package main
-
-func main() {
-	println("hello, world")
-}
-`)
-
+	src := []byte("package main\n\nfunc main() {}\n")
 	lang := grammars.GoLanguage()
-	p := gts.NewParser(lang)
+	parser := gts.NewParser(lang)
 
-	tree, err := p.Parse(src)
+	tree, err := parser.Parse(src)
 	if err != nil {
 		panic(err)
 	}
+	defer tree.Release()
 
 	root := tree.RootNode()
 	fmt.Println(root.SExpr(lang))
 }
 ```
 
-Running it prints:
-
 ```text
-(source_file (package_clause (package_identifier)) (function_declaration (identifier) (parameter_list) (block (statement_list (expression_statement (call_expression (identifier) (argument_list (interpreted_string_literal (interpreted_string_literal_content)))))))))
+(source_file (package_clause (package_identifier)) (function_declaration (identifier) (parameter_list) (block)))
 ```
 
-Here is what each line does:
+You load Go's parse tables with `grammars.GoLanguage` and bind a parser to them with
+`NewParser`. `Parse` returns a tree, and `RootNode` gives you its top node. `SExpr` prints named
+nodes while leaving punctuation and keywords out; call `Release` when you are done with the tree.
 
-- `grammars.GoLanguage()` returns a `*gts.Language` — the decoded parse tables for Go. Each of the
-  206 grammars has a matching `XLanguage()` function in the `grammars` package.
-- `gts.NewParser(lang)` builds a `*gts.Parser` bound to that language. A `Parser` is cheap to
-  reuse — call `Parse` on it as many times as you like.
-- `p.Parse(src)` returns a `*gts.Tree` and an `error`. The error covers setup problems: no
-  language attached, a language version that the runtime does not support, or a hand-authored
-  grammar with no DFA lexer that needs `ParseWithTokenSource` instead. A source file with syntax
-  errors in *it* still parses successfully with a `nil` error — the tree records the problem in
-  its nodes rather than failing the call. Check `tree.RootNode().HasError()` to find out whether
-  the source was clean.
-- `tree.RootNode()` is where every traversal starts: a `*gts.Node` covering the whole file.
-- `root.SExpr(lang)` renders the tree in tree-sitter's S-expression format. Use it for debugging
-  and golden-file tests. It prints only named nodes — more on what that means below.
+## Read a node
 
-## Reading a node
+Use `NamedChild` to select the function declaration. This program prints its node type, byte
+range, and source text:
 
-A `*gts.Node` is a position and a type; it does not carry the source text itself. Anything that
-needs text takes the original `[]byte` as an argument. Reach into the tree from above and look at
-the function declaration:
+```go title=read-node.go
+package main
 
-```go
-fn := root.NamedChild(1) // function_declaration; NamedChild(0) is the package clause
+import (
+	"fmt"
 
-fmt.Println("type:", fn.Type(lang))
-fmt.Println("bytes:", fn.StartByte(), "-", fn.EndByte())
-fmt.Println("text:", fn.Text(src))
-```
+	gts "github.com/odvcencio/gotreesitter"
+	"github.com/odvcencio/gotreesitter/grammars"
+)
 
-```text
-type: function_declaration
-bytes: 14 - 54
-text: func main() {
-	println("hello, world")
-}
-```
+func main() {
+	src := []byte("package main\n\nfunc main() {}\n")
+	lang := grammars.GoLanguage()
+	tree, err := gts.NewParser(lang).Parse(src)
+	if err != nil {
+		panic(err)
+	}
+	defer tree.Release()
 
-`Type(lang)` needs the language argument because node types are small integer symbol IDs
-internally. The `*gts.Language` is what maps a symbol back to a name like
-`"function_declaration"`. `StartByte()` and `EndByte()` give a byte range into the source.
-`Text(source)` slices that range out of whatever `[]byte` you pass it — normally the same `src`
-you parsed.
-
-## Walking children
-
-Every node exposes both its full child list and a named-only view:
-
-```go
-fmt.Println("all children:")
-for i := 0; i < fn.ChildCount(); i++ {
-	child := fn.Child(i)
-	fmt.Printf("  [%d] %s named=%v\n", i, child.Type(lang), child.IsNamed())
-}
-
-fmt.Println("named children only:")
-for i := 0; i < fn.NamedChildCount(); i++ {
-	child := fn.NamedChild(i)
-	fmt.Printf("  [%d] %s\n", i, child.Type(lang))
+	fn := tree.RootNode().NamedChild(1)
+	fmt.Println(fn.Type(lang))
+	fmt.Println(fn.StartByte(), fn.EndByte())
+	fmt.Println(fn.Text(src))
 }
 ```
 
 ```text
-all children:
-  [0] func named=false
-  [1] identifier named=true
-  [2] parameter_list named=true
-  [3] block named=true
-named children only:
-  [0] identifier
-  [1] parameter_list
-  [2] block
+function_declaration
+14 28
+func main() {}
 ```
 
-### Named vs. anonymous nodes
+You see the declaration name, its byte offsets into `src`, and the source covered by that node.
+`Type` uses the language to turn a numeric symbol into a name. `NamedChild` skips punctuation;
+`Child` includes every grammar child.
 
-`func` shows up in the full child list with `named=false`: it is a keyword, a fixed piece of
-syntax the grammar spells out literally. `identifier`, `parameter_list`, and `block` are named
-nodes — they correspond to real grammar rules and carry structure of their own. As a rule of
-thumb, walk `NamedChild`/`NamedChildCount` when you analyze structure and do not want to trip
-over every keyword and brace. Fall back to `Child`/`ChildCount` when you need the literal picture
-— for example, to reconstruct exact source formatting. `SExpr` uses the same distinction; that is
-why `func` never appears in the S-expression output above.
+## Walk children
 
-## Picking a language
+Use `Child` when you want to see keywords and punctuation as well as named nodes:
 
-`grammars.GoLanguage()` is one of 206 `XLanguage() *gts.Language` functions, one per embedded
-grammar: `grammars.PythonLanguage()`, `grammars.RustLanguage()`, `grammars.TypescriptLanguage()`,
-and so on for every grammar gotreesitter ships. When you do not know the language ahead of time,
-call `grammars.AllLanguages()`. It enumerates every registered grammar as metadata. It does not
-decode any parse tables, so it is cheap to call even in a hot path:
+```go title=walk-children.go
+package main
 
-```go
-for _, entry := range grammars.AllLanguages() {
-	fmt.Println(entry.Name, entry.Extensions)
+import (
+	"fmt"
+
+	gts "github.com/odvcencio/gotreesitter"
+	"github.com/odvcencio/gotreesitter/grammars"
+)
+
+func main() {
+	src := []byte("package main\n\nfunc main() {}\n")
+	lang := grammars.GoLanguage()
+	tree, err := gts.NewParser(lang).Parse(src)
+	if err != nil {
+		panic(err)
+	}
+	defer tree.Release()
+
+	fn := tree.RootNode().NamedChild(1)
+	for i := 0; i < fn.ChildCount(); i++ {
+		child := fn.Child(i)
+		fmt.Printf("%s named=%v\n", child.Type(lang), child.IsNamed())
+	}
 }
 ```
 
-Each `grammars.LangEntry` carries a lazy `Language func() *gts.Language` field alongside its name
-and file extensions, so you pay to decode only the grammar you actually use.
+```text
+func named=false
+identifier named=true
+parameter_list named=true
+block named=true
+```
 
-In practice, tools rarely hardcode a language function. They resolve one from a filename instead:
+You see the `func` keyword, followed by three named nodes. Use `NamedChildCount` and `NamedChild`
+when you only need the grammar structure.
+
+## Choose a language by filename
+
+When you do not know the language ahead of time, ask the registry to detect it:
 
 ```go
 entry := grammars.DetectLanguage("main.go")
 if entry == nil {
-	// no grammar registered for this filename/extension
+	return
 }
 lang := entry.Language()
+parser := gts.NewParser(lang)
+tree, err := parser.Parse(src)
+if err != nil {
+	panic(err)
+}
+defer tree.Release()
 ```
 
-> [!NOTE] How resolution works
-> `DetectLanguage` matches exact filenames first (`Dockerfile`, `.bashrc`), then file extensions
-> — it checks the longest suffix first, so `.blade.php` resolves before `.php` — and returns
-> `nil` when nothing matches.
+`DetectLanguage` checks registered filenames and extensions. It returns nil when no grammar
+matches; `entry.Language()` loads the matching grammar.
 
-## Next steps
+## Check for syntax errors
 
-- [Syntax Trees and Nodes](/docs/syntax-trees-and-nodes) — the rest of the node and tree API:
-  fields, cursors, descendant lookup, editing.
-- [Queries](/docs/queries) — S-expression pattern matching over a tree.
-- [Incremental Parsing](/docs/incremental-parsing) — reparse after an edit without redoing the
-  whole file.
+A file with syntax errors can still produce a tree. Check its root node:
+
+```go
+tree, err := parser.Parse([]byte("package main\nfunc main( {\n"))
+if err != nil {
+	panic(err)
+}
+defer tree.Release()
+if tree.RootNode().HasError() {
+	fmt.Println("the tree contains a syntax error")
+}
+```
+
+Errors returned by `Parse` report setup problems. `HasError` reports `ERROR` or `MISSING` nodes in
+the parsed tree.
+
+## Keep going
+
+- [Queries](/docs/queries) find nodes by structure.
+- [Incremental Parsing](/docs/incremental-parsing) reuses a previous tree after an edit.
+- [Syntax Highlighting](/docs/syntax-highlighting) turns query captures into source ranges.
+- [The road to v1](/docs/v1) explains the engine transition and release gates.

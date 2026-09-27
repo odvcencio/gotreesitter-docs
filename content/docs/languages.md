@@ -69,7 +69,7 @@ for _, e := range entries {
 | `HighlightQuery` | `string` | The tree-sitter `highlights.scm` text, for syntax-highlighting integrations. |
 | `InheritHighlights` | `string` | Parent language whose highlight query gets prepended to this one's (child overrides win). Unset on every built-in; meant for an extension language composing with an existing grammar. |
 | `TagsQuery` | `string` | A `tags.scm` query for symbol extraction, when explicitly authored. No built-in ships one explicitly — call `grammars.ResolveTagsQuery(entry)` instead of reading the field directly; it infers a query from the grammar's symbols and caches the result. |
-| `TokenSourceFactory` | `func(src []byte, lang *gotreesitter.Language) gotreesitter.TokenSource` | Non-nil only for languages with a hand-written Go token source instead of the DFA lexer (default build: `c`, `cpp`, `java`, `json`, `authzed`). Pass its result to `Parser.ParseWithTokenSource`. |
+| `TokenSourceFactory` | `func(src []byte, lang *gotreesitter.Language) gotreesitter.TokenSource` | Non-nil only for languages with a hand-written Go token source instead of the DFA lexer (default build: `authzed`, `c`, `cpp`, `go`, `java`, `json`, `lua`). Pass its result to `Parser.ParseWithTokenSource`. |
 | `Quality` | `ParseQuality` | Reserved for a `full` / `partial` / `none` classification. Every registered entry has it unset (`""`) today — nothing populates it yet, despite the field's doc comment. For a real classification, call `grammars.AuditParseSupport()` instead. |
 
 `AuditParseSupport() []ParseSupport` answers *how* a language will actually parse — DFA lexer,
@@ -88,6 +88,7 @@ functions round out the toolkit for cases `DetectLanguage` does not cover:
 entry := grammars.DetectLanguageByName("golang")           // linguist alias -> "go"
 entry  = grammars.DetectLanguageByShebang("#!/usr/bin/env python3\n") // -> "python"
 name  := grammars.DisplayName(entry)                        // "Go" / "Python", not "go" / "python"
+fmt.Println(name)
 ```
 
 `DetectLanguageByName` accepts linguist's canonical names and common aliases — `"C++"`, `"cpp"`,
@@ -109,6 +110,10 @@ if err != nil {
 	panic(err)
 }
 tree, err := gts.NewParser(lang).Parse([]byte("x = 1\n"))
+if err != nil {
+	panic(err)
+}
+_ = tree
 ```
 
 `grammars.BlobByName(name string) []byte` returns the same compressed bytes the registry decodes
@@ -142,7 +147,7 @@ See [Authoring Languages](/docs/authoring-languages) for encoding and limit cont
 `grammars.DecodeAndCertifyLanguageBlob(name, data)` is also exported in v0.54.0.
 It uses the built-in loader's repair and certification path, then attaches the registered
 scanner and external lex states. This does not certify arbitrary grammar data as C-equivalent.
-See [the implementation](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/grammars/runtime/embedded_loader.go).
+See [the implementation](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/grammars/runtime/embedded_loader.go).
 
 ## Why `Type`, `SExpr`, and field lookups take a `*Language`
 
@@ -169,7 +174,7 @@ descended from that tree, with no need to keep your own reference around.
 ## Recovery election isn't a `LangEntry` field — check the `Language`
 
 [Recovery and Correctness](/docs/recovery-and-correctness) covers gotreesitter's C-faithful
-recovery election model in full: a language only gets the byte-exact recovery path once it is
+recovery election model in full: a language only gets the C-faithful recovery path once it is
 both capability-checked and explicitly certified. That status is **not** exposed on `LangEntry` —
 there is no `Elected bool` you can read off `AllLanguages()`. It lives on the loaded `*Language`
 itself, as `CRecoveryCostCompetitionCapable` and `CRecoveryCostCompetitionEnabledByDefault`:
@@ -185,7 +190,7 @@ recovery-election count. Certification is specific to the grammar and tested inp
 
 ## The full catalog
 
-The [v0.54.0 language guide](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/languages.md)
+The [v0.55.1 language guide](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/docs/languages.md)
 reports 206 registry grammars, 119 external scanners, and seven hand-written token-source
 implementations. A token-source implementation is not the same as a non-nil factory on every
 registry entry. Build tags can change the registry. Inspect `AllLanguages` for your build.

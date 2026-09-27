@@ -195,28 +195,53 @@ func TestReleaseEvidenceLinksStayPinned(t *testing.T) {
 	}
 }
 
-func TestExtractReferencesLinksNumericCommit(t *testing.T) {
-	references := extractReferences("Fixed by `1234567`.")
+func TestExtractReferencesLinksVerifiedCommit(t *testing.T) {
+	var known string
+	for _, ref := range strings.Fields(knownCommitSource) {
+		known = ref
+		break
+	}
+	if known == "" {
+		t.Fatal("verified commit allowlist is empty")
+	}
+	references := extractReferences("Fixed by `" + known + "`.")
 	if len(references) != 1 {
 		t.Fatalf("references = %#v, want one commit", references)
 	}
-	if references[0]["href"] != repositoryURL+"/commit/1234567" {
+	if references[0]["href"] != repositoryURL+"/commit/"+known {
 		t.Fatalf("commit reference = %#v", references[0])
 	}
 }
 
-func TestExtractReferencesSkipsExternalCommitsCIIDsAndUnknownTags(t *testing.T) {
-	const externalCommit = "172ada1cc4117d0260d9340680b4134adba2bc2c"
-	references := extractReferences("Grammar commit `" + externalCommit +
-		"`; CI run `32609724840`; exception v0.52.0-only; release v0.55.1.")
-	for _, reference := range references {
-		href := reference["href"].(string)
-		if strings.Contains(href, externalCommit) || strings.Contains(href, "32609724840") || strings.Contains(href, "v0.52.0-only") {
-			t.Errorf("reference points to the wrong upstream object: %#v", reference)
-		}
+func TestExtractReferencesSkipsBrokenChangelogTargets(t *testing.T) {
+	broken := []string{
+		"172ada1cc4117d0260d9340680b4134adba2bc2c",
+		"41d6e5fe811ec94229ee71771174a8cce558dfee",
+		"48ab75f29abaa315fad7fa7b8338f92bb07376a7",
+		"5739fd79bcfc75ba7526773d0cf634521f8aca3c",
+		"587f30d184b058450be2a2330878210c5f33b3f9",
+		"61a7c75e225e3035390be32d635545e40d8c5faf",
 	}
-	if len(references) != 1 || references[0]["href"] != repositoryURL+"/releases/tag/v0.55.1" {
-		t.Fatalf("references = %#v, want only the known v0.55.1 release", references)
+	for _, sha := range broken {
+		t.Run(sha[:8], func(t *testing.T) {
+			if got := extractReferences("Grammar source `" + sha + "`."); len(got) != 0 {
+				t.Fatalf("references = %#v, want no link for an unknown commit", got)
+			}
+		})
+	}
+	if got := extractReferences("CI run `32609724840`."); len(got) != 1 ||
+		got[0]["href"] != repositoryURL+"/actions/runs/32609724840" {
+		t.Fatalf("resolved action run = %#v", got)
+	}
+	if got := extractReferences("CI run `32609724841`."); len(got) != 0 {
+		t.Fatalf("unknown action run = %#v, want no link", got)
+	}
+	if got := extractReferences("The `v0.52.0-only` tag exception."); len(got) != 0 {
+		t.Fatalf("suffixed version reference = %#v, want no tag link", got)
+	}
+	if got := extractReferences("See v0.54.0."); len(got) != 1 ||
+		got[0]["href"] != repositoryURL+"/releases/tag/v0.54.0" {
+		t.Fatalf("real release tag = %#v", got)
 	}
 }
 

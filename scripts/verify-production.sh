@@ -12,7 +12,7 @@ fail() {
   exit 1
 }
 
-for command in git go gosx tinygo curl grep sed awk mktemp find sort; do
+for command in git go gosx tinygo curl grep sed awk mktemp find sort python3; do
   command -v "$command" >/dev/null 2>&1 || fail "required command not found: $command"
 done
 
@@ -120,10 +120,27 @@ for index in "${!routes[@]}"; do
   if grep -Fq 'GoTreeSitter Docs</title>' "$route_page"; then
     fail "legacy page title brand remains on $route"
   fi
+  if grep -Eq 'fonts\.googleapis\.com|fonts\.gstatic\.com' "$route_page"; then
+    fail "remote Google Fonts reference remains on $route"
+  fi
   grep -Fq 'rel="canonical"' "$route_page" || fail "canonical metadata missing from $route"
   grep -Fq "href=\"https://gotreesitter.m31labs.dev$route\"" "$route_page" ||
     fail "canonical metadata does not match $route"
 done
+
+python3 - "$route_pages" <<'PY'
+import pathlib
+import re
+import sys
+
+email = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
+for path in pathlib.Path(sys.argv[1]).glob("*.html"):
+    html = path.read_text()
+    outside = re.sub(r"<!--email_off-->.*?<!--/email_off-->", "", html, flags=re.S)
+    match = email.search(outside)
+    if match:
+        raise SystemExit(f"email-shaped text outside email_off markers in {path.name}: {match.group(0)}")
+PY
 
 while IFS= read -r href; do
   [[ -n "$href" ]] || continue
@@ -145,8 +162,8 @@ grep -Fq 'Certified checkpointed reuse for clean old trees.' <<<"$external_scann
 grep -Fq 'Fallback (uncertified) for edited parses.' <<<"$external_scanners_html" ||
   fail "Markdown Inline fallback contract missing from /docs/external-scanners"
 curl --silent --show-error --fail --output "$page_body" "$base/docs/performance"
-grep -Fq '439,825' "$page_body" || fail "dated single-byte edit result missing from /docs/performance"
-grep -Fq 'GTS_ADMISSION_CANDIDATE=1' "$page_body" || fail "v0.54.0 opt-in route missing from /docs/performance"
+grep -Fq '177,281' "$page_body" || fail "v0.55.1 single-byte edit result missing from /docs/performance"
+grep -Fq 'GTS_ADMISSION_CANDIDATE=1' "$page_body" || fail "compact opt-in route missing from /docs/performance"
 curl --silent --show-error --fail --output "$page_body" "$base/changelog"
 grep -q 'History you can interrogate' "$page_body" || fail "changelog hero missing from /changelog"
 grep -Fq "$gts_version" "$page_body" || fail "$gts_version missing from /changelog"

@@ -47,7 +47,6 @@ for {
     }
 }
 ```
-
 > [!TIP] Compile-time safety
 > `gts.NewQuery(source string, lang *gts.Language) (*gts.Query, error)` compiles a query against
 > a specific language and resolves every node type and field name up front. A query written for
@@ -89,7 +88,6 @@ load-bearing:
 //                                       anonymous keyword/punctuation tokens
 //                                       are excluded.
 ```
-
 **Anchors** — `.` — require adjacency with no intervening (named) sibling. A `.` before the first
 child pattern anchors it to the parent's first named child; a `.` after the last one anchors it to
 the last; a `.` between two sibling patterns requires them to be immediately adjacent, and the
@@ -106,8 +104,8 @@ q, _ := gts.NewQuery(`(parameter_list . (parameter_declaration) @first)`, lang)
 q, _ = gts.NewQuery(`(parameter_list
   (parameter_declaration) @a . (parameter_declaration) @b)`, lang)
 // -> 2 matches: ("a int", "b string") and ("b string", "c bool").
+_ = q
 ```
-
 **Quantifiers** — `?`, `*`, `+` — suffix a pattern to make it optional, zero-or-more, or
 one-or-more. `?` is straightforward: the capture is simply absent from the match when the
 optional node is not there. `*`/`+` on a *child* pattern are more specific than they look: they
@@ -119,16 +117,16 @@ contiguous run and both land in one match:
 // source: two "//" comments directly followed by a func decl
 q, _ := gts.NewQuery(`(source_file (comment)+ @doc)`, lang)
 // -> 1 match, @doc captured twice (both comments)
+_ = q
 ```
-
 but a comma-separated parameter list is *not* contiguous — the "," tokens between
 `parameter_declaration` nodes break the run:
 
 ```go
 q, _ := gts.NewQuery(`(parameter_list (parameter_declaration)+ @param)`, lang)
 // on "F(a int, b string, c bool)": 1 match, @param captured once ("a int")
+_ = q
 ```
-
 To capture every item in a comma- or punctuation-separated list, skip the quantifier entirely and
 let the pattern match repeatedly on its own. An **unquantified** repeated child pattern produces
 one match per occurrence, which is the idiom highlight queries actually use:
@@ -136,8 +134,8 @@ one match per occurrence, which is the idiom highlight queries actually use:
 ```go
 q, _ := gts.NewQuery(`(parameter_list (parameter_declaration) @param)`, lang)
 // on the same source: 3 separate matches, one @param capture each
+_ = q
 ```
-
 **Alternation** — `[...]` — matches any one of several node types (or string literals) at a
 position:
 
@@ -166,7 +164,7 @@ match missing nodes. Use `Node.IsMissing()` for direct tree inspection.
 
 **Supertypes.** A supertype pattern requires the corresponding hidden supertype.
 `supertype/subtype` also constrains the subtype. Grammar metadata affects these checks;
-the [dated parity boards](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/c-parity-boards.md)
+the [dated parity boards](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/docs/c-parity-boards.md)
 record known map and query differences. Do not assume all supertype queries match C.
 
 The pattern language is upstream tree-sitter's, and upstream's query docs are the canonical spec
@@ -202,8 +200,8 @@ q, _ := gts.NewQuery(`
   name: (identifier) @name
   (#match? @name "^[A-Z]"))
 `, lang)
+_ = q
 ```
-
 `#set!` attaches pattern metadata, read with `QueryMatch.SetValues(q, key)`.
 `#offset!` applies row and column offsets to capture ranges. In v0.54.0,
 `QueryCapture.ByteRange()`, `PointRange()`, and `Range()` return the effective range.
@@ -212,8 +210,8 @@ keeps its original range. Use capture accessors when you consume an offset captu
 
 `#select-adjacent!` filters captures by adjacency. `#strip!` removes a regular-expression
 match from returned text. See the
-[tagged capture API](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/query.go)
-and [offset implementation](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/query_offset.go).
+[tagged capture API](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/query.go)
+and [offset implementation](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/query_offset.go).
 
 ## Running a query
 
@@ -238,7 +236,6 @@ for {
     _ = match
 }
 ```
-
 `QueryCursor` also has `SetPointRange` (row/column window), `SetUTF16Range` (the UTF-16
 equivalent, for trees produced by a UTF-16 parse), `SetMaxStartDepth`, and `NextCapture()` — a
 capture-at-a-time alternative to `NextMatch()` that drains the same match stream one capture at a
@@ -320,7 +317,6 @@ func main() {
 	fmt.Println("exported funcs:", len(exported.Execute(tree)))
 }
 ```
-
 This prints both function definitions and their names, then reports `exported funcs: 1` (only
 `Add` starts with an uppercase letter).
 

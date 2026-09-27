@@ -5,11 +5,10 @@ nav_group: Internals
 order: 3
 ---
 
-gotreesitter is a ground-up reimplementation of the tree-sitter runtime in Go. No code is shared
-with, or translated from, the C implementation. The lexer, GLR parser, incremental engine, arena
-allocator, and query engine are each written against tree-sitter's *behavior*, checked
-decision-by-decision against a real C build rather than against its source. This page is a map:
-what the pieces are, how a parse moves through them, and which files to open first.
+gotreesitter implements the tree-sitter runtime in Go. Its lexer, GLR parser, incremental
+engine, arena allocator, and query engine are checked against a real C build. Recovery follows
+the C parser's decision steps and cost constants, then is checked against the C oracle. This
+page maps the parts, describes how a parse moves through them, and points to the files to read.
 
 ## Two layers: engine and grammar data
 
@@ -25,8 +24,8 @@ The **grammar data** — `github.com/odvcencio/gotreesitter/grammars` — is 206
 values, one per supported language, plus the machinery to load them lazily.
 `grammars.GoLanguage()`, `grammars.PythonLanguage()`, and 204 more `XLanguage()` functions each
 lazily decode one compressed blob under `grammars/grammar_blobs/*.bin` (`loadEmbeddedLanguage`,
-`grammars/embedded_loader.go`). An LRU cache (`GOTREESITTER_GRAMMAR_CACHE_LIMIT`) sits behind
-them, so a program that only calls `GoLanguage()` never pays to decode the other 205.
+`grammars/embedded_loader.go`). Loaded grammars are cached. When cache limits are configured, the
+cache can evict least-recently used grammars to bound retained memory.
 
 The dependency runs one direction only: nothing in the engine imports `grammars`. What the
 grammars package adds — external scanners, hand-written token sources, preferred-language
@@ -58,12 +57,12 @@ not care which one produced a given grammar. That convergence is also the no-for
 `grammars.RegisterExtension` lets a consumer add or override a language from their own module
 without forking gotreesitter — see [Authoring Languages](/docs/authoring-languages).
 
-## Default route in v0.54.0
+## Default route in v0.55.1
 
 Production GLR parsing is the default. Compact parsing is opt-in through
-`GTS_ADMISSION_CANDIDATE=1`. The
-[release roadmap](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/roadmap.md)
-describes the route change and the remaining graduation work.
+GTS_ADMISSION_CANDIDATE=1. The v0.55.1
+[admission switch](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/admission_switch.go)
+shows the default. See [The road to v1](/docs/v1) for the current graduation plan.
 
 ## Anatomy of a parse
 

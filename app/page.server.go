@@ -8,7 +8,7 @@ import (
 func init() {
 	RegisterStaticDocsPage(
 		"Overview",
-		"Parse Tree-sitter grammars in pure Go. Explore real syntax trees across 206 languages, with no CGo in the runtime.",
+		"A pure-Go tree-sitter runtime with 206 built-in grammars, incremental parsing, and no CGo dependency.",
 		"/",
 		route.FileModuleOptions{
 			Bindings: func(ctx *route.RouteContext, page route.FilePage, data any) route.FileTemplateBindings {

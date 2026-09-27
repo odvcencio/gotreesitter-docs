@@ -163,7 +163,7 @@ Use trees built with the same `Language` value as the program. A nil program, in
 or language mismatch clears the destination but retains its capacity. A nil destination does
 nothing. Copy result slices before the next extraction if you need to retain them.
 Use a separate destination for each concurrent extraction. Assign `gts.FactSet{}` to release
-retained storage. See the [source contract](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/fact_program.go).
+retained storage. See the [source contract](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/fact_program.go).
 
 ## Compile-checked example
 

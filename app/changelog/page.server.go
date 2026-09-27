@@ -17,6 +17,13 @@ import (
 //go:embed page.gsx
 var pageSource embed.FS
 
+// known-commits.txt contains changelog SHA references verified against the
+// gotreesitter history for the embedded source snapshot in releasecatalog.
+// Unknown SHAs stay as inline code in the rendered changelog.
+//
+//go:embed known-commits.txt
+var knownCommitSource string
+
 const repositoryURL = "https://github.com/odvcencio/gotreesitter"
 
 var (
@@ -25,17 +32,9 @@ var (
 	pullRequestPattern = regexp.MustCompile(`(?i)\bPRs?\s+#([0-9]+)(?:\s+and\s+#([0-9]+))?`)
 	issuePattern       = regexp.MustCompile(`(?i)\bissue\s+#([0-9]+)`)
 	commitPattern      = regexp.MustCompile("`([0-9a-f]{7,40})`")
-	tagPattern         = regexp.MustCompile(`\bv[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?\b`)
-	// These hashes are explicitly identified in the changelog as commits from
-	// grammar repositories, not commits in the gotreesitter repository.
-	nonRepositoryCommitIDs = map[string]struct{}{
-		"172ada1cc4117d0260d9340680b4134adba2bc2c": {},
-		"41d6e5fe811ec94229ee71771174a8cce558dfee": {},
-		"48ab75f29abaa315fad7fa7b8338f92bb07376a7": {},
-		"5739fd79bcfc75ba7526773d0cf634521f8aca3c": {},
-		"587f30d184b058450be2a2330878210c5f33b3f9": {},
-		"61a7c75e225e3035390be32d635545e40d8c5faf": {},
-	}
+	tagPattern         = regexp.MustCompile(`\bv[0-9]+\.[0-9]+\.[0-9]+\b`)
+	actionsRunPattern  = regexp.MustCompile(`(?i)\brun\s+\x60?([0-9]+)\x60?\b`)
+	knownActionsRuns   = map[string]struct{}{"32609724840": {}}
 )
 
 func init() {
@@ -561,27 +560,38 @@ func extractReferences(markdown string) []map[string]any {
 		appendReference("Issue #"+match[1], repositoryURL+"/issues/"+match[1], "issue")
 	}
 	for _, match := range commitPattern.FindAllStringSubmatch(markdown, -1) {
-		if _, external := nonRepositoryCommitIDs[match[1]]; external || isLongNumericID(match[1]) {
-			continue
+		if _, verified := verifiedCommitRefs()[match[1]]; verified {
+			appendReference("Commit "+match[1], repositoryURL+"/commit/"+match[1], "commit")
 		}
-		appendReference("Commit "+match[1], repositoryURL+"/commit/"+match[1], "commit")
 	}
-	for _, tag := range tagPattern.FindAllString(markdown, -1) {
-		if !hasReleaseTag(tag) {
+	for _, match := range actionsRunPattern.FindAllStringSubmatch(markdown, -1) {
+		if _, resolved := knownActionsRuns[match[1]]; resolved {
+			appendReference("Run "+match[1], repositoryURL+"/actions/runs/"+match[1], "workflow run")
+		}
+	}
+	for _, span := range tagPattern.FindAllStringIndex(markdown, -1) {
+		tag := markdown[span[0]:span[1]]
+		if span[1] < len(markdown) && markdown[span[1]] == '-' {
 			continue
 		}
-		appendReference(tag, repositoryURL+"/releases/tag/"+tag, "release")
+		if isCatalogReleaseTag(tag) {
+			appendReference(tag, repositoryURL+"/releases/tag/"+tag, "release")
+		}
 	}
 	return references
 }
 
-func isLongNumericID(value string) bool {
-	return len(value) >= 10 && strings.Trim(value, "0123456789") == ""
+func verifiedCommitRefs() map[string]struct{} {
+	refs := make(map[string]struct{})
+	for _, ref := range strings.Fields(knownCommitSource) {
+		refs[ref] = struct{}{}
+	}
+	return refs
 }
 
-func hasReleaseTag(tag string) bool {
+func isCatalogReleaseTag(tag string) bool {
 	for _, release := range catalog.Releases {
-		if release.Tag == tag {
+		if release.Tag == tag || release.Version == tag {
 			return true
 		}
 	}

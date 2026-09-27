@@ -42,3 +42,12 @@ func TestCanonicalMetadataUsesProductionOrigin(t *testing.T) {
 		}
 	}
 }
+
+func TestSiteURLUsesLocalPreviewOverride(t *testing.T) {
+	if got := siteURLFor(" http://127.0.0.1:8233/ "); got != "http://127.0.0.1:8233" {
+		t.Fatalf("preview site URL = %q", got)
+	}
+	if got := siteURLFor("  "); got != productionSiteURL {
+		t.Fatalf("default site URL = %q, want %q", got, productionSiteURL)
+	}
+}
