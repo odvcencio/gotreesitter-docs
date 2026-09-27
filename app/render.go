@@ -44,7 +44,7 @@ func RenderMarkdownFragmentWithBase(source, sourceURL string) (gosx.Node, error)
 		return gosx.Node{}, err
 	}
 	if parsed == nil || parsed.Root == nil {
-		return gosx.Text(""), nil
+		return withEmailProtection(gosx.Text("")), nil
 	}
 	children := normalizeBlocks(parsed.Root.Children)
 	if sourceURL != "" {
@@ -72,7 +72,15 @@ func RenderMarkdownFragmentWithBase(source, sourceURL string) (gosx.Node, error)
 			resolve(child)
 		}
 	}
-	return gosx.Fragment(renderBlocks(children, parsed.Source)...), nil
+	return withEmailProtection(gosx.Fragment(renderBlocks(children, parsed.Source)...)), nil
+}
+
+func withEmailProtection(node gosx.Node) gosx.Node {
+	return gosx.Fragment(
+		gosx.RawHTML("<!--email_off-->"),
+		node,
+		gosx.RawHTML("<!--/email_off-->"),
+	)
 }
 
 // RenderDesignDocWithLangIsland is RenderDesignDoc for content/docs/languages.md
@@ -115,7 +123,7 @@ func renderDesignDoc(doc content.Document, langIsland func(names []string) gosx.
 		nodes = append(nodes, renderBlocks(children, src)...)
 	}
 
-	return gosx.Fragment(nodes...), nil
+	return withEmailProtection(gosx.Fragment(nodes...)), nil
 }
 
 // renderDocIntro renders the eyebrow + `.h1` + optional `.lead` every

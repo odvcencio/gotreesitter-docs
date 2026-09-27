@@ -75,6 +75,7 @@ g, err := grammargen.ImportGrammarJSON(data)
 if err != nil {
 	log.Fatal(err)
 }
+_ = g
 ```
 
 ### Option B: resolve grammar.js with Tree-sitter
@@ -108,8 +109,8 @@ must still register a compatible Go external scanner for runtime parsing.
 The older `-js` flag remains a best-effort pure-Go importer. It does not execute
 JavaScript, but it cannot resolve all helpers or `require()` calls.
 
-See the [CLI resolver](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/cmd/grammargen/grammar_js_cli.go),
-the [pure-Go importer](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/grammargen/import_grammarjs.go),
+See the [CLI resolver](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/cmd/grammargen/grammar_js_cli.go),
+the [pure-Go importer](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/grammargen/import_grammarjs.go),
 [pull request #520](https://github.com/odvcencio/gotreesitter/pull/520),
 and [runtime diagnostic pull request #537](https://github.com/odvcencio/gotreesitter/pull/537)
 for implementation details.
@@ -235,13 +236,25 @@ the 206-grammar registry:
 var kvconfBlob []byte
 
 lang, err := gts.LoadLanguage(kvconfBlob) // load_language.go
+if err != nil {
+	panic(err)
+}
 tree, err := gts.NewParser(lang).Parse(src)
+if err != nil {
+	panic(err)
+}
+_ = tree
 ```
 
 Or use `taproot/walk`, which adds caching and a CST walker but still needs no registry:
 
 ```go
 root, w, err := walk.ParseFromBlob("kvconf", kvconfBlob, src)
+if err != nil {
+	panic(err)
+}
+_ = root
+_ = w
 ```
 
 **taproot with generation fallback.** `taproot.ParseFromBlob` loads the blob when present and
@@ -250,8 +263,18 @@ name:
 
 ```go
 root, w, err := taproot.ParseFromBlob("kvconf", kvconfBlob, kvconf.Grammar, src)
+if err != nil {
+	panic(err)
+}
+_ = root
+_ = w
 // or, no blob at all:
 root, w, err = taproot.Parse("kvconf", kvconf.Grammar, src)
+if err != nil {
+	panic(err)
+}
+_ = root
+_ = w
 ```
 
 `taproot.Language(name, build)` and `taproot.LanguageFromBlob(name, blob, build)` are the

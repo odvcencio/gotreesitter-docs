@@ -1,6 +1,6 @@
 ---
 title: Syntax Highlighting
-description: Turn source code into styled ranges with the Highlighter — embedded highlight queries for all 206 grammars, incremental re-highlighting, and nested fenced-code highlighting.
+description: Turn source code into styled ranges with embedded highlight queries, incremental re-highlighting, and nested fenced-code highlighting.
 nav_group: Using the Parser
 order: 5
 ---
@@ -15,9 +15,9 @@ This is the same query-driven model as upstream tree-sitter's
 [syntax highlighting](https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html), with
 one practical packaging difference: upstream distributes highlight queries as
 `queries/highlights.scm` files that a consumer must locate and load, while gotreesitter embeds
-the highlight query for every one of its 206 built-in grammars directly in the `grammars`
-registry. There is no `.scm` file to find, ship, or version-match — `LangEntry.HighlightQuery` is
-a string that is already there.
+shipped highlight queries in the `grammars` registry. There is no `.scm` file to find, ship, or
+version-match for those queries — `LangEntry.HighlightQuery` is a string on the registry entry.
+The v0.55.1 language guide reports that all 156 shipped highlight queries compile.
 
 If you have not met the query language yet, read [Queries](/docs/queries) first — a highlight
 query is an ordinary query whose capture names happen to be style-ish (`@keyword`, `@string`,
@@ -106,6 +106,7 @@ changed := gts.DiffChangedRanges(oldTree, newTree)
 _ = changed // apply ranges before releasing oldTree
 oldTree.Release()
 oldTree, ranges = newTree, newRanges // carry forward for the next edit
+_ = ranges
 ```
 
 The parse underneath reuses unchanged subtrees, so the expensive half of re-highlighting scales
@@ -135,6 +136,10 @@ if entry.TokenSourceFactory != nil {
     }))
 }
 hl, err := gts.NewHighlighter(lang, entry.HighlightQuery, opts...)
+if err != nil {
+    log.Fatal(err)
+}
+_ = hl
 ```
 
 Skipping this for a language that needs it does not fail loudly — it parses with the DFA path and

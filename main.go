@@ -18,6 +18,11 @@ import (
 	"m31labs.dev/gosx/server"
 )
 
+const (
+	fontStylesheetURL = "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap"
+	fontFileURL       = "https://fonts.gstatic.com/s/jetbrainsmono/v24/tDba2o-flEEny0FZhsfKu5WU4xD-IQ-PuZJJXxfpAO-LflOQ.ttf"
+)
+
 func main() {
 	_, thisFile, _, _ := runtime.Caller(0)
 	root := server.ResolveAppRoot(thisFile)
@@ -36,9 +41,9 @@ func main() {
 		// site's actual head (app/layout.gsx only renders the body shell), so
 		// the fonts are wired in here rather than in the .gsx layout.
 		ctx.AddHead(
-			gosx.El("link", gosx.Attrs(gosx.Attr("rel", "preconnect"), gosx.Attr("href", "https://fonts.googleapis.com"))),
-			gosx.El("link", gosx.Attrs(gosx.Attr("rel", "preconnect"), gosx.Attr("href", "https://fonts.gstatic.com"), gosx.BoolAttr("crossorigin"))),
-			server.Stylesheet("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap"),
+			gosx.El("link", gosx.Attrs(gosx.Attr("rel", "preconnect"), gosx.Attr("href", fontStylesheetURL))),
+			gosx.El("link", gosx.Attrs(gosx.Attr("rel", "preconnect"), gosx.Attr("href", fontFileURL), gosx.BoolAttr("crossorigin"))),
+			server.Stylesheet(fontStylesheetURL),
 		)
 		ctx.AddHead(server.Stylesheet(docsapp.PublicAssetURL("docs.css")))
 		ctx.AddHead(gosx.El("link", gosx.Attrs(

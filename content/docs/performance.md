@@ -1,123 +1,119 @@
 ---
 title: Performance
-description: Dated gotreesitter benchmark results, their scope, and the v0.54.0 default route.
+description: Dated gotreesitter benchmark results, their scope, and v1 speed targets.
 nav_group: Internals
 order: 2
 ---
 
-Version v0.54.0 uses the production GLR route by default. Set
-`GTS_ADMISSION_CANDIDATE=1` to enable the compact candidate route.
-Compact parser graduation remains incomplete. The measurements below come from the
-[tagged BENCH.md](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/BENCH.md)
-and [release notes](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/CHANGELOG.md#0540---2026-09-23).
-Each result applies to its stated revision, host, and workload.
+Version v0.55.1 uses production GLR parsing by default. Set
+GTS_ADMISSION_CANDIDATE=1 to try the compact candidate route. Its per-language
+allowlist is empty. Compact parser graduation remains in progress.
 
-## v0.54.0 default-route comparison
+## v0.55.1 control on a quiet host
 
-The release notes dated 2026-09-23 report three independent, interleaved runs.
-The harness compares Go and C in one process on a fixed nine-language corpus of typical files.
-The table compares the prior default with the release candidate. Lower Go/C ratios mean less time.
-These ratios are not results for the four-file Go matrix below.
+Upstream measured the exact v0.55.1 source, commit
+[92db945f](https://github.com/odvcencio/gotreesitter/commit/92db945f28de67be51de8235c9cd4e25a900f648),
+on 2026-09-27. The medians below are from gts-bench-1: C3-standard-8, Xeon
+Platinum 8481C, four cores with SMT off, Ubuntu 24.04, and Go 1.26.4. The input
+is a generated Go file with 500 functions that never forks. It is a control,
+not a typical source file. The
+[upstream BENCH.md receipt](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md#primary-trio-baseline)
+and [PR #1355](https://github.com/odvcencio/gotreesitter/pull/1355) describe the measurement.
 
-| Language | Prior default Go / C | New default Go / C | Speedup |
-|---|---:|---:|---:|
-| Go | 5.97× | 5.42× | 1.10× |
-| Python | 2.87× | 1.54× | 1.86× |
-| TypeScript | 3.17× | 2.31× | 1.37× |
-| Rust | 5.06× | 2.53× | 2.00× |
-| YAML | 3.56× | 2.34× | 1.52× |
-| Bash | 3.65× | 2.08× | 1.75× |
-| Markdown | 6.36× | 2.87× | 2.22× |
-| Lua | 4.66× | 2.33× | 2.00× |
-| CSS | 4.60× | 2.36× | 1.95× |
+| Benchmark | Median | Allocations/op |
+|---|---:|---:|
+| Full parse | 8,686,195 ns/op | 8 |
+| Single-byte edit | 177,281 ns/op | 5 |
+| No-edit reparse | 8.318 ns/op | 0 |
 
-TypeScript and YAML had 100% fallback under the prior default: compact parsing declined,
-then production parsing repeated the work. The release notes cite
-[PR #1264](https://github.com/odvcencio/gotreesitter/pull/1264).
-They do not publish a combined ratio. Do not infer one for other inputs.
+The allocation counts come from the v0.55.1
+[CHANGELOG measurement scope](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/CHANGELOG.md#measurement-scope).
+The host was pinned to CPU 2. Upstream used 20 shuffled seeds, one process per
+seed, GOMAXPROCS=1, -benchtime=750ms, and -benchmem.
 
-## Quiet-host control: 2026-09-23
-
-The dated BENCH.md receipt uses revision `4637be52a`, an Intel Xeon D-2141I at 2.20 GHz,
-`GOMAXPROCS=1`, and medians of ten runs with `-benchtime=750ms`.
-The input is a generated 500-function Go file. It is a single-stack control, not representative real code.
-
-| Benchmark | ns/op | B/op | allocs/op |
-|---|---:|---:|---:|
-| `BenchmarkGoParseFullDFA` | 61,938,000 | 675,394 | 45 |
-| `BenchmarkGoParseIncrementalSingleByteEditDFA` | 439,825 | 410 | 5 |
-| `BenchmarkGoParseIncrementalNoEditDFA` | 27.4 | 0 | 0 |
-
-The single-byte edit takes 439.825 µs and allocates five objects. Only the no-edit lane
-allocates zero. This receipt is dated and pinned; it is not a measurement of the exact
-v0.54.0 tag. Do not combine it with the v0.53.0 results from another host.
+To run the same control on gotreesitter main, upstream used this command and
+[benchmark script](https://github.com/odvcencio/gotreesitter/blob/main/scripts/bench_baseline.sh):
 
 ```sh
-GOWORK=off GOMAXPROCS=1 go test . -run '^$' \
-  -bench 'BenchmarkGoParseFullDFA|BenchmarkGoParseIncrementalSingleByteEditDFA|BenchmarkGoParseIncrementalNoEditDFA' \
-  -benchmem -count=10 -benchtime=750ms
+GOMAXPROCS=1 GOWORK=off taskset -c 2 bash scripts/bench_baseline.sh <out>
 ```
 
-## Real-code matrix: sealed v9 receipt
+This script is on upstream main. It is not part of the v0.55.1 tag.
 
-BENCH.md identifies run `strictboundary-20260802T062212Z-v9` (2026-08-02,
-build commit `492cd600`) as its current sealed Go/C evidence. It measures four frozen Go files.
-It does not measure the v0.54.0 default dispatcher.
+## Sealed Go-versus-C receipt
 
-| Fixture | Production Go / C | Compact Go / C |
-|---|---:|---:|
-| `rewrite.go` | 4.653× | 4.348× |
-| `query_compile.go` | 4.509× | 4.030× |
-| `language.go` | 4.223× | 4.126× |
-| `grammargen/lr.go` | 6.065× | 3.493× |
-| Equal-fixture geometric mean | 4.815× | 3.986× |
+The hardware-attested v9 receipt measured four frozen Go files on 2026-08-02,
+at build 492cd600, inside an AMD SEV Confidential Space VM. Its equal-fixture
+geometric mean was 4.815x C for production and 3.986x C for compact. This is
+not a v0.55.1 measurement. The signed receipt cannot be rerun outside
+Confidential Space. Upstream keeps its scope and limits in the
+[sealed receipt](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md#sealed-epoch--v9-hardware-attested-authoritative).
 
-Each Go iteration calls public `Parser.Parse` and checks root completeness and errors.
-The C lane makes the same checks. Neither timed lane walks the full tree.
-The run uses the locked tree-sitter v0.25.1 C oracle, `GOMAXPROCS=1`, at least ten seconds
-per fixture and backend, `GOAMD64=v3`, and a pinned profile for Go profile-guided optimization.
-The artifact includes hardware attestation and a signed receipt.
+## v1.0 speed targets
 
-The production self-comparison has a geometric mean of 0.9989 and a maximum absolute delta
-of 1.42%. The C self-comparison has a geometric mean of 0.9985 and a maximum absolute delta
-of 0.69%. These are reported measurements, not pass/fail thresholds.
+The v1 design sets these targets. Owner decision O-Q3 makes the engine-floor
+and tuned rows release-blocking for v1.0. Stretch targets remain directional.
 
-The source states these limits:
+| Layer | Scope | v1.0 target |
+|---|---|---|
+| Engine floor | All 206 grammars | Median at most 3x C; no file above 5x; no cliff failures. |
+| Tuned | Top 50 grammars | Median at most 2.5x C; no language above 4x; 99th-percentile edit latency at most 20 ms at 137 KiB. |
+| Stretch | Top 20 grammars | Full parse at most 2x C; edit latency at or below C. |
 
-- The run used the ten-second floor only. It did not resample at 750 ms or five seconds.
-- The C binary is identical to the v8, run6, and v0.45.0 oracle.
-- The Go build differs from v8 by 46 commits. The receipt cannot isolate one change or separate
-  the combined changes from hardware variation between virtual machines.
-- No target ratio was set for this run. The results are not adjusted to a target.
+See [the v1 design](https://github.com/odvcencio/gotreesitter/blob/main/docs/v1-design.md#d13-engine-floor-tuned-and-stretch-targets)
+for the complete gate and [The road to v1](/docs/v1) for the release plan.
 
-The older v0.45.0 values, 5.526× C for production and 2.9975× C for compact, are historical.
-They are not current full-parser claims. See the
-[sealed receipt and caveats](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/BENCH.md#sealed-epoch--v9-hardware-attested-authoritative).
+## History
 
-## Historical v0.53.0 release comparison
+### v0.54.0 default-route comparison
 
-The [2026-09-19 release notes](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/CHANGELOG.md#0530---2026-09-19)
-compare v0.52.0 with v0.53.0 candidate `48503fef`. The run uses twenty shuffled pairs,
-`GOMAXPROCS=1`, `-benchtime=750ms`, the `gts_parsercorephase0` tag, and one pinned
-Intel Core Ultra 9 285 CPU in a container with 4 GiB of memory.
+The 2026-09-23 v0.54.0 release notes compare the prior default with the new
+default on a fixed nine-language corpus of typical files. They name Buildbox's
+tamarack harness but publish no hardware model. Lower Go/C ratios mean less
+time. These results are historical and do not describe v0.55.1.
+
+| Language | Prior default Go / C | v0.54.0 Go / C | Speedup |
+|---|---:|---:|---:|
+| Go | 5.97x | 5.42x | 1.10x |
+| Python | 2.87x | 1.54x | 1.86x |
+| TypeScript | 3.17x | 2.31x | 1.37x |
+| Rust | 5.06x | 2.53x | 2.00x |
+| YAML | 3.56x | 2.34x | 1.52x |
+| Bash | 3.65x | 2.08x | 1.75x |
+| Markdown | 6.36x | 2.87x | 2.22x |
+| Lua | 4.66x | 2.33x | 2.00x |
+| CSS | 4.60x | 2.36x | 1.95x |
+
+TypeScript and YAML used the production fallback for every case in the prior
+default: compact parsing declined, then production parsed again. The release
+notes cite [PR #1264](https://github.com/odvcencio/gotreesitter/pull/1264).
+They do not publish a combined ratio.
+
+### v0.53.0 release comparison
+
+The 2026-09-19 release notes compare v0.52.0 with the v0.53.0 candidate
+48503fef. This historical run used twenty shuffled pairs, GOMAXPROCS=1,
+-benchtime=750ms, the gts_parsercorephase0 tag, and one pinned Intel Core
+Ultra 9 285 CPU in a container with 4 GiB of memory.
 
 | Benchmark | v0.52.0 | v0.53.0 | Time change |
 |---|---:|---:|---:|
 | Full parse | 13.099 ms | 9.637 ms | -26.43% |
-| Single-byte edit | 2,294.1 µs | 127.5 µs | -94.44% |
+| Single-byte edit | 2,294.1 us | 127.5 us | -94.44% |
 | No-edit reparse | 2.612 ns | 4.043 ns | +54.80% |
 
-The edited lane allocated five objects in v0.53.0. The no-edit lane allocated zero.
-These are historical comparisons on one host, not v0.54.0 timings or C comparisons.
+The v0.53.0 edited lane allocated five objects and its no-edit lane allocated
+zero. These are historical results on one host, not v0.55.1 timings or C
+comparisons. See the
+[v0.54.0 release notes](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/CHANGELOG.md#0530---2026-09-19).
 
-## Scope and reproduction
+## Scope
 
-Full parsing, edited parsing, no-edit reuse, and parser-core diagnostics are separate workloads.
-The withdrawn 1.54 ms diagnostic omitted tree materialization. Do not use it as full-parse evidence.
-The withdrawn 1.895× C comparison also used different grammar artifacts.
+Full parsing, edited parsing, no-edit reuse, and parser-core diagnostics are
+separate workloads. The control above does not exercise GLR forks. Read each
+receipt for its source revision, input, host, correctness checks, and timing
+method. Report correctness separately from time and memory.
 
-Use the fixture hashes, compiler flags, oracle hashes, and commands in the tagged BENCH.md
-when you reproduce a measurement. Report correctness separately from time and memory.
-The [roadmap](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/roadmap.md)
-sets public `Parser.Parse` at no more than 1.5× C as a future target. It is not an achieved result.
-See [Recovery and Correctness](/docs/recovery-and-correctness) for the dated parity scope.
+The project roadmap points to the current [v1 design](https://github.com/odvcencio/gotreesitter/blob/main/docs/v1-design.md).
+See [Recovery and Correctness](/docs/recovery-and-correctness) for the published
+correctness scopes.

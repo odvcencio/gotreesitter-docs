@@ -5,25 +5,23 @@ nav_group: Using the Parser
 order: 4
 ---
 
-An editor re-parses on every keystroke. Suppose parsing a large file from scratch takes a
-millisecond, and a user types at ten keystrokes a second. A naive editor integration then spends
-ten milliseconds a second just re-deriving syntax it already knew. Incremental parsing is how
-tree-sitter (and gotreesitter) avoid that: you tell the parser exactly what byte range changed,
-and it reuses every subtree the edit did not touch, re-lexing and re-parsing only the invalidated
-span.
+After an edit, incremental parsing can reuse unchanged parts of the previous tree. You record
+the edit on the old tree, then give that tree and the new source to the parser. The parser reuses
+subtrees where its safety checks allow and reparses the rest.
 
-Version v0.54.0 retains authenticated same-width edit reuse. It also fixes token-source
+Version v0.55.1 retains authenticated same-width edit reuse. It also fixes token-source
 resume for C and Java and applies the reuse-budget stop to plain `ParseIncremental`.
 Groovy incremental calls now use a fresh full parse. If the source length changes without a
 recorded `Tree.Edit`, the parser also uses a fresh parse. Always record edits; this fallback
 is not a replacement for the edit contract.
 
-The 2026-09-23 control receipt at revision `4637be52a` reports 439.825 µs and five allocations
-for a single-byte edit, and 27.4 ns with zero allocations for no-edit reuse. It uses a generated
-Go file on an Intel Xeon D-2141I. These are not exact-tag measurements.
-See [Performance](/docs/performance) for the complete dated evidence and host settings.
-The behavior changes are in the
-[v0.54.0 release notes](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/CHANGELOG.md#0540---2026-09-23).
+The 2026-09-27 quiet-host control measured the exact v0.55.1 source, 92db945f: full parse
+took 8,686,195 ns/op with eight allocations; a single-byte edit took 177,281 ns/op with five
+allocations; no-edit reuse took 8.318 ns/op with zero allocations. The generated 500-function Go
+file never forks, so it is a control rather than typical editor input. The
+[Performance](/docs/performance) page records the host and method. See the
+[v0.55.1 release notes](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/CHANGELOG.md#measurement-scope)
+for the allocation scope.
 
 This page assumes you have a tree from `Parser.Parse`.
 See [Syntax Trees and Nodes](/docs/syntax-trees-and-nodes) for tree ownership.
@@ -52,6 +50,10 @@ tree.Edit(gts.InputEdit{
 })
 
 newTree, err := parser.ParseIncremental(newSrc, tree)
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(newTree.RootNode().HasError())
 ```
 
 `tree.Edit` does not re-parse anything by itself. It shifts the byte offsets and points of every
@@ -104,7 +106,7 @@ it does not record edit history — prefer `Tree.Edit` unless you are doing some
 ## What `ParseIncremental` reuses
 
 ```go
-func (p *Parser) ParseIncremental(source []byte, oldTree *Tree) (*Tree, error)
+var parseIncremental func(parser *gts.Parser, source []byte, oldTree *gts.Tree) (*gts.Tree, error)
 ```
 
 `ParseIncremental` walks the old tree's spine, identifies the region actually invalidated by the

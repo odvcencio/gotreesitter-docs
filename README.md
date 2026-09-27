@@ -12,7 +12,6 @@ Live site: [gotreesitter.m31labs.dev](https://gotreesitter.m31labs.dev/)
 
 The site documents gotreesitter **v0.55.1**, released on 2026-09-26.
 The site links its displayed parser version to the pinned module build.
-The [v0.54.0 audit](docs/release-v0.54.0-audit.md) records the earlier content review.
 The release catalog includes the v0.55.0 and v0.55.1 fixes and their measurement limits. The
 server-rendered [/changelog](https://gotreesitter.m31labs.dev/changelog) route
 turns the source changelog into a searchable release archive with tag, code,
@@ -62,8 +61,8 @@ RUN_BROWSER_PERF=1 ./scripts/verify-production.sh
 ```
 
 The playground has a 320 KiB decoded-JavaScript limit for the pinned GoSX engine, Go shim,
-navigation, and analytics. The v0.54.0 audit measured about 297 KiB; the prior 160 KiB limit
-was below the required framework payload. The 5,200 KiB network limit is unchanged.
+navigation, and analytics. The earlier 160 KiB limit was below the required framework payload.
+The 5,200 KiB network limit is unchanged.
 The build writes a Brotli variant of the parser WASM, and the server negotiates that variant
 without changing the decoded bytes or the versioned URL.
 
@@ -111,7 +110,7 @@ This documentation site is available under the [MIT License](LICENSE).
 
 ## Performance claims
 
-User-visible numbers must match gotreesitter's tagged
-[`BENCH.md`](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/BENCH.md). In particular, the
-withdrawn 1.54 ms no-tree diagnostic must never be presented as materialized full-parse
-performance.
+User-visible performance numbers must link the upstream receipt for their source, date, and host.
+The [current BENCH.md on main](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md)
+records the quiet-host control and sealed v9 receipt. The withdrawn 1.54 ms no-tree diagnostic
+must never be presented as materialized full-parse performance.

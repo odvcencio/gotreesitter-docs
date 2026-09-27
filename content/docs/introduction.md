@@ -1,95 +1,81 @@
 ---
 title: Introduction
-description: gotreesitter is a pure-Go, byte-exact reimplementation of tree-sitter — no CGo, no C toolchain, 206 grammars built in.
+description: gotreesitter is a pure-Go tree-sitter runtime with 206 built-in grammars and a documented, finite parity scope.
 nav_group: Introduction
 order: 1
 ---
 
-**gotreesitter** is a pure-Go reimplementation of [tree-sitter](https://tree-sitter.github.io/), an
-incremental parsing system. gotreesitter uses the same grammar format, the same parse-table
-approach, and the same incremental-reparse model as tree-sitter. The runtime contains zero C code.
+gotreesitter is a Go runtime for [tree-sitter](https://tree-sitter.github.io/). It reads
+tree-sitter grammar tables and parses source into syntax trees, with incremental parsing, queries,
+and language injection. The runtime is implemented in Go and has no CGo dependency.
 
-## What it is, and isn't
+## What it is
 
-gotreesitter is not a CGo binding to the C tree-sitter library. It is a from-scratch
-reimplementation of the runtime: the lexer, the LR/GLR parser, the incremental engine, the arena
-allocator, the query engine, and the tree cursor are all written in Go. No code is translated or
-copied from the C implementation.
+The parser, lexer, incremental engine, arena allocator, query engine, and tree cursor are Go code.
+The recovery algorithm follows tree-sitter C's decision steps and cost constants. Differential
+tests compare Go trees with a pinned C runtime.
 
-gotreesitter shares one thing with upstream tree-sitter: the input format. gotreesitter reads the
-same `grammar.json` file that `tree-sitter generate` produces. Its own tool, `ts2go`, extracts
-parse tables directly from upstream `parser.c` files. The `grammars` package ships 206
-pre-compiled grammars. Each grammar comes from its real upstream repository; none are
-hand-approximated.
+The runtime reads tree-sitter parse tables. ts2go extracts tables from upstream parser.c files,
+and grammars ships 206 generated grammar blobs. Those grammar blobs come from their upstream
+grammar repositories. The v0.55.1
+[README](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/README.md) describes the current
+runtime and registry.
 
-This double effort has a payoff. gotreesitter produces syntax trees that are byte-exact matches
-against the C runtime (tree-sitter v0.25.1), on the curated cases that pass the comparison. Other cases have known differences.
-Its error-recovery engine is checked decision-by-decision against that same C runtime, for every
-language that has gone through the process (see below).
+## What you can build
 
-The relationship to [upstream tree-sitter](https://tree-sitter.github.io/tree-sitter/) is
-independent implementation with a shared interface. gotreesitter reads the same `grammar.json`
-files and the same query language as upstream, so grammars and queries written for the C
-ecosystem carry over unchanged. Upstream's documentation is canonical for the parts both
-implementations share: grammar-writing craft and the query-language spec. These pages link to
-that documentation instead of restating it. What these pages document is the Go engine itself,
-and every place where its behavior or API differs from upstream.
+- **Parse with built-in grammars.** The v0.55.1 registry contains 206 grammars. Its
+  [language guide](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/docs/languages.md)
+  describes scanner coverage and the limits of smoke tests.
+- **Check trees against C.** The project has structural, query, highlighting, recovery, and
+  real-corpus comparisons. Each board has its own tested inputs and date.
+- **Reuse unchanged syntax after edits.** The current quiet-host control measured full parsing,
+  a one-byte edit, and no-edit reuse on a generated Go file with 500 functions. That file never
+  forks, so the result is a control, not typical source code.
+- **Use queries and editor features.** The runtime includes query execution, syntax highlighting,
+  code navigation, injections, and UTF-16 positions.
 
-## Why it exists
+Version v0.55.1 uses production GLR parsing by default. Set
+GTS_ADMISSION_CANDIDATE=1 to try compact parsing; the language allowlist is empty.
 
-Every other Go tree-sitter binding wraps the C library through CGo. That approach has a cost that
-only shows up when you try to ship the software:
+## Measured control input
 
-- Cross-compiling needs a C cross-toolchain for the target. A build with `GOOS=wasip1`, an
-  unusual `GOARCH`, or a Windows target without MSYS2/MinGW fails to link.
-- CI images need `gcc` plus the grammar's C sources. `go install` breaks for anyone without a C
-  compiler on their machine.
-- The Go race detector, fuzzer, and coverage tooling cannot see across the CGo boundary. Bugs in
-  the C runtime or the FFI marshaling stay invisible to `go test -race`.
+Upstream measured the exact v0.55.1 source, commit
+[92db945f](https://github.com/odvcencio/gotreesitter/commit/92db945f28de67be51de8235c9cd4e25a900f648),
+on 2026-09-27 at gts-bench-1: C3-standard-8, Xeon Platinum 8481C, four cores with SMT off,
+Ubuntu 24.04, Go 1.26.4, pinned to CPU 2. The medians used 20 shuffled seeds, one process per
+seed, GOMAXPROCS=1, -benchtime=750ms, and -benchmem. Upstream's
+[benchmark receipt](https://github.com/odvcencio/gotreesitter/blob/main/BENCH.md#primary-trio-baseline)
+and [PR #1355](https://github.com/odvcencio/gotreesitter/pull/1355) give the method.
 
-A Go program that wanted real tree-sitter parsing used to pay one of these costs, or do without
-parsing at all. gotreesitter removes the C dependency instead of hiding it: run `go get`, then
-build a single static binary for any target Go supports.
+| Benchmark | Median | Allocations/op |
+|---|---:|---:|
+| Full parse | 8,686,195 ns/op | 8 |
+| Single-byte edit | 177,281 ns/op | 5 |
+| No-edit reparse | 8.318 ns/op | 0 |
 
-## What you get
+The allocation counts are from the v0.55.1
+[CHANGELOG measurement scope](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/CHANGELOG.md#measurement-scope).
+The workload is a generated 500-function Go file that never forks. Treat it as a control, not
+typical code.
 
-- **206 embedded grammars.** There is no separate install step, and no `.so` or `.wasm` file to
-  fetch at runtime.
-- **A curated structural gate for 206 grammars** against the pinned C oracle, with no
-  allowed known-degraded structural entries. The dated boards describe other tested scopes.
-- **A single static binary.** `go build` is the whole pipeline. There is no C toolchain to
-  provision in CI or on a teammate's machine.
-- **Byte-exact syntax trees**, verified against the C runtime where checked.
-- **Oracle-gated recovery and ambiguity handling.** Curated and real-corpus suites compare the
-  selected Go tree with a pinned C runtime. The suites report correctness and performance
-  separately.
-- **Incremental reuse.** The 2026-09-23 generated-Go control measured 439.825 µs and five
-  allocations for a single-byte edit. No-edit reuse measured 27.4 ns with zero allocations.
-- **Dated full-parse evidence.** The sealed v9 receipt from 2026-08-02 measured 4.815× C for
-  production and 3.986× C for compact parsing on four frozen Go files.
+## Parity has a measured scope
 
-Version v0.54.0 makes the production GLR route the default. Set
-`GTS_ADMISSION_CANDIDATE=1` to enable compact parsing. Graduation remains incomplete.
-The benchmark results above apply to their pinned revisions, not the exact v0.54.0 tag.
-See [Performance](/docs/performance) for the source, host, method, and limits.
+The recovery board published on 2026-09-19 records agreement on 39 of 79 cases. Other parity
+areas have separate boards and results. A clean result on one fixture does not establish a match
+for every input. See [Recovery and Correctness](/docs/recovery-and-correctness) for the board
+dates, methods, and known gaps.
 
-## Scope
+The CGo parity harness uses C as a test oracle; it is not linked into the runtime. See
+[Contributing](/docs/contributing) for the separate harness and its requirements.
 
-The [tagged README](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/README.md)
-reports 206 grammars and 119 Go external scanners. Smoke success does not prove parity for
-every input. The project publishes separate boards for queries, highlighting, recovery,
-and real-code inputs. See [Recovery and Correctness](/docs/recovery-and-correctness).
+## v1.0 performance goals
 
-The [roadmap](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/roadmap.md)
-keeps memory work and compact parser graduation open. It identifies 1.5× C on the locked
-real-code matrix as a future target, not a result.
-
-## Who it's for
-
-If you are building an editor, a linter, an LSP, or a code-intelligence index — anything that
-walks real syntax trees at scale — gotreesitter gives you that without asking your users to
-install a C toolchain first. It also suits one-off batch analysis over a large codebase, where
-incremental reparsing does not matter but 206 ready-to-use grammars and a single binary do.
+The [v1 design](https://github.com/odvcencio/gotreesitter/blob/main/docs/v1-design.md) sets an
+engine-floor target of a median no more than 3x C across all 206 grammars, with no file above 5x.
+For the top 50, the tuned target is a median no more than 2.5x C, no language above 4x, and
+99th-percentile edit latency no more than 20 ms at 137 KiB. Owner decision O-Q3 makes both rows
+release-blocking for v1.0. The top-20 stretch target is full parsing at no more than 2x C and edit
+latency at or below C. These are targets, not current results. See [The road to v1](/docs/v1).
 
 ## A quick look
 
@@ -126,4 +112,5 @@ func main() {
 ```
 
 > [!TIP] Next
-> Ready to write your own parser? Continue to [Getting Started](/docs/getting-started).
+> Continue to [Getting Started](/docs/getting-started) for short steps you can run in your own
+> module.

@@ -103,6 +103,7 @@ tree, err := parser.ParseStrict(src)
 if errors.Is(err, gts.ErrParseStoppedEarly) {
     // parsing did not accept all input; `tree` still holds the partial result
 }
+_ = tree
 ```
 
 `ParseStrict` returns `ErrParseStoppedEarly` instead of a silently partial tree (the partial tree

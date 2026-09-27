@@ -33,8 +33,15 @@ err := ip.RegisterInjectionQuery("markdown", `
   (info_string (language) @injection.language)
   (code_fence_content) @injection.content)
 `)
+if err != nil {
+	panic(err)
+}
 
 result, err := ip.Parse(src, "markdown")
+if err != nil {
+	panic(err)
+}
+_ = result
 ```
 
 Setup takes three steps: register every language that can appear (parent or child) under a name,
@@ -55,13 +62,13 @@ embeddings), and a detected region whose language is **not registered** still pr
 `Injection` entry, with `Tree == nil`. You see that the region exists and what language it claims
 to be; you just do not get a parse of it.
 
-## Timeouts and cancellation in v0.54.0
+## Timeouts and cancellation
 
 `InjectionParser.SetTimeoutMicros(uint64)` applies a timeout to each parent and child parse.
 Zero disables it. This is a separate limit for each parse, not one deadline for the whole document.
 `SetCancellationFlag(*uint32)` shares a caller-owned cancellation flag with those parsers.
 Update the flag with `atomic.StoreUint32`. Both settings apply to cached parsers and parsers
-created later. See the [source contract](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/injection.go).
+created later. See the [source contract](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/injection.go).
 
 ## The injection query
 
@@ -160,6 +167,10 @@ multi-range injections (an embedded region interrupted by template syntax, say).
 parser := gts.NewParser(grammars.GoLanguage())
 parser.SetIncludedRanges([]gts.Range{{StartByte: fenceStart, EndByte: fenceEnd /* plus Points */}})
 tree, err := parser.Parse(fullDocument) // parses only the fence bytes
+if err != nil {
+	panic(err)
+}
+_ = tree
 ```
 
 `SetIncludedRanges` normalizes its input: it drops empty ranges, sorts the remaining ranges, and

@@ -17,7 +17,7 @@ depends on how much control you need over the walk.
 calling your function once per node:
 
 ```go
-func Walk(node *Node, fn func(node *Node, depth int) WalkAction)
+var Walk = gts.Walk
 ```
 
 `WalkAction` lets the callback control descent: `WalkContinue` (visit children and siblings as
@@ -49,6 +49,7 @@ built around an explicit stack of `(node, childIndex)` frames:
 
 ```go
 c := gts.NewTreeCursorFromTree(tree) // starts at tree.RootNode()
+fmt.Println(c.CurrentNodeType())
 ```
 
 To start somewhere other than the root, use `NewTreeCursor(node, tree) *TreeCursor` with an
@@ -99,19 +100,21 @@ state. Here is the classic cursor-based DFS: descend, and when you cannot, advan
 sibling or climb until you can:
 
 ```go
-c := gts.NewTreeCursorFromTree(tree)
-count := 0
-for {
-    count++ // visit c.CurrentNode() here
-    if c.GotoFirstChild() {
-        continue
-    }
+func countNodes(tree *gts.Tree) int {
+    c := gts.NewTreeCursorFromTree(tree)
+    count := 0
     for {
-        if c.GotoNextSibling() {
-            break
+        count++ // visit c.CurrentNode() here
+        if c.GotoFirstChild() {
+            continue
         }
-        if !c.GotoParent() {
-            return count // back at the root with nowhere left to go
+        for {
+            if c.GotoNextSibling() {
+                break
+            }
+            if !c.GotoParent() {
+                return count // back at the root with nowhere left to go
+            }
         }
     }
 }
