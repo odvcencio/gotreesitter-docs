@@ -53,7 +53,7 @@ func init() {
 
 func changelogMetadata() server.Metadata {
 	const (
-		title       = "Changelog — GoTreeSitter"
+		title       = "Changelog | gotreesitter"
 		description = "Explore GoTreeSitter releases, current work, upgrade impact, and source evidence."
 	)
 	image := server.MediaAsset{
@@ -71,7 +71,7 @@ func changelogMetadata() server.Metadata {
 		OpenGraph: &server.OpenGraph{
 			Type:        "website",
 			URL:         docsapp.SiteURL + "/changelog",
-			SiteName:    "GoTreeSitter",
+			SiteName:    "gotreesitter",
 			Title:       title,
 			Description: description,
 			Images:      []server.MediaAsset{image},

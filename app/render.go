@@ -242,7 +242,7 @@ func isH2(n *mdpp.Node) bool {
 // `.step`/`.stepn`/`.sc` block instead of a plain `.h2`+`.underbar` section,
 // preserving the current getting-started page structure
 // without inventing new markdown syntax — the section heading itself
-// becomes the step's `<h4>` title.
+// becomes the step's `<h2>` title.
 //
 // Once a section's entire body reduces to a single "next steps" link list,
 // steps numbering stops: that section (design's own getting-started page
@@ -269,7 +269,7 @@ func renderStepsLayout(nodes []*mdpp.Node, src []byte) []gosx.Node {
 		if sec.heading != nil {
 			title = sec.heading.Text()
 		}
-		out = append(out, renderStep(stepIdx, title, sec.body, src))
+		out = append(out, renderStep(stepIdx, 2, title, sec.body, src))
 	}
 	return out
 }

@@ -115,6 +115,14 @@ for index in "${!routes[@]}"; do
   curl --silent --show-error --fail --output "$route_page" "$base$route"
   grep -Fq '<html data-gosx-document="true" lang="en"' "$route_page" ||
     fail "document language is missing from $route"
+  grep -Fq 'gotreesitter</title>' "$route_page" ||
+    fail "lowercase gotreesitter title brand is missing from $route"
+  if grep -Fq 'GoTreeSitter Docs</title>' "$route_page"; then
+    fail "legacy page title brand remains on $route"
+  fi
+  if grep -Eq 'fonts\.googleapis\.com|fonts\.gstatic\.com' "$route_page"; then
+    fail "remote Google Fonts reference remains on $route"
+  fi
   grep -Fq 'rel="canonical"' "$route_page" || fail "canonical metadata missing from $route"
   grep -Fq "href=\"https://gotreesitter.m31labs.dev$route\"" "$route_page" ||
     fail "canonical metadata does not match $route"
@@ -125,7 +133,9 @@ import pathlib
 import re
 import sys
 
-email = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
+# Require an alphabetic final domain label so Go module versions such as
+# gotreesitter@v0.55.1 are not mistaken for email addresses.
+email = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
 for path in pathlib.Path(sys.argv[1]).glob("*.html"):
     html = path.read_text()
     outside = re.sub(r"<!--email_off-->.*?<!--/email_off-->", "", html, flags=re.S)
@@ -145,7 +155,7 @@ done < <(
 )
 
 curl --silent --show-error --fail --output "$page_body" "$base/"
-grep -Fq 'Production route default' "$page_body" || fail "landing route contract missing from /"
+grep -Fq 'Read the code. Follow the tree.' "$page_body" || fail "landing route contract missing from /"
 curl --silent --show-error --fail --output "$page_body" "$base/docs/performance"
 grep -Fq '4.815' "$page_body" || fail "sealed v9 production ratio missing from /docs/performance"
 external_scanners_html="$(curl --silent --show-error --fail "$base/docs/external-scanners")"
@@ -162,7 +172,7 @@ grep -Fq "$gts_version" "$page_body" || fail "$gts_version missing from /changel
 grep -q 'href="/changelog" aria-current="page"' "$page_body" || fail "active changelog navigation state is missing"
 
 languages_html="$(curl --silent --show-error --fail "$base/docs/languages")"
-lang_search_url="$(grep -oE '/gosx/islands/LangSearch\.json\?v=[0-9a-f]{12}' <<<"$languages_html" | head -n 1)"
+lang_search_url="$(grep -oE '/_app/islands/LangSearch\.json\?v=[0-9a-f]{12}' <<<"$languages_html" | head -n 1)"
 [[ -n "$lang_search_url" ]] || fail "cannot find content-versioned LangSearch island URL"
 curl --silent --show-error --fail "$base$lang_search_url" | grep -q 'LangSearch'
 

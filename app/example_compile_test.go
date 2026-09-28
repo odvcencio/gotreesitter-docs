@@ -156,9 +156,12 @@ func readDocumentationExamples(t *testing.T) []docExample {
 			out = append(out, example)
 		}
 	}
-	if heroSnippet != "" {
-		example := docExample{page: "home", index: 1, info: "go hero", code: heroSnippet}
-		out = append(out, example)
+	for _, spec := range landingParseSpecs {
+		if spec.Name == "go" {
+			example := docExample{page: "home", index: 1, info: "Go parse sample", code: spec.Source}
+			out = append(out, example)
+			break
+		}
 	}
 	return out
 }

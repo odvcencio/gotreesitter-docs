@@ -1,26 +1,25 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 
+	"github.com/andybalholm/brotli"
 	docsapp "github.com/odvcencio/gotreesitter-docs/app"
 	_ "github.com/odvcencio/gotreesitter-docs/modules"
 	"m31labs.dev/gosx"
+	runtimehost "m31labs.dev/gosx/client/runtime/host"
 	"m31labs.dev/gosx/env"
 	islandprogram "m31labs.dev/gosx/island/program"
 	"m31labs.dev/gosx/route"
 	"m31labs.dev/gosx/server"
-)
-
-const (
-	fontStylesheetURL = "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap"
-	fontFileURL       = "https://fonts.gstatic.com/s/jetbrainsmono/v24/tDba2o-flEEny0FZhsfKu5WU4xD-IQ-PuZJJXxfpAO-LflOQ.ttf"
 )
 
 func main() {
@@ -35,15 +34,35 @@ func main() {
 	port := getenv("PORT", "8080")
 
 	router := route.NewRouter()
+	router.SetNavigationHead(deferredNavigationHead)
 	router.SetLayout(func(ctx *route.RouteContext, body gosx.Node) gosx.Node {
-		// Space Grotesk + JetBrains Mono are the current site's two typefaces.
-		// This is the
-		// site's actual head (app/layout.gsx only renders the body shell), so
-		// the fonts are wired in here rather than in the .gsx layout.
 		ctx.AddHead(
-			gosx.El("link", gosx.Attrs(gosx.Attr("rel", "preconnect"), gosx.Attr("href", fontStylesheetURL))),
-			gosx.El("link", gosx.Attrs(gosx.Attr("rel", "preconnect"), gosx.Attr("href", fontFileURL), gosx.BoolAttr("crossorigin"))),
-			server.Stylesheet(fontStylesheetURL),
+			server.Font(server.FontProps{
+				Family:  "Space Grotesk",
+				Src:     docsapp.PublicAssetURL("fonts/space-grotesk-latin.woff2"),
+				Type:    "font/woff2",
+				Format:  "woff2",
+				Weight:  "400 700",
+				Display: "optional",
+			}),
+			server.Font(server.FontProps{
+				Family:  "JetBrains Mono",
+				Src:     docsapp.PublicAssetURL("fonts/jetbrains-mono-latin.woff2"),
+				Type:    "font/woff2",
+				Format:  "woff2",
+				Weight:  "400 700",
+				Display: "optional",
+			}),
+			server.Font(server.FontProps{
+				Family:    "JetBrains Mono",
+				Src:       docsapp.PublicAssetURL("fonts/jetbrains-mono-latin-italic.woff2"),
+				Type:      "font/woff2",
+				Format:    "woff2",
+				Weight:    "400",
+				Style:     "italic",
+				Display:   "optional",
+				NoPreload: true,
+			}),
 		)
 		ctx.AddHead(server.Stylesheet(docsapp.PublicAssetURL("docs.css")))
 		ctx.AddHead(gosx.El("link", gosx.Attrs(
@@ -59,7 +78,7 @@ func main() {
 			gosx.Attr("data-cf-beacon", `{"token": "0282fc84c88d4a37820b398987f22b2d"}`),
 		)))
 		ctx.SetLanguage("en")
-		return server.HTMLDocument(ctx.Document("GoTreeSitter Docs", body))
+		return server.HTMLDocument(ctx.Document("gotreesitter", body))
 	})
 
 	if err := router.AddDir(filepath.Join(root, "app"), route.FileRoutesOptions{}); err != nil {
@@ -68,9 +87,9 @@ func main() {
 
 	app := server.New()
 	app.Use(playgroundWASMCompression(root))
+	app.Mount(navigationRuntimeAssetURL(), navigationRuntimeAssetHandler())
 	router.SetRevalidator(app.Revalidator())
 	app.EnableISR()
-	app.EnableNavigation()
 	app.SetPublicDir(filepath.Join(root, "public"))
 	// A `gosx build` run stages the real WASM runtime + bootstrap JS the
 	// islands need to hydrate into dist/ (build.json + assets/runtime/*);
@@ -105,6 +124,58 @@ func main() {
 
 	log.Printf("gotreesitter-docs at http://localhost:%s", port)
 	log.Fatal(app.ListenAndServe(":" + port))
+}
+
+// deferredNavigationHead references GoSX's own managed-navigation runtime as
+// a deferred, cacheable module asset so its source does not sit inline in every
+// server-rendered page.
+func deferredNavigationHead(nonce string) gosx.Node {
+	attrs := []any{
+		gosx.BoolAttr("defer"),
+		gosx.Attr("data-gosx-navigation", "true"),
+		gosx.Attr("fetchpriority", "low"),
+		gosx.Attr("src", navigationRuntimeAssetURL()),
+	}
+	if nonce != "" {
+		attrs = append(attrs, gosx.Attr("nonce", nonce))
+	}
+	return gosx.El("script", gosx.Attrs(attrs...))
+}
+
+func navigationRuntimeAssetURL() string {
+	sum := sha256.Sum256([]byte(runtimehost.NavigationRuntime))
+	return fmt.Sprintf("/_app/runtime/navigation.%x.js", sum[:6])
+}
+
+func navigationRuntimeAssetHandler() http.Handler {
+	source := []byte(runtimehost.NavigationRuntime)
+	var compressed bytes.Buffer
+	writer := brotli.NewWriterLevel(&compressed, brotli.BestCompression)
+	if _, err := writer.Write(source); err != nil {
+		panic(fmt.Errorf("compress GoSX navigation runtime: %w", err))
+	}
+	if err := writer.Close(); err != nil {
+		panic(fmt.Errorf("finish GoSX navigation runtime compression: %w", err))
+	}
+	br := compressed.Bytes()
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		w.Header().Add("Vary", "Accept-Encoding")
+		payload := source
+		if acceptsBrotli(r.Header.Get("Accept-Encoding")) {
+			w.Header().Set("Content-Encoding", "br")
+			payload = br
+		}
+		w.Header().Set("Content-Length", fmt.Sprint(len(payload)))
+		if r.Method == http.MethodGet {
+			_, _ = w.Write(payload)
+		}
+	})
 }
 
 // mountIslandProgram serves a compiled island program's opcode JSON at

@@ -41,6 +41,8 @@ functional accents for the remaining 10 percent.
 - Readable muted ink: `#655e51`.
 - Legacy decorative muted ink: `#726b5c`.
 - Violet: `#9d4edd`.
+- Readable violet text: `#7132a8`; the lighter violet status fill is
+  `#ab64eb` so ink text keeps 4.5:1 contrast.
 - Blue: `#3a86ff`.
 - Cyan: `#1fbcd8`.
 - Green: `#12b886`.
@@ -63,6 +65,34 @@ settle. Use `cubic-bezier(0.16, 1, 0.3, 1)` for the standard ease-out curve.
 Reserve `cubic-bezier(0.34, 1.56, 0.64, 1)` for small pressed-state feedback.
 Disable nonessential transitions when the user requests reduced motion.
 Use native `details` expansion without animation.
+
+### Shipped patterns
+
+The landing page leads with six real parses from gotreesitter v0.55.1:
+Go, Python, Rust, TypeScript, JSON, and HTML. The server parses each example
+once at startup, caches its named-node tree and UTF-8 byte ranges, then
+renders the source next to that tree. Native radio tabs switch examples.
+Generated `:has()` selectors connect a focused or hovered source token to
+its tree row without application JavaScript.
+
+The playground links follow the parse panel and open a language-specific
+starter sample. The playground server accepts only canonical names from its
+grammar index. Source and query contents stay in the page and never enter the
+URL. The source editor, tree-sitter query editor, and GoSX keyboard input each
+have an accessible name.
+
+Space Grotesk and JetBrains Mono are self-hosted as Latin WOFF2 files in
+`public/fonts/`; their SIL Open Font License files sit beside the fonts.
+`server.Font` emits local font faces and preloads the regular faces with
+`font-display: optional`, so fallback text remains visible while fonts load.
+
+Accent fills carry ink text. Small text and muted labels use readable ink
+colors; decorative bright accents stay out of text roles. Links on the dark v1
+strip use the light yellow `#f6d36d` with an underline. The mobile header
+keeps to 64 pixels and places secondary links in the existing native
+`details` menu. Tables and the install command scroll inside their own
+containers on narrow screens. Honor `prefers-reduced-motion` by removing
+transitions and hover movement.
 
 ### Spacing
 
@@ -102,6 +132,8 @@ for the established site.
   --color-ink: #141210;
   --color-text-muted: #655e51;
   --color-violet: #9d4edd;
+  --color-violet-fill: #ab64eb;
+  --text-violet: #7132a8;
   --color-blue: #3a86ff;
   --color-cyan: #1fbcd8;
   --color-green: #12b886;

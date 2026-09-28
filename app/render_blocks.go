@@ -395,7 +395,7 @@ func isOrderedList(n *mdpp.Node) bool {
 //     markdown convention needed beyond the links already being links).
 //   - GFM task list (`- [ ] ...`) → `.checklist`.
 //   - ordered list (`1. ...`) → a `.step`/`.stepn`/`.sc` sequence, with a
-//     leading **bold** run in an item promoted to that step's `<h4>` title.
+//     leading **bold** run in an item promoted to that step's `<h3>` title.
 //   - anything else → the design's plain bulleted `ul.list`.
 func renderList(n *mdpp.Node, src []byte) gosx.Node {
 	if isFeatureLinkList(n) {
@@ -507,7 +507,7 @@ func renderFeatureCards(n *mdpp.Node) gosx.Node {
 		card := elWith("a",
 			gosx.Attrs(linkAttrs...),
 			elWith("div", gosx.Attrs(gosx.Attr("class", "featicon "+dotPalette[i%len(dotPalette)])), gosx.Text("→")),
-			elWith("h4", nil, gosx.Text(title)),
+			elWith("h3", nil, gosx.Text(title)),
 			elWith("p", nil, renderInline(desc)...),
 		)
 		cards = append(cards, card)
@@ -550,7 +550,7 @@ func renderStepList(n *mdpp.Node, src []byte) gosx.Node {
 	steps := make([]gosx.Node, 0, len(n.Children))
 	for i, li := range n.Children {
 		title, body := splitBoldLead(li)
-		steps = append(steps, renderStep(i+1, title, body, src))
+		steps = append(steps, renderStep(i+1, 3, title, body, src))
 	}
 	return gosx.Fragment(steps...)
 }
@@ -560,7 +560,7 @@ func renderStepList(n *mdpp.Node, src []byte) gosx.Node {
 // paragraph (plus any further blocks in a loose item) as the step body. An
 // item with no bold lead (contributing.md's and incremental-parsing.md's
 // ordered lists are plain text) returns an empty title and its content
-// unchanged — renderStep skips the <h4> in that case.
+// unchanged — renderStep skips the heading in that case.
 func splitBoldLead(li *mdpp.Node) (string, []*mdpp.Node) {
 	if len(li.Children) == 0 || li.Children[0].Type != mdpp.NodeParagraph {
 		return "", li.Children
@@ -575,11 +575,11 @@ func splitBoldLead(li *mdpp.Node) (string, []*mdpp.Node) {
 	return title, body
 }
 
-func renderStep(n int, title string, body []*mdpp.Node, src []byte) gosx.Node {
+func renderStep(n, headingLevel int, title string, body []*mdpp.Node, src []byte) gosx.Node {
 	color := dotPalette[(n-1)%len(dotPalette)]
 	sc := make([]gosx.Node, 0, len(body)+1)
 	if strings.TrimSpace(title) != "" {
-		sc = append(sc, elWith("h4", nil, gosx.Text(title)))
+		sc = append(sc, elWith(headingTag(headingLevel), nil, gosx.Text(title)))
 	}
 	sc = append(sc, renderBlocks(body, src)...)
 

@@ -7,7 +7,7 @@
         "lcp <= 2500",
         "long_tasks <= 2",
         "tbt <= 150",
-        "js_total_kb <= 160"
+        "js_total_kb <= 150"
       ]
     },
     "playground": {
@@ -17,7 +17,7 @@
         "long_tasks <= 4",
         "tbt <= 450",
         "js_total_kb <= 420",
-        "network_kb <= 5200"
+        "network_kb <= 5000"
       ]
     }
   },

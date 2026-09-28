@@ -48,7 +48,7 @@ func RegisterDocsPage(title, description string, opts route.FileModuleOptions) {
 	metadata := opts.Metadata
 	opts.Metadata = func(ctx *route.RouteContext, page route.FilePage, data any) (server.Metadata, error) {
 		meta := server.Metadata{
-			Title:       server.Title{Default: title + " | GoTreeSitter Docs"},
+			Title:       server.Title{Default: title + " | gotreesitter"},
 			Description: description,
 		}
 		if metadata == nil {
@@ -69,7 +69,7 @@ func RegisterStaticDocsPage(title, description, canonicalPath string, opts route
 	metaMetadata := opts.Metadata
 	opts.Metadata = func(ctx *route.RouteContext, page route.FilePage, data any) (server.Metadata, error) {
 		meta := mergeDocsMetadata(server.Metadata{
-			Title:       server.Title{Default: title + " | GoTreeSitter Docs"},
+			Title:       server.Title{Default: title + " | gotreesitter"},
 			Description: description,
 		}, CanonicalMetadata(canonicalPath))
 		if metaMetadata == nil {

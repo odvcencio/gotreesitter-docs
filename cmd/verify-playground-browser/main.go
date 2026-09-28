@@ -96,8 +96,23 @@ var realisticSamples = []string{
 type requestRecord struct {
 	method     string
 	url        string
+	postData   string
 	kind       network.ResourceType
 	managedNav bool
+}
+
+func isCloudflareBeacon(request requestRecord) bool {
+	return strings.Contains(request.url, "cloudflareinsights.com/cdn-cgi/rum")
+}
+
+func carriesAny(request requestRecord, markers ...string) bool {
+	data := strings.ToLower(request.url + "\n" + request.postData)
+	for _, marker := range markers {
+		if strings.Contains(data, strings.ToLower(marker)) {
+			return true
+		}
+	}
+	return false
 }
 
 func main() {
@@ -150,17 +165,83 @@ func main() {
 					break
 				}
 			}
+			var postData strings.Builder
+			for _, entry := range request.Request.PostDataEntries {
+				postData.WriteString(entry.Bytes)
+			}
 			requests = append(requests, requestRecord{
 				method:     request.Request.Method,
 				url:        request.Request.URL,
+				postData:   postData.String(),
 				kind:       request.Type,
 				managedNav: managedNav,
 			})
 		}
 	})
 
+	if err := chromedp.Run(ctx, network.Enable()); err != nil {
+		fatal(err)
+	}
+	mu.Lock()
+	observe = true
+	requests = nil
+	mu.Unlock()
 	if err := chromedp.Run(ctx,
-		network.Enable(),
+		chromedp.Navigate(base+"/"),
+		chromedp.WaitVisible("h1", chromedp.ByQuery),
+	); err != nil {
+		fatal(err)
+	}
+	mu.Lock()
+	homeRequests := append([]requestRecord(nil), requests...)
+	requests = nil
+	mu.Unlock()
+	for _, request := range homeRequests {
+		if strings.Contains(request.url, "/playground/runtime.wasm") || strings.Contains(request.url, "/playground/grammars/") {
+			fatal(fmt.Errorf("home page requested a playground parser asset: %s", request.url))
+		}
+	}
+	fmt.Println("home page did not request playground runtime or grammar assets")
+
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(base+"/playground?lang=rust"),
+		chromedp.WaitVisible("#pg-source", chromedp.ByQuery),
+	); err != nil {
+		fatal(err)
+	}
+	if err := waitForText(ctx, "#pg-status", "Parsed locally"); err != nil {
+		fatal(err)
+	}
+	var rustInitial struct {
+		Language string `json:"language"`
+		Source   string `json:"source"`
+		Query    string `json:"query"`
+	}
+	if err := chromedp.Run(ctx, chromedp.Evaluate(`(() => ({
+		language: document.querySelector("#pg-language")?.value || "",
+		source: document.querySelector("#pg-source")?.value || "",
+		query: document.querySelector("#pg-query")?.value || ""
+	}))()`, &rustInitial)); err != nil {
+		fatal(fmt.Errorf("read server-rendered Rust sample: %w", err))
+	}
+	if rustInitial.Language != "rust" || !strings.Contains(rustInitial.Source, "struct Greeter") || !strings.Contains(rustInitial.Query, "function_item") {
+		fatal(fmt.Errorf("?lang=rust did not preselect its Rust sample: language=%q source=%q query=%q", rustInitial.Language, rustInitial.Source, rustInitial.Query))
+	}
+	mu.Lock()
+	rustRequests := append([]requestRecord(nil), requests...)
+	requests = nil
+	mu.Unlock()
+	for _, request := range rustRequests {
+		if request.method != "GET" && !isCloudflareBeacon(request) {
+			fatal(fmt.Errorf("Rust initial sample emitted %s %s", request.method, request.url))
+		}
+		if carriesAny(request, "Greeter", "function_item", "struct ") {
+			fatal(fmt.Errorf("Rust source or query text appeared in request %s %s", request.method, request.url))
+		}
+	}
+	fmt.Println("?lang=rust server-rendered Rust without putting source in a request")
+
+	if err := chromedp.Run(ctx,
 		chromedp.Navigate(base+"/playground"),
 		chromedp.WaitVisible("#pg-source", chromedp.ByQuery),
 	); err != nil {
@@ -168,6 +249,21 @@ func main() {
 	}
 	if err := waitForText(ctx, "#pg-status", "Parsed locally"); err != nil {
 		fatal(err)
+	}
+	var playgroundInputNames struct {
+		Source   string `json:"source"`
+		Query    string `json:"query"`
+		Keyboard string `json:"keyboard"`
+	}
+	if err := chromedp.Run(ctx, chromedp.Evaluate(`(() => ({
+		source: document.querySelector("#pg-source")?.getAttribute("aria-label") || "",
+		query: document.querySelector("#pg-query")?.getAttribute("aria-label") || "",
+		keyboard: document.querySelector('#pg-root [contenteditable="true"]')?.getAttribute("aria-label") || ""
+	}))()`, &playgroundInputNames)); err != nil {
+		fatal(fmt.Errorf("read playground input names: %w", err))
+	}
+	if playgroundInputNames.Source != "Source code" || playgroundInputNames.Query != "Tree-sitter query" || playgroundInputNames.Keyboard != "Playground keyboard input" {
+		fatal(fmt.Errorf("playground input names are incomplete: source=%q query=%q keyboard=%q", playgroundInputNames.Source, playgroundInputNames.Query, playgroundInputNames.Keyboard))
 	}
 	var grammarOptions []*cdp.Node
 	if err := chromedp.Run(ctx, chromedp.Nodes("#pg-language option", &grammarOptions, chromedp.ByQueryAll)); err != nil {
@@ -199,10 +295,10 @@ func main() {
 	requests = nil
 	mu.Unlock()
 	for _, request := range privacyRequests {
-		if request.method != "GET" {
+		if request.method != "GET" && !isCloudflareBeacon(request) {
 			fatal(fmt.Errorf("editor interaction emitted %s %s", request.method, request.url))
 		}
-		if strings.Contains(request.url, privateMarker) {
+		if carriesAny(request, privateMarker) {
 			fatal(fmt.Errorf("private editor marker escaped in request to %s", request.url))
 		}
 	}
@@ -225,10 +321,10 @@ func main() {
 	mu.Unlock()
 	pythonBlobFetched := false
 	for _, request := range lazyGrammarRequests {
-		if request.method != "GET" {
+		if request.method != "GET" && !isCloudflareBeacon(request) {
 			fatal(fmt.Errorf("lazy grammar load emitted %s %s", request.method, request.url))
 		}
-		if strings.Contains(request.url, privateMarker) {
+		if carriesAny(request, privateMarker) {
 			fatal(fmt.Errorf("private editor marker escaped during grammar load to %s", request.url))
 		}
 		if strings.Contains(request.url, "/playground/grammars/python.") && strings.HasSuffix(request.url, ".bin") {
@@ -242,7 +338,7 @@ func main() {
 
 	clickCtx, cancelClick := context.WithTimeout(ctx, 3*time.Second)
 	clickErr := chromedp.Run(clickCtx,
-		chromedp.Focus(`a[href="/docs/getting-started"]`, chromedp.ByQuery),
+		chromedp.Focus(`.sidebar a[href="/docs/getting-started"]`, chromedp.ByQuery),
 		chromedp.KeyEvent("\r"),
 	)
 	cancelClick()

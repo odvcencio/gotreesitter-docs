@@ -27,25 +27,35 @@ func Layout() Node {
 				{gtsVersion}
 				· 206 grammars · curated parity gates
 			</span>
-			<TopNavLink href="/changelog" label="Changelog"></TopNavLink>
-			<TopNavLink href="/playground" label="Playground"></TopNavLink>
-			<TopNavLink href="/authoring" label="Authoring"></TopNavLink>
-			<a
-				class="ghlink"
-				href="https://github.com/odvcencio/gotreesitter"
-				target="_blank"
-				rel="noopener noreferrer"
-			>GitHub ↗</a>
+			<nav class="tnav" aria-label="Primary">
+				<TopNavLink href="/changelog" label="Changelog"></TopNavLink>
+				<TopNavLink href="/playground" label="Playground"></TopNavLink>
+				<TopNavLink href="/authoring" label="Authoring"></TopNavLink>
+				<a
+					class="ghlink"
+					href="https://github.com/odvcencio/gotreesitter"
+					target="_blank"
+					rel="noopener noreferrer"
+				>GitHub ↗</a>
+			</nav>
+			<details class="mobile-nav">
+				<summary>Menu</summary>
+				<div class="mobile-nav-panel">
+					<nav class="mobile-secondary" aria-label="Site">
+						<TopNavLink href="/changelog" label="Changelog"></TopNavLink>
+						<TopNavLink href="/playground" label="Playground"></TopNavLink>
+						<TopNavLink href="/authoring" label="Authoring"></TopNavLink>
+						<a class="ghlink" href="https://github.com/odvcencio/gotreesitter" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+					</nav>
+					<DocsNavigation></DocsNavigation>
+				</div>
+			</details>
 		</header>
 		<div class="body">
 			<aside class="sidebar">
 				<DocsNavigation></DocsNavigation>
 			</aside>
 			<main class="main" id="docs-main" data-gosx-main="true">
-				<details class="mobile-nav">
-					<summary>Browse documentation</summary>
-					<DocsNavigation></DocsNavigation>
-				</details>
 				<Slot />
 			</main>
 		</div>

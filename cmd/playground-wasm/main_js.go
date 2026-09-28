@@ -35,8 +35,10 @@ type grammarAsset struct {
 }
 
 type playgroundHandle struct {
-	mount     js.Value
-	listeners []browserListener
+	mount                     js.Value
+	listeners                 []browserListener
+	keyboardInputObserver     js.Value
+	keyboardInputObserverFunc js.Func
 
 	stateMu  sync.Mutex
 	timer    *time.Timer
@@ -200,8 +202,41 @@ func mountPlayground(ctx enginewasm.Context) (enginewasm.Handle, error) {
 	}
 
 	h.mount.Get("dataset").Set("privacyBoundary", "browser-only")
+	h.nameKeyboardInput()
 	go h.bootstrap(props.GrammarIndexURL)
 	return h, nil
+}
+
+// GoSX adds a transparent contenteditable to engine mounts that accept text
+// input. It receives keyboard and IME events for the playground surface, so
+// observe the mount and name the textbox when the host installs it.
+func (h *playgroundHandle) nameKeyboardInput() {
+	constructor := js.Global().Get("MutationObserver")
+	if constructor.Type() != js.TypeFunction {
+		return
+	}
+	h.keyboardInputObserverFunc = js.FuncOf(func(js.Value, []js.Value) any {
+		h.stateMu.Lock()
+		disposed := h.disposed
+		h.stateMu.Unlock()
+		if disposed {
+			return nil
+		}
+		input := h.mount.Call("querySelector", `[contenteditable="true"]`)
+		if input.Truthy() && !input.Call("hasAttribute", "aria-label").Bool() {
+			input.Call("setAttribute", "aria-label", "Playground keyboard input")
+		}
+		if input.Truthy() {
+			h.keyboardInputObserver.Call("disconnect")
+		}
+		return nil
+	})
+	h.keyboardInputObserver = constructor.New(h.keyboardInputObserverFunc)
+	h.keyboardInputObserver.Call("observe", h.mount, js.ValueOf(map[string]any{
+		"childList": true,
+		"subtree":   true,
+	}))
+	h.keyboardInputObserverFunc.Invoke()
 }
 
 func (h *playgroundHandle) Dispose() {
@@ -213,6 +248,12 @@ func (h *playgroundHandle) Dispose() {
 		h.timer = nil
 	}
 	h.stateMu.Unlock()
+	if h.keyboardInputObserver.Truthy() {
+		h.keyboardInputObserver.Call("disconnect")
+	}
+	if h.keyboardInputObserverFunc.Value.Type() == js.TypeFunction {
+		h.keyboardInputObserverFunc.Release()
+	}
 	for _, listener := range h.listeners {
 		listener.target.Call("removeEventListener", listener.event, listener.fn)
 		listener.fn.Release()
@@ -242,12 +283,16 @@ func (h *playgroundHandle) bootstrap(indexURL string) {
 	h.stateMu.Unlock()
 
 	selectBox := h.find("#pg-language")
+	selectedLanguage := selectBox.Get("value").String()
+	if _, ok := h.assets[selectedLanguage]; !ok {
+		selectedLanguage = "go"
+	}
 	selectBox.Set("textContent", "")
 	for _, asset := range assets {
 		option := element("option")
 		option.Set("value", asset.Name)
 		option.Set("textContent", fmt.Sprintf("%s · %s", asset.Name, formatBytes(asset.Bytes)))
-		if asset.Name == "go" {
+		if asset.Name == selectedLanguage {
 			option.Set("selected", true)
 		}
 		selectBox.Call("appendChild", option)
