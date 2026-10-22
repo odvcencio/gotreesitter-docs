@@ -54,6 +54,11 @@ It checks every internal link and validates the authoring asset surface. Its Chr
 that playground source never enters a request, except in a share link you choose to copy and open, which carries it in the URL. It also proves that internal navigation does not
 request a new document. The `gosx` binary on `PATH` must exactly match the version in `go.mod`.
 
+The `lighthouse` CI job downloads the `dist/` artifact that the `verify` job built, serves it with
+`dist/run.sh`, and measures `/`, three docs pages and `/changelog` with Lighthouse CI
+(`lighthouserc.json`): the mobile preset, the median of three cold runs per page, failing below
+performance 95 or accessibility 100.
+
 Run the browser performance budgets when Chrome is available:
 
 ```sh

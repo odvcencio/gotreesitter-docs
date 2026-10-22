@@ -1,0 +1,25 @@
+{
+  "ci": {
+    "collect": {
+      "url": [
+        "http://127.0.0.1:18090/",
+        "http://127.0.0.1:18090/docs/introduction",
+        "http://127.0.0.1:18090/docs/getting-started",
+        "http://127.0.0.1:18090/docs/languages",
+        "http://127.0.0.1:18090/changelog"
+      ],
+      "numberOfRuns": 3,
+      "settings": {
+        "chromeFlags": "--no-sandbox --headless=new",
+        "maxWaitForLoad": 45000
+      }
+    },
+    "assert": {
+      "assertions": {
+        "categories:performance": ["error", {"minScore": 0.95, "aggregationMethod": "median"}],
+        "categories:accessibility": ["error", {"minScore": 1, "aggregationMethod": "median"}]
+      }
+    },
+    "upload": {"target": "filesystem", "outputDir": "lighthouse-results"}
+  }
+}
