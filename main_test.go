@@ -177,3 +177,19 @@ func TestDocsPagesOptIntoTheLiteBootstrapForCopyButtons(t *testing.T) {
 		t.Fatal("getting-started renders no copy button")
 	}
 }
+
+func TestNotFoundPagesLeadToSearchAndThePlayground(t *testing.T) {
+	handler := testHandler(t)
+	for _, path := range []string{"/this-page-does-not-exist", "/docs/this-doc-does-not-exist"} {
+		rec := get(t, handler, path)
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("GET %s = %d, want 404", path, rec.Code)
+		}
+		body := rec.Body.String()
+		for _, want := range []string{`action="/changelog"`, `name="q"`, `href="/playground?lang=go&amp;sample=add"`, `href="/docs/getting-started"`} {
+			if !strings.Contains(body, want) {
+				t.Errorf("GET %s lacks %q", path, want)
+			}
+		}
+	}
+}

@@ -669,3 +669,8 @@ a:hover{color:var(--text-violet)}
   .parser-tab:hover,.playground-language-links a:hover,.home-feature-grid .feat:hover,
   .feat:hover,.langtile:hover,.cta-link:hover{transform:none!important}
 }
+
+.notfound .nf-search{max-width:560px;margin:var(--space-lg) 0 var(--space-2xl);padding:var(--space-lg);border:3px solid var(--ink);background:var(--card);box-shadow:var(--sh)}
+.nf-label{display:block;margin-bottom:var(--space-sm);font:700 var(--text-xs)/1.4 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em}
+.nf-row{display:flex;gap:var(--space-sm)}
+.nf-row .change-input{flex:1}
