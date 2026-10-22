@@ -102,7 +102,7 @@ done
 curl --silent --fail "$base/healthz" | grep -q '"ok":true'
 
 routes=("/" "/playground" "/authoring")
-routes+=("/changelog")
+routes+=("/changelog" "/changelog/v0.56")
 for source in content/docs/*.md; do
   routes+=("/docs/$(basename "$source" .md)")
 done
@@ -167,6 +167,13 @@ curl --silent --show-error --fail --output "$page_body" "$base/changelog"
 grep -q 'History you can interrogate' "$page_body" || fail "changelog hero missing from /changelog"
 grep -Fq "$gts_version" "$page_body" || fail "$gts_version missing from /changelog"
 grep -q 'href="/changelog" aria-current="page"' "$page_body" || fail "active changelog navigation state is missing"
+# Single-page changelog links must still land: the index keeps each release
+# anchor and links on to the series page.
+grep -Fq 'id="release-v0-55-1"' "$page_body" || fail "changelog index lost the release-v0-55-1 anchor"
+grep -Fq 'id="v0.55.1"' "$page_body" || fail "changelog index lost the v0.55.1 anchor"
+grep -Fq 'href="/changelog/v0.55#release-v0-55-1"' "$page_body" || fail "changelog index does not link v0.55.1 to its series page"
+changelog_series_html="$(curl --silent --show-error --fail "$base/changelog/v0.55")"
+grep -Fq 'id="release-v0-55-1"' <<<"$changelog_series_html" || fail "/changelog/v0.55 does not carry the release-v0-55-1 anchor"
 
 languages_html="$(curl --silent --show-error --fail "$base/docs/languages")"
 grep -Fq 'name="q"' <<<"$languages_html" || fail "languages filter form is missing"

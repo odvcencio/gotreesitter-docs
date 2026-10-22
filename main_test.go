@@ -175,3 +175,47 @@ func TestLanguagesFilterRunsOnTheServer(t *testing.T) {
 		t.Fatal("an empty result must say so")
 	}
 }
+
+func TestChangelogIsAnIndexWithPerSeriesPages(t *testing.T) {
+	handler := testHandler(t)
+	index := get(t, handler, "/changelog")
+	if index.Code != http.StatusOK {
+		t.Fatalf("GET /changelog = %d", index.Code)
+	}
+	body := index.Body.String()
+	// Old single-page anchors still land on the index row, which links on.
+	for _, want := range []string{
+		`id="release-v0-55-1"`, `id="v0.55.1"`,
+		`href="/changelog/v0.55#release-v0-55-1"`, `href="/changelog/v0.56"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("index lacks %q", want)
+		}
+	}
+	if strings.Contains(body, `class="change-release `) {
+		t.Error("the index must not render release bodies")
+	}
+	if n := strings.Count(body, "<"); n > 6000 {
+		t.Errorf("index has %d tags; keep it small enough for the mobile budget", n)
+	}
+
+	series := get(t, handler, "/changelog/v0.55")
+	if series.Code != http.StatusOK {
+		t.Fatalf("GET /changelog/v0.55 = %d", series.Code)
+	}
+	page := series.Body.String()
+	for _, want := range []string{`id="release-v0-55-1"`, `id="release-v0-55-0"`, `href="/changelog"`, `canonical`, "/changelog/v0.55"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("series page lacks %q", want)
+		}
+	}
+	if strings.Contains(page, `id="release-v0-56-0"`) {
+		t.Error("v0.55 page must not contain the v0.56.0 release")
+	}
+	if rec := get(t, handler, "/changelog/v9.9"); rec.Code != http.StatusNotFound {
+		t.Errorf("unknown series = %d, want 404", rec.Code)
+	}
+	if rec := get(t, handler, "/changelog/v0.56?q=nothing-matches-this-zzzz"); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "No entry in this series matches") {
+		t.Errorf("empty filtered series should say so, got %d", rec.Code)
+	}
+}

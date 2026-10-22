@@ -668,3 +668,27 @@ a:hover{color:var(--text-violet)}
 .nf-label{display:block;margin-bottom:var(--space-sm);font:700 var(--text-xs)/1.4 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em}
 .nf-row{display:flex;gap:var(--space-sm)}
 .nf-row .change-input{flex:1}
+
+/* Changelog index and series pages */
+.change-index{display:flex;flex-direction:column;gap:var(--space-xl)}
+.change-group-title{display:flex;align-items:center;gap:var(--space-sm);margin:0 0 var(--space-sm);font:700 var(--text-lg)/1.2 var(--font-display);letter-spacing:-.02em}
+.change-group-title a{color:var(--color-ink);text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:3px}
+.change-group-count{font:700 var(--text-xs)/1 var(--font-mono);padding:.25rem .5rem;border:2px solid var(--color-ink);background:var(--color-paper)}
+.change-index-list{list-style:none;margin:0;padding:0;border:3px solid var(--color-ink);background:var(--color-card);box-shadow:var(--shs)}
+.change-index-row{position:relative;display:grid;grid-template-columns:7rem 7.5rem minmax(9rem,12rem) minmax(0,1fr) auto;gap:var(--space-md);align-items:center;padding:var(--space-sm) var(--space-lg);scroll-margin-top:5rem}
+.change-index-row+.change-index-row{border-top:2px solid var(--color-ink)}
+.change-index-row:target{background:var(--color-paper-2);outline:3px solid var(--color-violet);outline-offset:-3px}
+.change-anchor{position:absolute;top:0;left:0;width:1px;height:1px;scroll-margin-top:5rem}
+.change-index-version{font:700 var(--text-sm)/1.3 var(--font-mono);color:var(--color-ink);text-decoration:underline;text-underline-offset:3px}
+.change-index-date{font:600 var(--text-xs)/1.3 var(--font-mono);color:var(--color-text-muted)}
+.change-index-summary{min-width:0;font-size:var(--text-sm);line-height:1.35;overflow-wrap:anywhere}
+.change-index-row .change-impact{justify-self:start}
+.change-series-head{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-sm);margin-bottom:var(--space-xl)}
+.change-series-head .change-title{max-width:none}
+.change-back{font:700 var(--text-sm)/1.3 var(--font-mono);color:var(--color-ink);text-decoration:underline;text-underline-offset:3px}
+.change-series-nav{margin-top:var(--space-xl)}
+@media(max-width:720px){
+  .change-index-row{grid-template-columns:minmax(0,1fr) auto;gap:var(--space-xs) var(--space-md);padding:var(--space-md)}
+  .change-index-summary{grid-column:1/-1}
+  .change-index-row .change-impact{grid-column:1/-1}
+}

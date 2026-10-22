@@ -14,7 +14,7 @@ The site documents gotreesitter **v0.56.0**, released on 2026-10-13.
 The site links its displayed parser version to the pinned module build.
 The release catalog includes the v0.56.0 release and its linked evidence. The
 server-rendered [/changelog](https://gotreesitter.m31labs.dev/changelog) route
-turns the source changelog into a searchable release archive with tag, code,
+turns the source changelog into a searchable release index, with one page per minor version (`/changelog/v0.56`) and tag, code,
 pull request, issue, commit, and exact source-line evidence.
 
 ## GopherCon slide deck
@@ -55,7 +55,7 @@ that playground source never enters a request, except in a share link you choose
 request a new document. The `gosx` binary on `PATH` must exactly match the version in `go.mod`.
 
 The `lighthouse` CI job downloads the `dist/` artifact that the `verify` job built, serves it with
-`dist/run.sh`, and measures `/`, three docs pages and `/changelog` with Lighthouse CI
+`dist/run.sh`, and measures `/`, three docs pages, the `/changelog` index and two release pages (`/changelog/v0.56`, and `/changelog/v0.53`, the largest) with Lighthouse CI
 (`lighthouserc.json`): the mobile preset, the median of three cold runs per page, failing below
 performance 95 or accessibility 100.
 

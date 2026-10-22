@@ -6,7 +6,9 @@
         "http://127.0.0.1:18090/docs/introduction",
         "http://127.0.0.1:18090/docs/getting-started",
         "http://127.0.0.1:18090/docs/languages",
-        "http://127.0.0.1:18090/changelog"
+        "http://127.0.0.1:18090/changelog",
+        "http://127.0.0.1:18090/changelog/v0.56",
+        "http://127.0.0.1:18090/changelog/v0.53"
       ],
       "numberOfRuns": 3,
       "settings": {

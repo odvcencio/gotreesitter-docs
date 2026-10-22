@@ -98,10 +98,8 @@ func loadChangelog(ctx *route.RouteContext, _ route.FilePage) (any, error) {
 		Category: category,
 		Status:   status,
 	})
-	releases, resultCount, err := buildReleaseViews(filtered)
-	if err != nil {
-		return nil, err
-	}
+	groups := buildIndexGroups(filtered, queryString(query, category, status))
+	resultCount := catalogEntryCount(filtered)
 
 	totalEntries := catalogEntryCount(catalog.Releases)
 	currentEntries := 0
@@ -124,9 +122,8 @@ func loadChangelog(ctx *route.RouteContext, _ route.FilePage) (any, error) {
 		"sourceURL":        catalog.Source.URL,
 		"sourceCommit":     catalog.Source.Commit[:12],
 		"sourceSHA256":     catalog.Source.SHA256,
-		"releases":         releases,
-		"hasResults":       len(releases) > 0,
-		"versionLinks":     buildVersionLinks(),
+		"groups":           groups,
+		"hasResults":       len(groups) > 0,
 		"campaignTrail":    campaignTrail(),
 		"latestReleaseURL": repositoryURL + "/releases/tag/" + catalog.Source.LatestReleased,
 	}, nil
@@ -316,21 +313,6 @@ func catalogReleaseIndex(version string) int {
 	return -1
 }
 
-func buildVersionLinks() []map[string]any {
-	links := make([]map[string]any, 0, len(catalog.Releases))
-	for _, release := range catalog.Releases {
-		if releaseEntryCount(release) == 0 {
-			continue
-		}
-		links = append(links, map[string]any{
-			"href":    "#" + versionAnchor(release),
-			"version": displayVersion(release),
-			"status":  string(release.Status),
-		})
-	}
-	return links
-}
-
 func versionAnchor(release releasecatalog.Release) string {
 	return "release-" + slug(displayVersion(release))
 }
@@ -412,7 +394,7 @@ func adjacentVersion(index int) map[string]any {
 	}
 	release := catalog.Releases[index]
 	return map[string]any{
-		"href":    "#" + versionAnchor(release),
+		"href":    minorHref(minorKey(release)) + "#" + versionAnchor(release),
 		"version": displayVersion(release),
 	}
 }
