@@ -581,7 +581,8 @@ a:hover{color:var(--text-violet)}
 .parser-tree-panel .panelhd{flex:none;gap:8px;padding:9px 10px;font-size:11px;letter-spacing:.06em}
 .parser-tree-panel .hlcredit{margin-left:auto;padding:3px 6px;font-size:9px;white-space:nowrap}
 .parser-tree{min-width:0;max-height:330px;flex:1;overflow:auto;margin:0;padding:10px 8px;list-style:none;font-size:clamp(10px,.78vw,12px);line-height:1.55;scrollbar-gutter:stable}
-.parser-tree-row{display:flex;min-width:max-content;min-height:25px;align-items:baseline;gap:8px;padding:3px 8px;border-left:3px solid transparent;transition:background var(--duration-fast) var(--ease-out),color var(--duration-fast) var(--ease-out),box-shadow var(--duration-fast) var(--ease-out)}
+.parser-tree-row:focus-visible{outline:2px solid var(--color-blue);outline-offset:-2px}
+.parser-tree-row{cursor:default;display:flex;min-width:max-content;min-height:25px;align-items:baseline;gap:8px;padding:3px 8px;border-left:3px solid transparent;transition:background var(--duration-fast) var(--ease-out),color var(--duration-fast) var(--ease-out),box-shadow var(--duration-fast) var(--ease-out)}
 .parser-tree-row[data-depth="0"]{padding-left:8px}
 .parser-tree-row[data-depth="1"]{padding-left:20px}
 .parser-tree-row[data-depth="2"]{padding-left:32px}

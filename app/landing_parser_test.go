@@ -65,6 +65,12 @@ func TestLandingParserExamplesComeFromRealParses(t *testing.T) {
 	if !strings.Contains(markup, ".parser-source-token[data-node-id=\"go-node-") || !strings.Contains(markup, "function_declaration") {
 		t.Fatal("rendered demo does not connect source tokens to named parse-tree rows")
 	}
+	if !strings.Contains(markup, `.parser-tree-row[data-node-id="go-node-0"]:hover) .parser-source-token[data-node-id="go-node-0"]`) {
+		t.Fatal("rendered demo does not connect tree rows back to their source tokens")
+	}
+	if !strings.Contains(markup, `<li class="parser-tree-row" data-node-id="go-node-0" data-depth="0" tabindex="0"`) {
+		t.Fatal("tree rows are not keyboard focusable")
+	}
 }
 
 func TestHeroSnippetsAreTheAddSamples(t *testing.T) {

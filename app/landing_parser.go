@@ -124,6 +124,12 @@ func buildLandingParserDemoMarkup() (string, error) {
 			b.WriteString(selector + `hover) .parser-tree-row[data-node-id="` + node.ID + `"],`)
 			b.WriteString(selector + `focus-visible) .parser-tree-row[data-node-id="` + node.ID + `"]`)
 			b.WriteString(`{background:var(--parse-active);color:var(--color-ink);box-shadow:inset 4px 0 var(--color-blue)}`)
+			// Reverse direction: hovering or focusing a tree row marks the
+			// source tokens it covers.
+			reverse := `.parser-sample[data-language-panel="` + key + `"]:has(.parser-tree-row[data-node-id="` + node.ID + `"]:`
+			b.WriteString(reverse + `hover) .parser-source-token[data-node-id="` + node.ID + `"],`)
+			b.WriteString(reverse + `focus-visible) .parser-source-token[data-node-id="` + node.ID + `"]`)
+			b.WriteString(`{background:var(--parse-active);color:var(--color-ink);outline:2px solid var(--color-blue);outline-offset:1px}`)
 		}
 	}
 	b.WriteString(`</style><fieldset class="parser-fieldset"><legend class="sr-only">Choose a language to inspect its parse</legend><div class="parser-tabs">`)
@@ -147,7 +153,7 @@ func buildLandingParserDemoMarkup() (string, error) {
 			if depth > 8 {
 				depth = 8
 			}
-			b.WriteString(`<li class="parser-tree-row" data-node-id="` + node.ID + `" data-depth="` + fmt.Sprint(depth) + `"><span class="parser-node-type">` + html.EscapeString(node.Type) + `</span><span class="parser-node-range">[` + fmt.Sprint(node.Start) + `, ` + fmt.Sprint(node.End) + `)</span></li>`)
+			b.WriteString(`<li class="parser-tree-row" data-node-id="` + node.ID + `" data-depth="` + fmt.Sprint(depth) + `" tabindex="0" aria-label="` + html.EscapeString(node.Type) + `, bytes ` + fmt.Sprint(node.Start) + ` to ` + fmt.Sprint(node.End) + `"><span class="parser-node-type">` + html.EscapeString(node.Type) + `</span><span class="parser-node-range">[` + fmt.Sprint(node.Start) + `, ` + fmt.Sprint(node.End) + `)</span></li>`)
 		}
 		b.WriteString(`</ol></div></div><a class="parser-open" href="/playground?lang=` + key + `&amp;sample=add" data-gosx-link="true">Open this parse in the playground <span aria-hidden="true">&rarr;</span></a></section>`)
 	}
