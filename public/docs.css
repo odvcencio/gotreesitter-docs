@@ -692,3 +692,9 @@ a:hover{color:var(--text-violet)}
   .change-index-summary{grid-column:1/-1}
   .change-index-row .change-impact{grid-column:1/-1}
 }
+
+/* Short commands wrap instead of clipping, so they can be selected by hand
+   on a phone: the install command and shell or plain code blocks. Longer
+   source code keeps its horizontal scroll. */
+.install .cmd,.code.tight .codebody{white-space:pre-wrap;overflow-wrap:anywhere}
+.install .cmd code{white-space:inherit;overflow-wrap:inherit}

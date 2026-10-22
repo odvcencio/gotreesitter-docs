@@ -57,7 +57,7 @@ func TestPlaygroundIsGoSXManagedBrowserWASM(t *testing.T) {
 		`wasmPath={data.wasmURL}`,
 		`grammarIndexURL={data.grammarIndexURL}`,
 		`requiredCapabilities="wasm fetch"`,
-		`capabilities="wasm text-input fetch clipboard"`,
+		`capabilities="wasm fetch clipboard"`,
 		`pg-share`,
 		`type="button"`,
 		`aria-live="polite"`,
@@ -70,6 +70,14 @@ func TestPlaygroundIsGoSXManagedBrowserWASM(t *testing.T) {
 		if strings.Contains(contents, forbidden) {
 			t.Errorf("page.gsx contains forbidden server/JS escape hatch %q", forbidden)
 		}
+	}
+}
+
+// The text-input capability makes GoSX focus a hidden contenteditable on mount,
+// which scrolled the page down on load. The playground has real textareas.
+func TestPlaygroundDoesNotRequestTheTextInputCapability(t *testing.T) {
+	if strings.Contains(readEmbeddedSource(t, "page.gsx"), "text-input") {
+		t.Error("page.gsx requests text-input; GoSX would focus a hidden element on load and scroll the page")
 	}
 }
 

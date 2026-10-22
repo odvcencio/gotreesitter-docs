@@ -270,6 +270,27 @@ func main() {
 	if addInitial.Language != "python" || addInitial.Sample != "add" || !strings.Contains(addInitial.Source, "def add(left, right)") {
 		fatal(fmt.Errorf("?lang=python&sample=add did not open the add sample: language=%q sample=%q source=%q", addInitial.Language, addInitial.Sample, addInitial.Source))
 	}
+	// The page must open at the top with focus outside the results: a focus call
+	// during the automatic first parse scrolls the title and editors out of view.
+	var loadState struct {
+		ScrollY       float64 `json:"scrollY"`
+		FocusInResult bool    `json:"focusInResults"`
+		Active        string  `json:"active"`
+	}
+	if err := chromedp.Run(ctx, chromedp.Evaluate(`(() => {
+		const active = document.activeElement;
+		return {
+			scrollY: window.scrollY,
+			focusInResults: Boolean(active && active.closest && active.closest("#pg-root .pg-results, #pg-tree, #pg-captures")),
+			active: active ? active.tagName + (active.id ? "#" + active.id : "") : ""
+		};
+	})()`, &loadState)); err != nil {
+		fatal(fmt.Errorf("read load scroll and focus: %w", err))
+	}
+	if loadState.ScrollY != 0 || loadState.FocusInResult {
+		fatal(fmt.Errorf("playground loaded scrolled or with focus in the results: scrollY=%v focus=%q inResults=%v", loadState.ScrollY, loadState.Active, loadState.FocusInResult))
+	}
+	fmt.Println("playground opens at the top with no focus in the results")
 	mu.Lock()
 	requests = nil
 	mu.Unlock()
@@ -352,19 +373,17 @@ func main() {
 		fatal(err)
 	}
 	var playgroundInputNames struct {
-		Source   string `json:"source"`
-		Query    string `json:"query"`
-		Keyboard string `json:"keyboard"`
+		Source string `json:"source"`
+		Query  string `json:"query"`
 	}
 	if err := chromedp.Run(ctx, chromedp.Evaluate(`(() => ({
 		source: document.querySelector("#pg-source")?.getAttribute("aria-label") || "",
-		query: document.querySelector("#pg-query")?.getAttribute("aria-label") || "",
-		keyboard: document.querySelector('#pg-root [contenteditable="true"]')?.getAttribute("aria-label") || ""
+		query: document.querySelector("#pg-query")?.getAttribute("aria-label") || ""
 	}))()`, &playgroundInputNames)); err != nil {
 		fatal(fmt.Errorf("read playground input names: %w", err))
 	}
-	if playgroundInputNames.Source != "Source code" || playgroundInputNames.Query != "Tree-sitter query" || playgroundInputNames.Keyboard != "Playground keyboard input" {
-		fatal(fmt.Errorf("playground input names are incomplete: source=%q query=%q keyboard=%q", playgroundInputNames.Source, playgroundInputNames.Query, playgroundInputNames.Keyboard))
+	if playgroundInputNames.Source != "Source code" || playgroundInputNames.Query != "Tree-sitter query" {
+		fatal(fmt.Errorf("playground input names are incomplete: source=%q query=%q", playgroundInputNames.Source, playgroundInputNames.Query))
 	}
 	var grammarOptions []*cdp.Node
 	if err := chromedp.Run(ctx, chromedp.Nodes("#pg-language option", &grammarOptions, chromedp.ByQueryAll)); err != nil {

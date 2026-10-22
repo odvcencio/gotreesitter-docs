@@ -13,7 +13,7 @@ func Page() Node {
 			runtime="go-wasm"
 			wasmPath={data.wasmURL}
 			grammarIndexURL={data.grammarIndexURL}
-			capabilities="wasm text-input fetch clipboard"
+			capabilities="wasm fetch clipboard"
 			requiredCapabilities="wasm fetch"
 			id="pg-root"
 			data-sample={data.sample}
