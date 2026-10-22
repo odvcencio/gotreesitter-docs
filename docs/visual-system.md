@@ -68,7 +68,7 @@ Use native `details` expansion without animation.
 
 ### Shipped patterns
 
-The landing page leads with six real parses from gotreesitter v0.55.1:
+The landing page leads with six real parses from the pinned gotreesitter release (v0.56.0 on 2026-10-22; the page reads the version from the build):
 Go, Python, Rust, TypeScript, JSON, and HTML. The server parses each example
 once at startup, caches its named-node tree and UTF-8 byte ranges, then
 renders the source next to that tree. Native radio tabs switch examples.
