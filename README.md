@@ -28,7 +28,7 @@ the supplied paper-and-ink visual system, and a live GLR benchmark island.
 Requirements:
 
 - Go 1.26
-- GoSX 0.57.18 (`go install m31labs.dev/gosx/cmd/gosx@v0.57.18`)
+- GoSX 0.57.18 (`GOTOOLCHAIN=go1.26.0 go install m31labs.dev/gosx/cmd/gosx@v0.57.18`; `gosx size` only measures with a CLI built by Go 1.26.0)
 - TinyGo 0.41.1 for the production GoSX runtime
 - Chrome or Chromium for the browser privacy/navigation gate
 

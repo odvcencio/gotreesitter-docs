@@ -51,7 +51,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          go install m31labs.dev/gosx/cmd/gosx@v0.57.18
+          # gosx size pins its measurement to a CLI built with Go 1.26.0 and
+          # brotli v1.2.1 (internal/assetmeasure), not the go.mod toolchain.
+          GOTOOLCHAIN=go1.26.0 go install m31labs.dev/gosx/cmd/gosx@v0.57.18
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Verify toolchain pins
