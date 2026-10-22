@@ -30,3 +30,13 @@ func TestHomePlaygroundLinksCarryTheAddSample(t *testing.T) {
 		t.Fatalf("page.gsx has %d sample=add links, want 6", got)
 	}
 }
+
+func TestSidebarLabelsAreWrappedForLongTitles(t *testing.T) {
+	data, err := os.ReadFile("layout.gsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(string(data), `<span class="nav-label">{props.Label}</span>`) != 2 {
+		t.Fatal("DocsNavLink must wrap the label in .nav-label (active and inactive branches)")
+	}
+}
