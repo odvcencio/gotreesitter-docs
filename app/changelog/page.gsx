@@ -22,7 +22,7 @@ func Page() Node {
 			<aside class="change-latest" aria-label="Latest release">
 				<span class="change-latest-kicker">latest immutable release</span>
 				<strong>{data.latestVersion}</strong>
-				<p>Version 0.54.0 makes compact parsing opt-in and fixes incremental reuse and error shapes.</p>
+				<p>{data.latestSummary}</p>
 				<a href={data.latestReleaseURL} target="_blank" rel="noopener noreferrer">Read the release notes ↗</a>
 			</aside>
 		</header>
@@ -53,7 +53,7 @@ func Page() Node {
 					<h2 id="campaign-thread-title">From recovery repair to parser ownership.</h2>
 				</div>
 				<p>
-					The v0.54.0 tag records the release scope. The source snapshot preserves each release and its evidence.
+					The {data.latestVersion} tag records the release scope. The source snapshot preserves each release and its evidence.
 				</p>
 			</div>
 			<ol class="change-thread-list">

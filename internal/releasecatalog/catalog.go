@@ -17,16 +17,16 @@ import (
 
 const (
 	// SourceCommit is the gotreesitter release commit that supplied CHANGELOG.md.
-	SourceCommit = "92db945f28de67be51de8235c9cd4e25a900f648"
+	SourceCommit = "ac4e027e02525e9d1d005c54ed5e54979271e4ed"
 
 	// LatestReleasedVersion is the newest immutable release in the snapshot.
-	LatestReleasedVersion = "v0.55.1"
+	LatestReleasedVersion = "v0.56.0"
 
 	// SourceURL links to the exact source used to build this catalog.
 	SourceURL = "https://github.com/odvcencio/gotreesitter/blob/" + SourceCommit + "/CHANGELOG.md"
 
 	// SourceSHA256 authenticates the embedded changelog bytes.
-	SourceSHA256 = "94db2dd962b481664b19215dadee27db9ab89b4ed805a3db37f8791442f4e7ff"
+	SourceSHA256 = "4da63c3b1f48cdc6bb571e66c19d74356d0baa6c15584a7ecb3732f53e9e3016"
 )
 
 //go:embed CHANGELOG.md

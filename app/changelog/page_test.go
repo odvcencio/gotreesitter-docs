@@ -3,6 +3,7 @@ package changelog
 import (
 	"errors"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -326,4 +327,25 @@ func TestReleasePerformanceTableIsRendered(t *testing.T) {
 		return
 	}
 	t.Fatal("missing performance section")
+}
+
+func TestChangelogHeroDescribesTheLatestRelease(t *testing.T) {
+	catalog, err := releasecatalog.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, _ := releaseNarrative(releaseByTag(t, releasecatalog.LatestReleasedVersion))
+	if want == "" {
+		t.Fatal("latest release has no narrative title")
+	}
+	if got := latestSummary(catalog); got != want {
+		t.Fatalf("latestSummary = %q, want %q", got, want)
+	}
+	source, err := os.ReadFile("page.gsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(source), "Version 0.54.0") {
+		t.Fatal("page.gsx hard-codes the 0.54.0 hero blurb")
+	}
 }

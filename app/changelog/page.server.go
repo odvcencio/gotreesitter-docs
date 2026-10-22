@@ -118,6 +118,7 @@ func loadChangelog(ctx *route.RouteContext, _ route.FilePage) (any, error) {
 		"totalEntries":     totalEntries,
 		"currentEntries":   currentEntries,
 		"latestVersion":    catalog.Source.LatestReleased,
+		"latestSummary":    latestSummary(catalog),
 		"earliestVersion":  catalog.Releases[len(catalog.Releases)-1].Tag,
 		"earliestDate":     catalog.Releases[len(catalog.Releases)-1].Date,
 		"sourceURL":        catalog.Source.URL,
@@ -496,6 +497,9 @@ func releaseImpactClass(release releasecatalog.Release) string {
 
 func releaseNarrative(release releasecatalog.Release) (string, string) {
 	switch displayVersion(release) {
+	case "v0.56.0":
+		return "Opt-in declaration facts and certified incremental reuse.",
+			"This release adds opt-in declaration, signature and call-argument facts for Go, Python, JavaScript, TypeScript and TSX through NewFactProgramWithOptions (#1435). It extends certified incremental subtree reuse to Go, Java, JavaScript, TypeScript, Python, Rust, C and C++ (#1402, #1413, #1421) and bounds external-scanner checkpoint memory (#1410). It preserves YAML syntax errors and recovered nodes (#1400) and keeps an earlier TSX generic call intact when a typed function follows it (#1443). The linked entries state the measured scope."
 	case "v0.55.1":
 		return "Restore Python speed and correct large C parses.",
 			"This patch restores Python parsing speed on files without unpacking. It fixes false C errors beyond the string-call limit. It also reduces Scala alias work and extends the Dart reuse guard. Transient-error incremental trees remain unresolved. The linked notes state the measured results and their limits."
@@ -628,4 +632,16 @@ func trailLink(label, description, href string) map[string]any {
 		"description": description,
 		"href":        href,
 	}
+}
+
+// latestSummary is the narrative title of the newest immutable release, so
+// the hero never describes an older tag than the one it names.
+func latestSummary(catalog releasecatalog.Catalog) string {
+	for _, release := range catalog.Releases {
+		if release.Status == releasecatalog.StatusReleased {
+			title, _ := releaseNarrative(release)
+			return title
+		}
+	}
+	return ""
 }

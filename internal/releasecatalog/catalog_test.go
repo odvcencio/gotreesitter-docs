@@ -1,6 +1,9 @@
 package releasecatalog
 
 import (
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -278,5 +281,19 @@ func TestArchivedReleaseSourceLinesMatchSnapshots(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestLatestReleasedVersionMatchesThePinnedModule(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	match := regexp.MustCompile(`(?m)^\s*github\.com/odvcencio/gotreesitter (v[0-9]+\.[0-9]+\.[0-9]+)`).FindSubmatch(data)
+	if match == nil {
+		t.Fatal("go.mod does not pin github.com/odvcencio/gotreesitter")
+	}
+	if got := string(match[1]); got != LatestReleasedVersion {
+		t.Fatalf("LatestReleasedVersion = %s, go.mod pins %s: re-vendor CHANGELOG.md", LatestReleasedVersion, got)
 	}
 }
