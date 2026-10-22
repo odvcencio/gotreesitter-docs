@@ -64,6 +64,7 @@ var docsNavDotColors = map[string]string{
 	"contributing":             "c-green",
 	"migrating-from-smacker":   "c-yellow",
 	"v1":                       "c-pink",
+	"release-v0.56":            "c-green",
 }
 
 type docsNavLink struct {

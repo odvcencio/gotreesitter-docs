@@ -57,11 +57,11 @@ not care which one produced a given grammar. That convergence is also the no-for
 `grammars.RegisterExtension` lets a consumer add or override a language from their own module
 without forking gotreesitter — see [Authoring Languages](/docs/authoring-languages).
 
-## Default route in v0.55.1
+## Default route in v0.56.0
 
 Production GLR parsing is the default. Compact parsing is opt-in through
-GTS_ADMISSION_CANDIDATE=1. The v0.55.1
-[admission switch](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/admission_switch.go)
+GTS_ADMISSION_CANDIDATE=1. The v0.56.0
+[admission switch](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/admission_switch.go)
 shows the default. See [The road to v1](/docs/v1) for the current graduation plan.
 
 ## Anatomy of a parse

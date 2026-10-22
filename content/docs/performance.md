@@ -5,7 +5,7 @@ nav_group: Internals
 order: 2
 ---
 
-Version v0.55.1 uses production GLR parsing by default. Set
+Version v0.56.0 uses production GLR parsing by default. Set
 GTS_ADMISSION_CANDIDATE=1 to try the compact candidate route. Its per-language
 allowlist is empty. Compact parser graduation remains in progress.
 
@@ -27,7 +27,7 @@ and [PR #1355](https://github.com/odvcencio/gotreesitter/pull/1355) describe the
 | No-edit reparse | 8.318 ns/op | 0 |
 
 The allocation counts come from the v0.55.1
-[CHANGELOG measurement scope](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/CHANGELOG.md#measurement-scope).
+[CHANGELOG measurement scope](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/CHANGELOG.md#measurement-scope).
 The host was pinned to CPU 2. Upstream used 20 shuffled seeds, one process per
 seed, GOMAXPROCS=1, -benchtime=750ms, and -benchmem.
 
@@ -38,14 +38,14 @@ To run the same control on gotreesitter main, upstream used this command and
 GOMAXPROCS=1 GOWORK=off taskset -c 2 bash scripts/bench_baseline.sh <out>
 ```
 
-This script is on upstream main. It is not part of the v0.55.1 tag.
+The script ships in the [v0.56.0 tag](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/scripts/bench_baseline.sh). It is not part of the v0.55.1 tag.
 
 ## Sealed Go-versus-C receipt
 
 The hardware-attested v9 receipt measured four frozen Go files on 2026-08-02,
 at build 492cd600, inside an AMD SEV Confidential Space VM. Its equal-fixture
 geometric mean was 4.815x C for production and 3.986x C for compact. This is
-not a v0.55.1 measurement. The signed receipt cannot be rerun outside
+not a v0.55.1 or v0.56.0 measurement. The signed receipt cannot be rerun outside
 Confidential Space. Upstream keeps its scope and limits in the
 [sealed receipt](https://github.com/odvcencio/gotreesitter/blob/8ef769e7b7ce258fae1d43bb609e2db66911d2db/BENCH.md#sealed-epoch--v9-hardware-attested-authoritative).
 
@@ -70,7 +70,7 @@ for the complete gate and [The road to v1](/docs/v1) for the release plan.
 The 2026-09-23 v0.54.0 release notes compare the prior default with the new
 default on a fixed nine-language corpus of typical files. They name Buildbox's
 tamarack harness but publish no hardware model. Lower Go/C ratios mean less
-time. These results are historical and do not describe v0.55.1.
+time. These results are historical and do not describe v0.55.1 or v0.56.0.
 
 | Language | Prior default Go / C | v0.54.0 Go / C | Speedup |
 |---|---:|---:|---:|
@@ -103,9 +103,9 @@ Ultra 9 285 CPU in a container with 4 GiB of memory.
 | No-edit reparse | 2.612 ns | 4.043 ns | +54.80% |
 
 The v0.53.0 edited lane allocated five objects and its no-edit lane allocated
-zero. These are historical results on one host, not v0.55.1 timings or C
+zero. These are historical results on one host, not v0.55.1 or v0.56.0 timings or C
 comparisons. See the
-[v0.54.0 release notes](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/CHANGELOG.md#0530---2026-09-19).
+[v0.53.0 entry in the v0.56.0 changelog](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/CHANGELOG.md#0530---2026-09-19).
 
 ## Scope
 

@@ -109,8 +109,8 @@ must still register a compatible Go external scanner for runtime parsing.
 The older `-js` flag remains a best-effort pure-Go importer. It does not execute
 JavaScript, but it cannot resolve all helpers or `require()` calls.
 
-See the [CLI resolver](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/cmd/grammargen/grammar_js_cli.go),
-the [pure-Go importer](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/grammargen/import_grammarjs.go),
+See the [CLI resolver](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/cmd/grammargen/grammar_js_cli.go),
+the [pure-Go importer](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/grammargen/import_grammarjs.go),
 [pull request #520](https://github.com/odvcencio/gotreesitter/pull/520),
 and [runtime diagnostic pull request #537](https://github.com/odvcencio/gotreesitter/pull/537)
 for implementation details.
@@ -512,9 +512,9 @@ go run github.com/odvcencio/gotreesitter/cmd/grammargen@v0.54.0 emit \
 a different limit. Do not mutate this global during concurrent loads.
 Use `errors.Is(err, gts.ErrDecompressedBlobTooLarge)` to detect an oversized gzip stream.
 
-Sources: [header API](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/language_blob_version_header.go),
-[encoder](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/language_blob_encode.go),
-and [loader](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/load_language.go).
+Sources: [header API](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/language_blob_version_header.go),
+[encoder](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/language_blob_encode.go),
+and [loader](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/load_language.go).
 
 ## Known gaps
 

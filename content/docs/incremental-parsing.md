@@ -9,7 +9,7 @@ After an edit, incremental parsing can reuse unchanged parts of the previous tre
 the edit on the old tree, then give that tree and the new source to the parser. The parser reuses
 subtrees where its safety checks allow and reparses the rest.
 
-Version v0.55.1 retains authenticated same-width edit reuse. It also fixes token-source
+In v0.55.1, the runtime retained authenticated same-width edit reuse. It also fixes token-source
 resume for C and Java and applies the reuse-budget stop to plain `ParseIncremental`.
 Groovy incremental calls now use a fresh full parse. If the source length changes without a
 recorded `Tree.Edit`, the parser also uses a fresh parse. Always record edits; this fallback
@@ -20,8 +20,17 @@ took 8,686,195 ns/op with eight allocations; a single-byte edit took 177,281 ns/
 allocations; no-edit reuse took 8.318 ns/op with zero allocations. The generated 500-function Go
 file never forks, so it is a control rather than typical editor input. The
 [Performance](/docs/performance) page records the host and method. See the
-[v0.55.1 release notes](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/CHANGELOG.md#measurement-scope)
+[v0.55.1 release notes](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/CHANGELOG.md#measurement-scope)
 for the allocation scope.
+
+Version v0.56.0 adds bounded lexer-read certificates for incremental subtree reuse
+([#1402](https://github.com/odvcencio/gotreesitter/pull/1402)), extends certified reuse to Go,
+Java, JavaScript, TypeScript, Python, Rust, C and C++
+([#1413](https://github.com/odvcencio/gotreesitter/pull/1413)), retains certified reuse for large
+edits without a redundant fresh parse
+([#1421](https://github.com/odvcencio/gotreesitter/pull/1421)), and never publishes a reuse
+certificate for a pruned parse ([#1440](https://github.com/odvcencio/gotreesitter/pull/1440)).
+Source: the [v0.56.0 changelog](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/CHANGELOG.md).
 
 This page assumes you have a tree from `Parser.Parse`.
 See [Syntax Trees and Nodes](/docs/syntax-trees-and-nodes) for tree ownership.

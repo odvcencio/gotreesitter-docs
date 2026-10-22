@@ -17,7 +17,7 @@ one practical packaging difference: upstream distributes highlight queries as
 `queries/highlights.scm` files that a consumer must locate and load, while gotreesitter embeds
 shipped highlight queries in the `grammars` registry. There is no `.scm` file to find, ship, or
 version-match for those queries — `LangEntry.HighlightQuery` is a string on the registry entry.
-The v0.55.1 language guide reports that all 156 shipped highlight queries compile.
+The v0.56.0 language guide reports that all 156 shipped highlight queries compile (156/156 highlight, 69/69 tags).
 
 If you have not met the query language yet, read [Queries](/docs/queries) first — a highlight
 query is an ordinary query whose capture names happen to be style-ish (`@keyword`, `@string`,

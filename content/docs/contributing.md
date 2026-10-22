@@ -114,14 +114,14 @@ for a downstream consumer — see [Authoring Languages](/docs/authoring-language
 path there is `grammargen.ImportGrammarJSON` → `grammargen.GenerateLanguageAndBlob` →
 `grammars.Register`/`RegisterExtension`.
 
-## Gates in v0.55.1
+## Gates in v0.56.0
 
-The [v0.55.1 CI workflow](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/.github/workflows/ci.yml)
+The [v0.56.0 CI workflow](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/.github/workflows/ci.yml)
 selects compile, test, grammar, parity, and performance jobs according to its event and path
 rules. It also schedules a nightly exhaustive C-oracle parity run. Check the workflow for the
 current job graph rather than assuming every PR runs the same suites.
 
-Use the [v0.55.1 testing guide](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/docs/testing-guide.md)
+Use the [v0.56.0 testing guide](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/docs/testing-guide.md)
 for focused commands and safe local runners. It recommends one grammar per isolated container
 for broad parity work. The [v1 design](https://github.com/odvcencio/gotreesitter/blob/main/docs/v1-design.md)
 defines the planned engine graduation and v1 release gates.
@@ -154,7 +154,9 @@ outside accounts with commits; the repository owner and accounts GitHub marks as
 - [Tomás Senart](https://github.com/tsenart)
 - [Vladimir Dergachev](https://github.com/vdergachev)
 
-The v0.55.1 [release notes](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/CHANGELOG.md#publication-exception)
+The v0.55.1 [release notes](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/CHANGELOG.md#publication-exception-1)
 say the Python regression and false C errors addressed by that patch were reported in
 [issue #454](https://github.com/odvcencio/gotreesitter/issues/454) by
 [@cognociente](https://github.com/cognociente).
+The v0.56.0 notes record the same exception, authorized on 2026-10-04
+([CHANGELOG](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/CHANGELOG.md#publication-exception)).

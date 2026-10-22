@@ -68,7 +68,7 @@ to be; you just do not get a parse of it.
 Zero disables it. This is a separate limit for each parse, not one deadline for the whole document.
 `SetCancellationFlag(*uint32)` shares a caller-owned cancellation flag with those parsers.
 Update the flag with `atomic.StoreUint32`. Both settings apply to cached parsers and parsers
-created later. See the [source contract](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/injection.go).
+created later. See the [source contract](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/injection.go).
 
 ## The injection query
 

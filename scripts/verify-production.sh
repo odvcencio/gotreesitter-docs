@@ -43,6 +43,9 @@ gosx_cli_version="$(gosx version 2>&1)"
 grep -Fq "GoSX ${gosx_version#v}" README.md || fail "README GoSX requirement does not match go.mod"
 grep -Fq "m31labs.dev/gosx/cmd/gosx@$gosx_version" README.md || fail "README GoSX install command does not match go.mod"
 grep -Fq "gotreesitter **$gts_version**" README.md || fail "README gotreesitter version does not match go.mod"
+if grep -rhoE 'gotreesitter@v[0-9]+\.[0-9]+\.[0-9]+' content/docs --exclude='release-*.md' | grep -v "gotreesitter@$gts_version" | grep -q .; then
+  fail "a content page pins an install command to a version other than $gts_version"
+fi
 
 # Application behavior must be authored in Go/GoSX. Ignore generated files
 # through the repository's normal ignore rules. Reject tracked or new source.

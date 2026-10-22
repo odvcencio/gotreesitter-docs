@@ -113,7 +113,7 @@ The scalar node accessors `Symbol`, `ParseState`, `PreGotoState`, `StartByte`, `
 `StartPoint`, and `EndPoint` return zero values on a nil receiver.
 `IsNamed`, `IsExtra`, `IsMissing`, `IsError`, and `HasError` return false.
 `Tree.Source`, `Tree.Language`, and `Tree.Edits` return nil on a nil tree.
-These checks do not permit use after `Release`. See [tree.go](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/tree.go).
+These checks do not permit use after `Release`. See [tree.go](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/tree.go).
 
 ## Positions: bytes and points
 

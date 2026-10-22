@@ -1,18 +1,18 @@
 ---
 title: Migrating from smacker/go-tree-sitter
-description: Move a CGo integration to the native gotreesitter v0.55.1 API.
+description: Move a CGo integration to the native gotreesitter v0.56.0 API.
 nav_group: Using the Parser
 order: 8
 ---
 
-Version v0.55.1 does not contain `compat/smacker`. Do not use those import paths.
-The [tagged source tree](https://github.com/odvcencio/gotreesitter/tree/v0.55.1)
+Version v0.56.0 does not contain `compat/smacker`. Do not use those import paths.
+The [tagged source tree](https://github.com/odvcencio/gotreesitter/tree/v0.56.0)
 contains the native Go API. A compatible import-only replacement is not verified.
 
 ## Use the native API
 
 ```sh
-go get github.com/odvcencio/gotreesitter@v0.55.1
+go get github.com/odvcencio/gotreesitter@v0.56.0
 ```
 
 | Binding operation | Native gotreesitter operation |
@@ -32,4 +32,4 @@ See [Getting Started](/docs/getting-started), [Queries](/docs/queries), and
 [Incremental Parsing](/docs/incremental-parsing) for the supported contracts.
 
 The runtime requires no C compiler. Full-parse speed depends on the workload.
-See [Performance](/docs/performance) for the dated evidence and v0.55.1 route default.
+See [Performance](/docs/performance) for the dated evidence and v0.56.0 route default.
