@@ -2,18 +2,16 @@ package main
 
 import (
 	"bytes"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
 
-	"github.com/andybalholm/brotli"
 	docsapp "github.com/odvcencio/gotreesitter-docs/app"
-	"m31labs.dev/gosx"
 	runtimehost "m31labs.dev/gosx/client/runtime/host"
 	islandprogram "m31labs.dev/gosx/island/program"
 	"m31labs.dev/gosx/server"
@@ -37,49 +35,6 @@ func TestVersionedPublicAssetURL(t *testing.T) {
 func TestMissingPublicAssetUsesFrameworkURL(t *testing.T) {
 	if got := versionedPublicAssetURL(t.TempDir(), "missing.css"); got != "/missing.css" {
 		t.Fatalf("missing asset URL = %q", got)
-	}
-}
-
-func TestDeferredNavigationHeadUsesCacheableAssetAndKeepsNonce(t *testing.T) {
-	got := gosx.RenderHTML(deferredNavigationHead("test-nonce"))
-	for _, want := range []string{
-		"defer",
-		`data-gosx-navigation="true"`,
-		`fetchpriority="low"`,
-		`src="` + navigationRuntimeAssetURL() + `"`,
-		`nonce="test-nonce"`,
-	} {
-		if !strings.Contains(got, want) {
-			t.Fatalf("deferred navigation head does not contain %q", want)
-		}
-	}
-	if strings.Contains(got, runtimehost.NavigationRuntime) {
-		t.Fatal("navigation runtime is still embedded in the document head")
-	}
-}
-
-func TestNavigationRuntimeAssetSupportsBrotliAndImmutableCaching(t *testing.T) {
-	app := server.New()
-	app.Mount(navigationRuntimeAssetURL(), navigationRuntimeAssetHandler())
-	request := httptest.NewRequest(http.MethodGet, navigationRuntimeAssetURL(), nil)
-	request.Header.Set("Accept-Encoding", "gzip, br")
-	response := httptest.NewRecorder()
-	app.Build().ServeHTTP(response, request)
-	if response.Code != http.StatusOK {
-		t.Fatalf("navigation runtime returned %d: %s", response.Code, response.Body.String())
-	}
-	if response.Header().Get("Content-Encoding") != "br" {
-		t.Fatalf("navigation runtime encoding = %q", response.Header().Get("Content-Encoding"))
-	}
-	if response.Header().Get("Cache-Control") != "public, max-age=31536000, immutable" {
-		t.Fatalf("navigation runtime cache policy = %q", response.Header().Get("Cache-Control"))
-	}
-	decoded, err := io.ReadAll(brotli.NewReader(bytes.NewReader(response.Body.Bytes())))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(decoded, []byte(runtimehost.NavigationRuntime)) {
-		t.Fatal("navigation runtime response differs from GoSX's embedded runtime")
 	}
 }
 
@@ -141,5 +96,33 @@ func TestPlaygroundServesWithAndWithoutTrailingSlash(t *testing.T) {
 		if !strings.Contains(rec.Body.String(), `data-gosx-engine="GotreesitterPlayground"`) {
 			t.Fatalf("GET %s did not render the playground surface", path)
 		}
+	}
+}
+
+func TestPagesLoadTheNavigationRuntimeFromGoSXHashedAsset(t *testing.T) {
+	handler := testHandler(t)
+	body := get(t, handler, "/docs/introduction").Body.String()
+	match := regexp.MustCompile(`<script[^>]*data-gosx-navigation="true"[^>]*src="([^"]+)"`).FindStringSubmatch(body)
+	if match == nil {
+		t.Fatal("no navigation runtime script tag on /docs/introduction")
+	}
+	if match[1] != runtimehost.NavigationRuntimePath {
+		t.Fatalf("navigation src = %q, want %q", match[1], runtimehost.NavigationRuntimePath)
+	}
+	if strings.Contains(body, "/_app/runtime/navigation.") {
+		t.Fatal("the legacy re-served runtime URL is still rendered")
+	}
+	asset := get(t, handler, match[1])
+	if asset.Code != http.StatusOK {
+		t.Fatalf("GET %s = %d", match[1], asset.Code)
+	}
+	if ct := asset.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/javascript") {
+		t.Fatalf("content-type = %q", ct)
+	}
+	if cc := asset.Header().Get("Cache-Control"); !strings.Contains(cc, "immutable") {
+		t.Fatalf("cache-control = %q, want immutable", cc)
+	}
+	if asset.Body.String() != runtimehost.NavigationRuntime {
+		t.Fatal("served runtime differs from the embedded GoSX runtime")
 	}
 }
