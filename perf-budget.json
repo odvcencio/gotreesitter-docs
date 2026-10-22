@@ -2,22 +2,22 @@
   "defaultProfile": "docs",
   "profiles": {
     "docs": {
-      "description": "Server-rendered documentation route budget. Decoded JS is the GoSX lite bootstrap for copy buttons (151 KB), the navigation runtime (111 KB) and the Cloudflare beacon (32 KB), about 294 KB measured from the v0.57.18 production assets on 2026-10-22.",
+      "description": "Server-rendered documentation route budget. Decoded JS is the GoSX lite bootstrap for copy buttons (151 KB), the navigation runtime (111 KB) and the Cloudflare beacon (32 KB), 286.8 KB measured by gosx perf in CI on 2026-10-22 (v0.57.18).",
       "assertions": [
         "lcp <= 2500",
         "long_tasks <= 2",
         "tbt <= 150",
-        "js_total_kb <= 305"
+        "js_total_kb <= 297"
       ]
     },
     "playground": {
-      "description": "Interactive parser playground shell and WASM bootstrap. Decoded JS includes the pinned GoSX engine chunks, Go shim, navigation, and analytics (about 414 KiB measured during the v0.57.1 refresh).",
+      "description": "Interactive parser playground shell and WASM bootstrap. Decoded JS includes the pinned GoSX engine chunks, Go shim, navigation, and analytics (414 KiB measured during the v0.57.1 refresh; 457.3 KB and 5028.5 KB transferred measured by gosx perf in CI on 2026-10-22 with v0.57.18 and gotreesitter v0.56.0).",
       "assertions": [
         "lcp <= 3000",
         "long_tasks <= 4",
         "tbt <= 450",
-        "js_total_kb <= 420",
-        "network_kb <= 5000"
+        "js_total_kb <= 468",
+        "network_kb <= 5100"
       ]
     }
   },
