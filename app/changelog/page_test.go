@@ -363,3 +363,21 @@ func TestChangelogHeroDescribesTheLatestRelease(t *testing.T) {
 		t.Fatal("page.gsx hard-codes the 0.54.0 hero blurb")
 	}
 }
+
+func TestAdjacentLinksNeverPointAtEmptyReleases(t *testing.T) {
+	for _, tag := range []string{releasecatalog.LatestReleasedVersion, "v0.48.0"} {
+		views, _, err := buildReleaseViews([]releasecatalog.Release{releaseByTag(t, tag)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, key := range []string{"previous", "next"} {
+			link := views[0][key].(map[string]any)
+			if href, _ := link["href"].(string); strings.Contains(href, "unreleased") {
+				t.Errorf("%s %s link points at the empty Unreleased section: %s", tag, key, href)
+			}
+		}
+	}
+	if views, _, _ := buildReleaseViews([]releasecatalog.Release{releaseByTag(t, releasecatalog.LatestReleasedVersion)}); views[0]["hasNext"] != false {
+		t.Error("the newest release with entries has no newer neighbor")
+	}
+}

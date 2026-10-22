@@ -219,3 +219,25 @@ func TestChangelogIsAnIndexWithPerSeriesPages(t *testing.T) {
 		t.Errorf("empty filtered series should say so, got %d", rec.Code)
 	}
 }
+
+func TestChangelogInternalLinksResolve(t *testing.T) {
+	handler := testHandler(t)
+	link := regexp.MustCompile(`href="(/changelog[^"#]*)`)
+	seen := map[string]bool{}
+	var check func(page string, follow bool)
+	check = func(page string, follow bool) {
+		for _, m := range link.FindAllStringSubmatch(get(t, handler, page).Body.String(), -1) {
+			target := strings.ReplaceAll(m[1], "&amp;", "&")
+			if seen[target] {
+				continue
+			}
+			seen[target] = true
+			if rec := get(t, handler, target); rec.Code != http.StatusOK {
+				t.Errorf("%s links to %s = %d", page, target, rec.Code)
+			}
+		}
+	}
+	check("/changelog", true)
+	check("/changelog/v0.56", false)
+	check("/changelog/v0.48", false)
+}

@@ -186,6 +186,8 @@ func buildReleaseViews(releases []releasecatalog.Release) ([]map[string]any, int
 			})
 		}
 
+		prevIndex := neighborWithEntries(fullIndex, 1)
+		nextIndex := neighborWithEntries(fullIndex, -1)
 		narrativeTitle, narrativeBody := releaseNarrative(release)
 		trail := historicalTrail(release)
 		views = append(views, map[string]any{
@@ -205,10 +207,10 @@ func buildReleaseViews(releases []releasecatalog.Release) ([]map[string]any, int
 			"evidenceURL":     releaseEvidenceURL(release),
 			"codeURL":         releaseCodeURL(release, fullIndex),
 			"sourceURL":       sourceLineURL(release.SourceLine, release.SourcePath),
-			"previous":        adjacentVersion(fullIndex + 1),
-			"next":            adjacentVersion(fullIndex - 1),
-			"hasPrevious":     fullIndex+1 < len(catalog.Releases),
-			"hasNext":         fullIndex > 0,
+			"previous":        adjacentVersion(prevIndex),
+			"next":            adjacentVersion(nextIndex),
+			"hasPrevious":     prevIndex >= 0,
+			"hasNext":         nextIndex >= 0,
 			"historicalTrail": trail,
 			"hasTrail":        len(trail) > 0,
 		})
@@ -386,6 +388,22 @@ func releaseCodeURL(release releasecatalog.Release, index int) string {
 		}
 	}
 	return repositoryURL + "/releases/tag/" + release.Tag
+}
+
+// neighborWithEntries finds the nearest release in direction step (+1 older,
+// -1 newer) that has entries, so adjacent links never point at a page that
+// does not exist (the empty Unreleased section has none). It returns -1 when
+// there is no such release.
+func neighborWithEntries(index, step int) int {
+	if index < 0 {
+		return -1
+	}
+	for i := index + step; i >= 0 && i < len(catalog.Releases); i += step {
+		if releaseEntryCount(catalog.Releases[i]) > 0 {
+			return i
+		}
+	}
+	return -1
 }
 
 func adjacentVersion(index int) map[string]any {
