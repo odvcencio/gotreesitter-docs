@@ -334,7 +334,7 @@ code.mono{overflow-wrap:anywhere}
 .change-empty p{margin:0 0 var(--space-lg);color:var(--color-text-muted)}
 .change-empty a{text-decoration:underline;text-underline-offset:3px}
 .change-release-list{display:flex;flex-direction:column;gap:var(--space-lg)}
-.change-release{scroll-margin-top:5rem;border:3px solid var(--color-ink);background:var(--color-card);box-shadow:var(--sh)}
+.change-release{content-visibility:auto;contain-intrinsic-size:auto 4.5rem;contain:style;scroll-margin-top:5rem;border:3px solid var(--color-ink);background:var(--color-card);box-shadow:var(--sh)}
 .change-release.unreleased{border-left-width:var(--space-sm)}
 .change-release-summary{display:grid;grid-template-columns:auto minmax(10rem,1fr) auto auto auto auto;gap:var(--space-md);align-items:center;padding:var(--space-lg);cursor:pointer;list-style:none}
 .change-release-summary::-webkit-details-marker{display:none}
