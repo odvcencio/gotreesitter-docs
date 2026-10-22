@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	docsapp "github.com/odvcencio/gotreesitter-docs/app"
+	"github.com/odvcencio/gotreesitter-docs/internal/playgroundshare"
 	runtimehost "m31labs.dev/gosx/client/runtime/host"
 	islandprogram "m31labs.dev/gosx/island/program"
 	"m31labs.dev/gosx/server"
@@ -137,5 +138,32 @@ func TestPlaygroundDeepLinkRendersTheNamedSample(t *testing.T) {
 	}
 	if body := get(t, handler, "/playground?lang=python&sample=nope").Body.String(); !strings.Contains(body, `data-sample="greet"`) {
 		t.Error("unknown sample name must resolve to greet")
+	}
+}
+
+func TestPlaygroundShareLinkRendering(t *testing.T) {
+	handler := testHandler(t)
+	// "func shared_marker_only() {}" encoded the way the browser does.
+	values, err := playgroundshare.Encode(playgroundshare.Share{Language: "go", Source: "package main\nfunc shared_marker_only() {}\n"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := get(t, handler, "/playground?"+values.Encode()).Body.String()
+	if !strings.Contains(body, "shared_marker_only") || !strings.Contains(body, `data-shared="true"`) {
+		t.Errorf("a valid share link must open its source with data-shared=true")
+	}
+	if strings.Contains(body, "pg-share-note") {
+		t.Error("a valid share link must not show the error notice")
+	}
+	rec := get(t, handler, "/playground?lang=go&s=1.%25%25%25")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("a broken share link must still open the playground, got %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "This share link could not be opened") || !strings.Contains(rec.Body.String(), `data-shared="false"`) {
+		t.Error("a broken share link must show the notice and data-shared=false")
+	}
+	plain := get(t, handler, "/playground").Body.String()
+	if strings.Contains(plain, "pg-share-note") || !strings.Contains(plain, `id="pg-share"`) {
+		t.Error("the plain playground shows the share button and no notice")
 	}
 }

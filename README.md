@@ -51,7 +51,7 @@ overrides. It builds the playground, all 206 lazy grammar assets, and the author
 It validates every `.gsx` source and runs the Go tests. It creates a clean `gosx build --prod`
 artifact, runs `gosx export`, reports runtime size, boots `dist/run.sh`, and requests every route.
 It checks every internal link and validates the authoring asset surface. Its Chrome check proves
-that playground source never enters a request. It also proves that internal navigation does not
+that playground source never enters a request, except in a share link you choose to copy and open, which carries it in the URL. It also proves that internal navigation does not
 request a new document. The `gosx` binary on `PATH` must exactly match the version in `go.mod`.
 
 Run the browser performance budgets when Chrome is available:
@@ -103,6 +103,9 @@ mutation endpoint. Source is capped at 64 KiB in the engine and is rendered back
 never HTML. The production browser gate verifies all 206 languages, proves a second grammar is
 fetched on demand, and fails if editor interaction emits a non-GET request, leaks its private marker
 into a URL, or causes a full document navigation.
+The one exception is a share link: `Copy share link` puts the compressed grammar, source and query in a
+URL (`/playground?lang=&s=&q=`, see `internal/playgroundshare`), so opening that link sends them to the
+server. Creating the link makes no request.
 
 ## License
 

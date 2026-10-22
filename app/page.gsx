@@ -29,8 +29,8 @@ func Page() Node {
 		<section class="playground-band" aria-labelledby="playground-band-title">
 			<div class="playground-band-copy">
 				<span class="section-kicker">Try a parse in your browser</span>
-				<h2 id="playground-band-title">206 languages, parsed in your browser; your code never leaves the tab.</h2>
-				<p>Open the GoSX playground with a starter sample. Parsing runs in WebAssembly on your device.</p>
+				<h2 id="playground-band-title">206 languages, parsed in your browser.</h2>
+				<p>Open the GoSX playground with a starter sample. Parsing runs in WebAssembly on your device, and editor text is sent nowhere unless you copy a share link.</p>
 			</div>
 			<nav class="playground-language-links" aria-label="Open a playground sample">
 				<a href="/playground?lang=go&amp;sample=add" data-gosx-link="true">Go <span aria-hidden="true">↗</span></a>

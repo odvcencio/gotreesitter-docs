@@ -31,7 +31,7 @@ support locally. Loaded languages stay cached in the tab, and every keystroke af
 with no network request.
 
 Only immutable program data crosses the network: the GoSX runtime, the parser engine, the grammar
-index, and selected grammar blobs. Source and query text never enter a request. The production
+index, and selected grammar blobs. Source and query text never enter a request unless you copy a share link. The production
 browser gate types a private marker, verifies it parses locally, switches to a second language to
 prove lazy blob loading, and rejects any non-GET request or URL containing the marker.
 
@@ -43,6 +43,21 @@ open the three-line `add` snippet from the home page, for example
 exists for Go, Python, Rust, TypeScript, JSON and HTML. `&sample=greet`, a missing `sample`, or an
 unknown name opens the curated starter. A language without a curated starter opens a comment
 probe that parses in that grammar.
+
+## Share links
+
+`Copy share link` puts a link on your clipboard that opens the same grammar, source and query:
+`/playground?lang=<grammar>&s=<payload>` with an optional `&q=<payload>` for the query. Each
+payload is `1.` followed by the unpadded base64url form of the raw DEFLATE stream of the UTF-8
+text. The `1.` prefix lets a later version change the encoding without breaking old links.
+
+Limits: the decoded source may be up to 65,536 bytes and the decoded query up to 8,192 bytes, and
+each encoded payload may be up to 7,000 characters so the whole URL fits proxy request-line limits.
+The button reports when the editor is too large to share. A link that is damaged or over the limit
+opens the playground with the sample and a short notice; it never returns an error page.
+
+Creating a link makes no request. Opening a link sends the source to the server, because it is in
+the URL, so share only text you are willing to put in a link.
 
 [Open the playground](/playground), or read [Architecture](/docs/architecture) for what that
 engine is actually doing under your keystrokes.

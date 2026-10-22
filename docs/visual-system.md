@@ -77,8 +77,7 @@ its tree row without application JavaScript.
 
 The playground links follow the parse panel and open a language-specific
 starter sample. The playground server accepts only canonical names from its
-grammar index. Source and query contents stay in the page and never enter the
-URL. The source editor, tree-sitter query editor, and GoSX keyboard input each
+grammar index. Source and query contents stay in the page; they enter a URL only when a visitor copies a share link. The source editor, tree-sitter query editor, and GoSX keyboard input each
 have an accessible name.
 
 Space Grotesk and JetBrains Mono are self-hosted as Latin WOFF2 files in

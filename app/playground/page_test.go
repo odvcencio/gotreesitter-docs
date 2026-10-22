@@ -1,8 +1,11 @@
 package playground
 
 import (
+	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/odvcencio/gotreesitter-docs/internal/playgroundshare"
 )
 
 func TestInitialPlaygroundSamplePreselectsOnlyIndexedLanguages(t *testing.T) {
@@ -54,6 +57,8 @@ func TestPlaygroundIsGoSXManagedBrowserWASM(t *testing.T) {
 		`wasmPath={data.wasmURL}`,
 		`grammarIndexURL={data.grammarIndexURL}`,
 		`requiredCapabilities="wasm fetch"`,
+		`capabilities="wasm text-input fetch clipboard"`,
+		`pg-share`,
 		`type="button"`,
 		`aria-live="polite"`,
 	} {
@@ -72,8 +77,9 @@ func TestPlaygroundPrivacyCopyIsExplicit(t *testing.T) {
 	contents := readEmbeddedSource(t, "page.gsx")
 	for _, statement := range []string{
 		"stays entirely on this device",
-		"never submitted to the server",
+		"never submitted to the server unless you copy a share link",
 		"never editor contents",
+		"encodes your source in the URL",
 	} {
 		if !strings.Contains(contents, statement) {
 			t.Errorf("page.gsx does not state %q", statement)
@@ -88,4 +94,46 @@ func readEmbeddedSource(t *testing.T, name string) string {
 		t.Fatal(err)
 	}
 	return string(data)
+}
+
+func TestResolvePlaygroundStatePrefersAValidShare(t *testing.T) {
+	values, err := playgroundshare.Encode(playgroundshare.Share{Language: "go", Source: "package main\nfunc shared() {}\n", Query: "(function_declaration) @f"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := resolvePlaygroundState("go", "add", values)
+	if !state.Shared || state.ShareError != "" || state.Language != "go" {
+		t.Fatalf("state = %+v", state)
+	}
+	if !strings.Contains(state.Source, "func shared()") || state.Query != "(function_declaration) @f" {
+		t.Fatalf("shared source/query not used: %+v", state)
+	}
+}
+
+func TestResolvePlaygroundStateFallsBackOnABrokenShare(t *testing.T) {
+	values := url.Values{"lang": {"go"}, "s": {"1.%%%"}}
+	state := resolvePlaygroundState("go", "add", values)
+	if state.Shared || state.ShareError == "" {
+		t.Fatalf("a broken share must report an error: %+v", state)
+	}
+	if !strings.Contains(state.Source, "func add(left, right int)") {
+		t.Fatalf("a broken share must fall back to the sample: %q", state.Source)
+	}
+}
+
+func TestResolvePlaygroundStateWithoutAShare(t *testing.T) {
+	state := resolvePlaygroundState("python", "", url.Values{"lang": {"python"}})
+	if state.Shared || state.ShareError != "" || !strings.Contains(state.Source, "def greet") {
+		t.Fatalf("state = %+v", state)
+	}
+}
+
+func TestResolvePlaygroundStateIgnoresUnknownShareLanguages(t *testing.T) {
+	values, err := playgroundshare.Encode(playgroundshare.Share{Language: "not-a-language", Source: "x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state := resolvePlaygroundState("not-a-language", "", values); state.Language != "go" {
+		t.Fatalf("language = %q, want go", state.Language)
+	}
 }

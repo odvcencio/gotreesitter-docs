@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"strconv"
@@ -15,9 +16,13 @@ import (
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
+	"github.com/odvcencio/gotreesitter-docs/internal/playgroundshare"
 )
 
-const privateMarker = "private_browser_only_marker"
+const (
+	privateMarker = "private_browser_only_marker"
+	sharedMarker  = "shared_marker_only"
+)
 
 var sampledLanguages = []string{
 	"go", "python", "javascript", "typescript", "tsx", "rust", "c", "cpp", "java", "c_sharp",
@@ -269,6 +274,73 @@ func main() {
 	requests = nil
 	mu.Unlock()
 	fmt.Println("?lang=python&sample=add opened the named sample")
+
+	// Share links: opening one puts the (compressed) source in the document URL
+	// by design. The marker is DEFLATE-compressed there, so it must not appear in
+	// any request URL or body; copying a link must not send anything at all.
+	shareValues, err := playgroundshare.Encode(playgroundshare.Share{Language: "go", Source: "package main\nfunc " + sharedMarker + "() {}\n"})
+	if err != nil {
+		fatal(err)
+	}
+	mu.Lock()
+	requests = nil
+	mu.Unlock()
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(base+"/playground?"+shareValues.Encode()),
+		chromedp.WaitVisible("#pg-source", chromedp.ByQuery),
+	); err != nil {
+		fatal(err)
+	}
+	if err := waitForText(ctx, "#pg-status", "Parsed locally"); err != nil {
+		fatal(err)
+	}
+	var shareOpened struct {
+		Language string `json:"language"`
+		Source   string `json:"source"`
+	}
+	if err := chromedp.Run(ctx, chromedp.Evaluate(`(() => ({
+		language: document.querySelector("#pg-language")?.value || "",
+		source: document.querySelector("#pg-source")?.value || ""
+	}))()`, &shareOpened)); err != nil {
+		fatal(fmt.Errorf("read opened share link: %w", err))
+	}
+	if shareOpened.Language != "go" || !strings.Contains(shareOpened.Source, sharedMarker) {
+		fatal(fmt.Errorf("share link did not open its source: language=%q source=%q", shareOpened.Language, shareOpened.Source))
+	}
+	if err := chromedp.Run(ctx,
+		chromedp.Evaluate(`navigator.clipboard.writeText = t => { window.__gtsShared = t; return Promise.resolve(); }`, nil),
+		chromedp.Click("#pg-share", chromedp.ByQuery),
+	); err != nil {
+		fatal(err)
+	}
+	if err := waitForText(ctx, "#pg-share-status", "Link copied"); err != nil {
+		fatal(err)
+	}
+	var copied string
+	if err := chromedp.Run(ctx, chromedp.Evaluate(`window.__gtsShared || ""`, &copied)); err != nil {
+		fatal(err)
+	}
+	copiedURL, err := url.Parse(copied)
+	if err != nil || copiedURL.Path != "/playground" {
+		fatal(fmt.Errorf("copied share link is not a playground URL: %q (%v)", copied, err))
+	}
+	decoded, ok, err := playgroundshare.Decode(copiedURL.Query())
+	if err != nil || !ok || decoded.Language != "go" || decoded.Source != shareOpened.Source {
+		fatal(fmt.Errorf("copied share link does not round-trip the editor: %+v ok=%v err=%v", decoded, ok, err))
+	}
+	mu.Lock()
+	shareRequests := append([]requestRecord(nil), requests...)
+	requests = nil
+	mu.Unlock()
+	for _, request := range shareRequests {
+		if request.method != "GET" && !isCloudflareBeacon(request) {
+			fatal(fmt.Errorf("share link flow emitted %s %s", request.method, request.url))
+		}
+		if carriesAny(request, sharedMarker) {
+			fatal(fmt.Errorf("share marker appeared in plain text in request %s", request.url))
+		}
+	}
+	fmt.Println("share link opened its source and the copied link round-trips the editor")
 
 	if err := chromedp.Run(ctx,
 		chromedp.Navigate(base+"/playground"),

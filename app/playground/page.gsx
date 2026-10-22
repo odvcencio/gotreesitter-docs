@@ -6,14 +6,14 @@ func Page() Node {
 		<h1 class="h1">The parser, in your browser.</h1>
 		<div class="underbar"></div>
 		<p class="lead">
-			This is the production gotreesitter parser and query engine compiled from Go to WebAssembly. GoSX owns its lifecycle; parsing stays entirely on this device, and source or query text is never submitted to the server.
+			This is the production gotreesitter parser and query engine compiled from Go to WebAssembly. GoSX owns its lifecycle; parsing stays entirely on this device. Source and query text are never submitted to the server unless you copy a share link, which carries them in its URL.
 		</p>
 		<Surface
 			name="GotreesitterPlayground"
 			runtime="go-wasm"
 			wasmPath={data.wasmURL}
 			grammarIndexURL={data.grammarIndexURL}
-			capabilities="wasm text-input fetch"
+			capabilities="wasm text-input fetch clipboard"
 			requiredCapabilities="wasm fetch"
 			id="pg-root"
 			data-sample={data.sample}
@@ -31,8 +31,13 @@ func Page() Node {
 					anonymous nodes
 				</label>
 				<span class="tspacer"></span>
+				<button id="pg-share" type="button" class="cta-link pg-share" disabled>Copy share link</button>
+				<span id="pg-share-status" class="pg-share-status mono" role="status" aria-live="polite"></span>
 				<button id="pg-parse" type="button" class="cta-link primary pg-submit">Parse now</button>
 			</div>
+			<If when={data.shareError != ""}>
+				<p class="pg-share-note" role="status">{data.shareError}</p>
+			</If>
 			<div class="playgrid pg-grid pg-input-grid">
 				<div class="panel">
 					<div class="panelhd">
@@ -46,6 +51,7 @@ func Page() Node {
 						<pre id="pg-hl" class="pg-hlpre mono" aria-hidden="true">{data.source}</pre>
 						<textarea
 							id="pg-source"
+							data-shared={data.shared}
 							class="pg-src mono"
 							wrap="off"
 							spellcheck="false"
@@ -102,7 +108,7 @@ func Page() Node {
 		<p class="p mut pg-footnote">
 			Runtime: gotreesitter
 			{data.gtsVersion}
-			, compiled to standard Go WebAssembly and managed by GoSX. Network requests carry runtime and on-demand grammar assets only—never editor contents.
+			, compiled to standard Go WebAssembly and managed by GoSX. Network requests carry runtime and on-demand grammar assets only—never editor contents. A share link is the one exception: it encodes your source in the URL you choose to copy.
 		</p>
 	</section>
 }
