@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -14,7 +13,6 @@ import (
 	_ "github.com/odvcencio/gotreesitter-docs/modules"
 	"m31labs.dev/gosx"
 	"m31labs.dev/gosx/env"
-	islandprogram "m31labs.dev/gosx/island/program"
 	"m31labs.dev/gosx/route"
 	"m31labs.dev/gosx/server"
 )
@@ -84,7 +82,6 @@ func newApp(root string) (*server.App, error) {
 			gosx.Attr("data-cf-beacon", `{"token": "0282fc84c88d4a37820b398987f22b2d"}`),
 		)))
 		ctx.SetLanguage("en")
-		ctx.SetLanguage("en")
 		return server.HTMLDocument(ctx.Document("gotreesitter", body))
 	})
 
@@ -108,14 +105,6 @@ func newApp(root string) (*server.App, error) {
 	if info, err := os.Stat(filepath.Join(root, "dist", "build.json")); err == nil && !info.IsDir() {
 		app.SetRuntimeRoot(filepath.Join(root, "dist"))
 	}
-	if err := mountIslandProgram(
-		app,
-		docsapp.LangSearchProgramPath,
-		docsapp.LangSearchProgram(),
-		docsapp.LangSearchProgramContentVersion(),
-	); err != nil {
-		return nil, err
-	}
 	app.Redirect("GET /docs", "/docs/introduction", http.StatusTemporaryRedirect)
 	app.API("GET /healthz", func(ctx *server.Context) (any, error) {
 		ctx.NoStore()
@@ -131,28 +120,6 @@ func newApp(root string) (*server.App, error) {
 	}
 	app.Mount("/", rootHandler)
 	return app, nil
-}
-
-// mountIslandProgram serves a compiled island program's opcode JSON at
-// path, matching the pattern GoSX's own examples use (examples/counter,
-// examples/hotswap): the client bootstrap fetches this once (prefetched via
-// island.Renderer.PreloadHints) and interprets it in the shared WASM VM.
-// app/lang_island.go's SetProgramAsset call points at this path.
-func mountIslandProgram(app *server.App, path string, prog *islandprogram.Program, contentVersion string) error {
-	data, err := islandprogram.EncodeJSON(prog)
-	if err != nil {
-		return fmt.Errorf("encode island program %s: %w", path, err)
-	}
-	app.Mount(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if contentVersion != "" && r.URL.Query().Get("v") == contentVersion {
-			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		} else {
-			w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
-		}
-		_, _ = w.Write(data)
-	}))
-	return nil
 }
 
 func getenv(key, fallback string) string {

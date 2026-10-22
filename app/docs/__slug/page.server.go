@@ -10,13 +10,13 @@ import (
 	"m31labs.dev/gosx/server"
 )
 
-// docsRenderer keeps the docs server-rendered except for the GoSX-authored
-// language-list filter. The parser playground runs in its browser WASM engine.
+// docsRenderer keeps the docs server-rendered, including the
+// language-list filter (a GET form). The parser playground runs in its browser WASM engine.
 func docsRenderer(slug string, ctx *route.RouteContext) content.RendererFunc {
 	switch slug {
 	case "languages":
 		return docsapp.RenderDesignDocWithLangIsland(func(names []string) gosx.Node {
-			return docsapp.BuildLangGridIsland(ctx.Runtime(), names)
+			return docsapp.BuildLangSearch(names, ctx.Query("q"))
 		})
 	default:
 		return docsapp.RenderDesignDoc

@@ -169,9 +169,9 @@ grep -Fq "$gts_version" "$page_body" || fail "$gts_version missing from /changel
 grep -q 'href="/changelog" aria-current="page"' "$page_body" || fail "active changelog navigation state is missing"
 
 languages_html="$(curl --silent --show-error --fail "$base/docs/languages")"
-lang_search_url="$(grep -oE '/_app/islands/LangSearch\.json\?v=[0-9a-f]{12}' <<<"$languages_html" | head -n 1)"
-[[ -n "$lang_search_url" ]] || fail "cannot find content-versioned LangSearch island URL"
-curl --silent --show-error --fail "$base$lang_search_url" | grep -q 'LangSearch'
+grep -Fq 'name="q"' <<<"$languages_html" || fail "languages filter form is missing"
+curl --silent --show-error --fail "$base/docs/languages?q=script" | grep -q 'class="lname">typescript<' ||
+  fail "server-side language filter does not return typescript for q=script"
 
 # The server delivers a GoSX surface and immutable engine asset. It has no
 # mutation endpoint, form submission, or route that can receive editor text.

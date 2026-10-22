@@ -2,8 +2,8 @@
 
 The documentation and browser playground for
 [`github.com/odvcencio/gotreesitter`](https://github.com/odvcencio/gotreesitter), built with
-[GoSX](https://github.com/odvcencio/gosx). Pages render on the server, the language catalog uses a
-GoSX-authored island, and `/playground` runs gotreesitter in a standard-Go WebAssembly engine owned
+[GoSX](https://github.com/odvcencio/gosx). Pages render on the server, the language catalog filters through a
+server-side GET form, and `/playground` runs gotreesitter in a standard-Go WebAssembly engine owned
 by a GoSX surface. The engine indexes all 206 languages and fetches content-hashed grammar blobs
 on demand. Every internal route uses managed navigation. The repository's application code is Go and
 GoSX; the zero-authored-JS gate (below) enforces that.

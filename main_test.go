@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,11 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	docsapp "github.com/odvcencio/gotreesitter-docs/app"
 	"github.com/odvcencio/gotreesitter-docs/internal/playgroundshare"
 	runtimehost "m31labs.dev/gosx/client/runtime/host"
-	islandprogram "m31labs.dev/gosx/island/program"
-	"m31labs.dev/gosx/server"
 )
 
 func TestVersionedPublicAssetURL(t *testing.T) {
@@ -39,37 +35,6 @@ func TestMissingPublicAssetUsesFrameworkURL(t *testing.T) {
 	}
 }
 
-func TestLangSearchIslandIsServedOutsideGoSXRuntimePaths(t *testing.T) {
-	if strings.HasPrefix(docsapp.LangSearchProgramPath, "/gosx/") {
-		t.Fatalf("LangSearch program path collides with GoSX runtime paths: %q", docsapp.LangSearchProgramPath)
-	}
-	program := docsapp.LangSearchProgram()
-	want, err := islandprogram.EncodeJSON(program)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	app := server.New()
-	app.SetRuntimeRoot(t.TempDir())
-	if err := mountIslandProgram(app, docsapp.LangSearchProgramPath, program, docsapp.LangSearchProgramContentVersion()); err != nil {
-		t.Fatal(err)
-	}
-	response := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, docsapp.LangSearchProgramURL(), nil)
-	app.Build().ServeHTTP(response, request)
-
-	if response.Code != http.StatusOK {
-		t.Fatalf("LangSearch program returned %d: %s", response.Code, response.Body.String())
-	}
-	if got := response.Header().Get("Content-Type"); got != "application/json" {
-		t.Fatalf("LangSearch content type = %q", got)
-	}
-	if !bytes.Equal(response.Body.Bytes(), want) {
-		t.Fatalf("LangSearch program response is not the JSON program payload")
-	}
-}
-
-// testHandler builds the production router against this repository root.
 func testHandler(t *testing.T) http.Handler {
 	t.Helper()
 	_, thisFile, _, _ := runtime.Caller(0)
@@ -190,5 +155,23 @@ func TestNotFoundPagesLeadToSearchAndThePlayground(t *testing.T) {
 				t.Errorf("GET %s lacks %q", path, want)
 			}
 		}
+	}
+}
+
+func TestLanguagesFilterRunsOnTheServer(t *testing.T) {
+	handler := testHandler(t)
+	all := get(t, handler, "/docs/languages").Body.String()
+	if !strings.Contains(all, `name="q"`) || strings.Contains(all, "LangSearch") {
+		t.Fatal("languages page must render the GET filter form and no island")
+	}
+	filtered := get(t, handler, "/docs/languages?q=script").Body.String()
+	if !strings.Contains(filtered, "lname\">typescript<") || strings.Contains(filtered, "lname\">python<") {
+		t.Fatal("?q=script must keep typescript and drop python")
+	}
+	if !strings.Contains(filtered, `value="script"`) {
+		t.Fatal("the filter box must keep the query")
+	}
+	if none := get(t, handler, "/docs/languages?q=zzzz").Body.String(); !strings.Contains(none, "No language matches") {
+		t.Fatal("an empty result must say so")
 	}
 }
