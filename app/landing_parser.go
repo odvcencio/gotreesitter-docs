@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	gts "github.com/odvcencio/gotreesitter"
+	"github.com/odvcencio/gotreesitter-docs/internal/playgroundsamples"
 	"github.com/odvcencio/gotreesitter/grammars"
 	"m31labs.dev/gosx"
 )
@@ -16,7 +17,6 @@ type landingParseSpec struct {
 	Name     string
 	Label    string
 	Filename string
-	Source   string
 }
 
 type landingParseNode struct {
@@ -49,27 +49,21 @@ type landingParseExample struct {
 var landingParseSpecs = []landingParseSpec{
 	{
 		Name: "go", Label: "Go", Filename: "add.go",
-		Source: "func add(left, right int) int {\n\treturn left + right\n}\n",
 	},
 	{
 		Name: "python", Label: "Python", Filename: "add.py",
-		Source: "def add(left, right):\n    return left + right\n",
 	},
 	{
 		Name: "rust", Label: "Rust", Filename: "add.rs",
-		Source: "fn add(left: i32, right: i32) -> i32 {\n    left + right\n}\n",
 	},
 	{
 		Name: "typescript", Label: "TypeScript", Filename: "add.ts",
-		Source: "function add(left: number, right: number): number {\n  return left + right;\n}\n",
 	},
 	{
 		Name: "json", Label: "JSON", Filename: "package.json",
-		Source: "{\n  \"parser\": \"gotreesitter\",\n  \"languages\": 206\n}\n",
 	},
 	{
 		Name: "html", Label: "HTML", Filename: "index.html",
-		Source: "<article><h1>Tree</h1><p>Go parses source.</p></article>\n",
 	},
 }
 
@@ -155,7 +149,7 @@ func buildLandingParserDemoMarkup() (string, error) {
 			}
 			b.WriteString(`<li class="parser-tree-row" data-node-id="` + node.ID + `" data-depth="` + fmt.Sprint(depth) + `"><span class="parser-node-type">` + html.EscapeString(node.Type) + `</span><span class="parser-node-range">[` + fmt.Sprint(node.Start) + `, ` + fmt.Sprint(node.End) + `)</span></li>`)
 		}
-		b.WriteString(`</ol></div></div></section>`)
+		b.WriteString(`</ol></div></div><a class="parser-open" href="/playground?lang=` + key + `&amp;sample=add" data-gosx-link="true">Open this parse in the playground <span aria-hidden="true">&rarr;</span></a></section>`)
 	}
 	b.WriteString(`</div><p class="parser-demo-credit">Parsed on the docs server with gotreesitter ` + html.EscapeString(PlaygroundGTSVersion()) + `; examples are cached per process. Point to a token or use Tab to follow it to its tree row. Ranges are UTF-8 byte offsets with an exclusive end.</p></fieldset></div>`)
 	return b.String(), nil
@@ -172,8 +166,12 @@ func buildLandingParseExamples() ([]landingParseExample, error) {
 		if language == nil {
 			return nil, fmt.Errorf("landing parser example language %q could not be loaded", spec.Name)
 		}
+		sample, ok := playgroundsamples.Named(playgroundsamples.SampleAdd, spec.Name)
+		if !ok {
+			return nil, fmt.Errorf("landing parser example language %q has no %q playground sample", spec.Name, playgroundsamples.SampleAdd)
+		}
 		parser := gts.NewParser(language)
-		source := []byte(spec.Source)
+		source := []byte(sample.Source)
 		var tree *gts.Tree
 		var err error
 		if entry.TokenSourceFactory != nil {
@@ -198,7 +196,7 @@ func buildLandingParseExamples() ([]landingParseExample, error) {
 			Name:     spec.Name,
 			Label:    spec.Label,
 			Filename: spec.Filename,
-			Source:   spec.Source,
+			Source:   sample.Source,
 			SExpr:    root.SExpr(language),
 		}
 		nodeIDs := make(map[*gts.Node]string)

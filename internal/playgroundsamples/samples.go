@@ -248,3 +248,32 @@ var genericSources = []string{
 	"% gotreesitter sample\n",
 	"; gotreesitter sample\n",
 }
+
+// Sample names accepted by /playground?sample=<name>. The home page links with
+// sample=add, and its hero renders the same sources.
+const (
+	SampleGreet = "greet"
+	SampleAdd   = "add"
+)
+
+var addSamples = map[string]Sample{
+	"go":         {Source: "func add(left, right int) int {\n\treturn left + right\n}\n", Query: `(function_declaration name: (identifier) @function)`},
+	"python":     {Source: "def add(left, right):\n    return left + right\n", Query: `(function_definition name: (identifier) @function)`},
+	"rust":       {Source: "fn add(left: i32, right: i32) -> i32 {\n    left + right\n}\n", Query: `(function_item name: (identifier) @function)`},
+	"typescript": {Source: "function add(left: number, right: number): number {\n  return left + right;\n}\n", Query: `(function_declaration name: (identifier) @function)`},
+	"json":       {Source: "{\n  \"parser\": \"gotreesitter\",\n  \"languages\": 206\n}\n", Query: `(pair key: (string) @key)`},
+	"html":       {Source: "<article><h1>Tree</h1><p>Go parses source.</p></article>\n", Query: `(element (start_tag (tag_name) @tag))`},
+}
+
+// AddLanguages lists the languages that have an "add" sample, in hero order.
+var AddLanguages = []string{"go", "python", "rust", "typescript", "json", "html"}
+
+// Named resolves a sample by name. Unknown names and languages without that
+// sample fall back to the greet starter (ForIndexLanguage).
+func Named(name, language string) (Sample, bool) {
+	if name == SampleAdd {
+		sample, ok := addSamples[language]
+		return sample, ok
+	}
+	return ForIndexLanguage(language)
+}

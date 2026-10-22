@@ -6,7 +6,7 @@ import (
 )
 
 func TestInitialPlaygroundSamplePreselectsOnlyIndexedLanguages(t *testing.T) {
-	language, sample := initialPlaygroundSample("rust")
+	language, _, sample := initialPlaygroundSample("rust", "")
 	if language != "rust" {
 		t.Fatalf("initial language = %q, want rust", language)
 	}
@@ -18,13 +18,30 @@ func TestInitialPlaygroundSamplePreselectsOnlyIndexedLanguages(t *testing.T) {
 	}
 
 	for _, invalid := range []string{"Rust", "not-a-language", "package main"} {
-		language, sample = initialPlaygroundSample(invalid)
+		language, _, sample = initialPlaygroundSample(invalid, "")
 		if language != "go" {
 			t.Errorf("initial language for %q = %q, want go", invalid, language)
 		}
 		if !strings.Contains(sample.Source, "package main") {
 			t.Errorf("initial Go sample for %q = %q", invalid, sample.Source)
 		}
+	}
+}
+
+func TestInitialPlaygroundSampleHonoursNamedSamples(t *testing.T) {
+	language, name, sample := initialPlaygroundSample("go", "add")
+	if language != "go" || name != "add" || !strings.Contains(sample.Source, "func add(left, right int)") {
+		t.Errorf("go/add = %q, %q, %q", language, name, sample.Source)
+	}
+	if _, name, sample = initialPlaygroundSample("html", "add"); name != "add" || !strings.Contains(sample.Source, "<article>") {
+		t.Errorf("html/add = %q, %q", name, sample.Source)
+	}
+	// Lua has no add sample: it falls back to the comment probe, reported as greet.
+	if _, name, sample = initialPlaygroundSample("lua", "add"); name != "greet" || strings.Contains(sample.Source, "add") {
+		t.Errorf("lua/add = %q, %q", name, sample.Source)
+	}
+	if _, name, sample = initialPlaygroundSample("go", "nope"); name != "greet" || !strings.Contains(sample.Source, "func greet") {
+		t.Errorf("go/nope = %q, %q", name, sample.Source)
 	}
 }
 

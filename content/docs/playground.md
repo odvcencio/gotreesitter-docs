@@ -35,5 +35,14 @@ index, and selected grammar blobs. Source and query text never enter a request. 
 browser gate types a private marker, verifies it parses locally, switches to a second language to
 prove lazy blob loading, and rejects any non-GET request or URL containing the marker.
 
+## Deep links
+
+`/playground?lang=<grammar>` opens a grammar with its curated starter. Add `&sample=add` to
+open the three-line `add` snippet from the home page, for example
+[`/playground?lang=python&sample=add`](/playground?lang=python&sample=add). The `add` sample
+exists for Go, Python, Rust, TypeScript, JSON and HTML. `&sample=greet`, a missing `sample`, or an
+unknown name opens the curated starter. A language without a curated starter opens a comment
+probe that parses in that grammar.
+
 [Open the playground](/playground), or read [Architecture](/docs/architecture) for what that
 engine is actually doing under your keystrokes.

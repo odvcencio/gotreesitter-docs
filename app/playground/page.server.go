@@ -33,9 +33,10 @@ func init() {
 }
 
 func loadPlayground(ctx *route.RouteContext, _ route.FilePage) (any, error) {
-	language, sample := initialPlaygroundSample(ctx.Query("lang"))
+	language, sampleName, sample := initialPlaygroundSample(ctx.Query("lang"), ctx.Query("sample"))
 	return map[string]any{
 		"language":        language,
+		"sample":          sampleName,
 		"source":          sample.Source,
 		"query":           sample.Query,
 		"gtsVersion":      docsapp.PlaygroundGTSVersion(),
@@ -53,13 +54,23 @@ var playgroundLanguageNames = func() map[string]struct{} {
 	return allowed
 }()
 
-func initialPlaygroundSample(requested string) (string, playgroundsamples.Sample) {
-	if _, ok := playgroundLanguageNames[requested]; !ok {
-		requested = "go"
+// initialPlaygroundSample resolves ?lang= and ?sample=. It returns the language,
+// the sample name that applied ("add" or "greet") and the sample itself.
+// Unknown languages fall back to Go; unknown sample names and languages
+// without a named sample fall back to the greet starter.
+func initialPlaygroundSample(requestedLanguage, requestedSample string) (string, string, playgroundsamples.Sample) {
+	language := requestedLanguage
+	if _, ok := playgroundLanguageNames[language]; !ok {
+		language = "go"
 	}
-	sample, ok := playgroundsamples.ForIndexLanguage(requested)
+	if requestedSample == playgroundsamples.SampleAdd {
+		if sample, ok := playgroundsamples.Named(requestedSample, language); ok {
+			return language, playgroundsamples.SampleAdd, sample
+		}
+	}
+	sample, ok := playgroundsamples.ForIndexLanguage(language)
 	if !ok {
 		sample = playgroundsamples.Sample{}
 	}
-	return requested, sample
+	return language, playgroundsamples.SampleGreet, sample
 }

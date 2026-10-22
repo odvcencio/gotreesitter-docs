@@ -16,6 +16,7 @@ func Page() Node {
 			capabilities="wasm text-input fetch"
 			requiredCapabilities="wasm fetch"
 			id="pg-root"
+			data-sample={data.sample}
 			class="pg-surface"
 		>
 			<div class="pg-toolbar">

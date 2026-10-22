@@ -33,12 +33,12 @@ func Page() Node {
 				<p>Open the GoSX playground with a starter sample. Parsing runs in WebAssembly on your device.</p>
 			</div>
 			<nav class="playground-language-links" aria-label="Open a playground sample">
-				<a href="/playground?lang=go" data-gosx-link="true">Go <span aria-hidden="true">↗</span></a>
-				<a href="/playground?lang=python" data-gosx-link="true">Python <span aria-hidden="true">↗</span></a>
-				<a href="/playground?lang=rust" data-gosx-link="true">Rust <span aria-hidden="true">↗</span></a>
-				<a href="/playground?lang=typescript" data-gosx-link="true">TypeScript <span aria-hidden="true">↗</span></a>
-				<a href="/playground?lang=json" data-gosx-link="true">JSON <span aria-hidden="true">↗</span></a>
-				<a href="/playground?lang=html" data-gosx-link="true">HTML <span aria-hidden="true">↗</span></a>
+				<a href="/playground?lang=go&amp;sample=add" data-gosx-link="true">Go <span aria-hidden="true">↗</span></a>
+				<a href="/playground?lang=python&amp;sample=add" data-gosx-link="true">Python <span aria-hidden="true">↗</span></a>
+				<a href="/playground?lang=rust&amp;sample=add" data-gosx-link="true">Rust <span aria-hidden="true">↗</span></a>
+				<a href="/playground?lang=typescript&amp;sample=add" data-gosx-link="true">TypeScript <span aria-hidden="true">↗</span></a>
+				<a href="/playground?lang=json&amp;sample=add" data-gosx-link="true">JSON <span aria-hidden="true">↗</span></a>
+				<a href="/playground?lang=html&amp;sample=add" data-gosx-link="true">HTML <span aria-hidden="true">↗</span></a>
 			</nav>
 		</section>
 

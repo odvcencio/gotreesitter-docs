@@ -242,6 +242,35 @@ func main() {
 	fmt.Println("?lang=rust server-rendered Rust without putting source in a request")
 
 	if err := chromedp.Run(ctx,
+		chromedp.Navigate(base+"/playground?lang=python&sample=add"),
+		chromedp.WaitVisible("#pg-source", chromedp.ByQuery),
+	); err != nil {
+		fatal(err)
+	}
+	if err := waitForText(ctx, "#pg-status", "Parsed locally"); err != nil {
+		fatal(err)
+	}
+	var addInitial struct {
+		Language string `json:"language"`
+		Source   string `json:"source"`
+		Sample   string `json:"sample"`
+	}
+	if err := chromedp.Run(ctx, chromedp.Evaluate(`(() => ({
+		language: document.querySelector("#pg-language")?.value || "",
+		source: document.querySelector("#pg-source")?.value || "",
+		sample: document.querySelector("#pg-root")?.getAttribute("data-sample") || ""
+	}))()`, &addInitial)); err != nil {
+		fatal(fmt.Errorf("read server-rendered add sample: %w", err))
+	}
+	if addInitial.Language != "python" || addInitial.Sample != "add" || !strings.Contains(addInitial.Source, "def add(left, right)") {
+		fatal(fmt.Errorf("?lang=python&sample=add did not open the add sample: language=%q sample=%q source=%q", addInitial.Language, addInitial.Sample, addInitial.Source))
+	}
+	mu.Lock()
+	requests = nil
+	mu.Unlock()
+	fmt.Println("?lang=python&sample=add opened the named sample")
+
+	if err := chromedp.Run(ctx,
 		chromedp.Navigate(base+"/playground"),
 		chromedp.WaitVisible("#pg-source", chromedp.ByQuery),
 	); err != nil {

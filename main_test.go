@@ -126,3 +126,16 @@ func TestPagesLoadTheNavigationRuntimeFromGoSXHashedAsset(t *testing.T) {
 		t.Fatal("served runtime differs from the embedded GoSX runtime")
 	}
 }
+
+func TestPlaygroundDeepLinkRendersTheNamedSample(t *testing.T) {
+	handler := testHandler(t)
+	body := get(t, handler, "/playground?lang=python&sample=add").Body.String()
+	for _, want := range []string{`data-sample="add"`, "def add(left, right)"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("deep link lacks %q", want)
+		}
+	}
+	if body := get(t, handler, "/playground?lang=python&sample=nope").Body.String(); !strings.Contains(body, `data-sample="greet"`) {
+		t.Error("unknown sample name must resolve to greet")
+	}
+}
