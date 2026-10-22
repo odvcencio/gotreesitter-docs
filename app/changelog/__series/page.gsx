@@ -42,7 +42,7 @@ func Page() Node {
 						<If when={release.hasNarrative}>
 							<div class="change-narrative">
 								<span class="change-kicker">release narrative</span>
-								<h3>{release.narrativeTitle}</h3>
+								<h2>{release.narrativeTitle}</h2>
 								<p>{release.narrativeBody}</p>
 							</div>
 						</If>
@@ -73,7 +73,7 @@ func Page() Node {
 									<header class="change-section-head">
 										<span class={"change-section-dot " + section.color} aria-hidden="true"></span>
 										<div>
-											<h3>{section.name}</h3>
+											<h2>{section.name}</h2>
 											<span>{section.impact}</span>
 										</div>
 										<a href={section.sourceURL} target="_blank" rel="noopener noreferrer">source ↗</a>
