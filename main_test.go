@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -94,7 +95,9 @@ func TestLangSearchIslandIsServedOutsideGoSXRuntimePaths(t *testing.T) {
 
 	app := server.New()
 	app.SetRuntimeRoot(t.TempDir())
-	mountIslandProgram(app, docsapp.LangSearchProgramPath, program, docsapp.LangSearchProgramContentVersion())
+	if err := mountIslandProgram(app, docsapp.LangSearchProgramPath, program, docsapp.LangSearchProgramContentVersion()); err != nil {
+		t.Fatal(err)
+	}
 	response := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, docsapp.LangSearchProgramURL(), nil)
 	app.Build().ServeHTTP(response, request)
@@ -107,5 +110,36 @@ func TestLangSearchIslandIsServedOutsideGoSXRuntimePaths(t *testing.T) {
 	}
 	if !bytes.Equal(response.Body.Bytes(), want) {
 		t.Fatalf("LangSearch program response is not the JSON program payload")
+	}
+}
+
+// testHandler builds the production router against this repository root.
+func testHandler(t *testing.T) http.Handler {
+	t.Helper()
+	_, thisFile, _, _ := runtime.Caller(0)
+	app, err := newApp(filepath.Dir(thisFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return app.Build()
+}
+
+func get(t *testing.T, handler http.Handler, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+	return rec
+}
+
+func TestPlaygroundServesWithAndWithoutTrailingSlash(t *testing.T) {
+	handler := testHandler(t)
+	for _, path := range []string{"/playground", "/playground/"} {
+		rec := get(t, handler, path)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET %s = %d, want 200", path, rec.Code)
+		}
+		if !strings.Contains(rec.Body.String(), `data-gosx-engine="GotreesitterPlayground"`) {
+			t.Fatalf("GET %s did not render the playground surface", path)
+		}
 	}
 }

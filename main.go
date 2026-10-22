@@ -28,11 +28,21 @@ func main() {
 	if err := env.LoadDir(root, ""); err != nil {
 		log.Fatal(err)
 	}
+	app, err := newApp(root)
+	if err != nil {
+		log.Fatal(err)
+	}
+	port := getenv("PORT", "8080")
+	log.Printf("gotreesitter-docs at http://localhost:%s", port)
+	log.Fatal(app.ListenAndServe(":" + port))
+}
+
+// newApp wires the router, middleware and mounts for root. Tests call it and
+// serve app.Build() through httptest; main listens on it.
+func newApp(root string) (*server.App, error) {
 	docsapp.BindPublicAssetURL(func(path string) string {
 		return versionedPublicAssetURL(root, path)
 	})
-	port := getenv("PORT", "8080")
-
 	router := route.NewRouter()
 	router.SetNavigationHead(deferredNavigationHead)
 	router.SetLayout(func(ctx *route.RouteContext, body gosx.Node) gosx.Node {
@@ -78,11 +88,12 @@ func main() {
 			gosx.Attr("data-cf-beacon", `{"token": "0282fc84c88d4a37820b398987f22b2d"}`),
 		)))
 		ctx.SetLanguage("en")
+		ctx.SetLanguage("en")
 		return server.HTMLDocument(ctx.Document("gotreesitter", body))
 	})
 
 	if err := router.AddDir(filepath.Join(root, "app"), route.FileRoutesOptions{}); err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	app := server.New()
@@ -101,12 +112,14 @@ func main() {
 	if info, err := os.Stat(filepath.Join(root, "dist", "build.json")); err == nil && !info.IsDir() {
 		app.SetRuntimeRoot(filepath.Join(root, "dist"))
 	}
-	mountIslandProgram(
+	if err := mountIslandProgram(
 		app,
 		docsapp.LangSearchProgramPath,
 		docsapp.LangSearchProgram(),
 		docsapp.LangSearchProgramContentVersion(),
-	)
+	); err != nil {
+		return nil, err
+	}
 	app.Redirect("GET /docs", "/docs/introduction", http.StatusTemporaryRedirect)
 	app.API("GET /healthz", func(ctx *server.Context) (any, error) {
 		ctx.NoStore()
@@ -118,12 +131,10 @@ func main() {
 	})
 	rootHandler, err := router.BuildChecked()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	app.Mount("/", rootHandler)
-
-	log.Printf("gotreesitter-docs at http://localhost:%s", port)
-	log.Fatal(app.ListenAndServe(":" + port))
+	return app, nil
 }
 
 // deferredNavigationHead references GoSX's own managed-navigation runtime as
@@ -183,10 +194,10 @@ func navigationRuntimeAssetHandler() http.Handler {
 // examples/hotswap): the client bootstrap fetches this once (prefetched via
 // island.Renderer.PreloadHints) and interprets it in the shared WASM VM.
 // app/lang_island.go's SetProgramAsset call points at this path.
-func mountIslandProgram(app *server.App, path string, prog *islandprogram.Program, contentVersion string) {
+func mountIslandProgram(app *server.App, path string, prog *islandprogram.Program, contentVersion string) error {
 	data, err := islandprogram.EncodeJSON(prog)
 	if err != nil {
-		log.Fatalf("gotreesitter-docs: encode island program %s: %v", path, err)
+		return fmt.Errorf("encode island program %s: %w", path, err)
 	}
 	app.Mount(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -197,6 +208,7 @@ func mountIslandProgram(app *server.App, path string, prog *islandprogram.Progra
 		}
 		_, _ = w.Write(data)
 	}))
+	return nil
 }
 
 func getenv(key, fallback string) string {
