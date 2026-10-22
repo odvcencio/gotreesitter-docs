@@ -13,6 +13,11 @@ import (
 func init() {
 	if err := route.RegisterFileModuleHere(route.FileModuleOptions{
 		Bindings: func(ctx *route.RouteContext, page route.FilePage, data any) route.FileTemplateBindings {
+			// The declarative copy buttons (data-gosx-copy-*) live in the lite
+			// bootstrap, not in the navigation runtime, so pages opt in here.
+			if ctx != nil {
+				ctx.Runtime().EnableBootstrap()
+			}
 			return route.FileTemplateBindings{
 				Values: map[string]any{
 					"navGroups":  buildDocsNavGroups(),

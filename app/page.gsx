@@ -20,8 +20,10 @@ func Page() Node {
 			{parserDemo()}
 			<div class="home-install">
 				<span class="install-label">Add the current release</span>
-				<div class="install" aria-label={"Install gotreesitter " + gtsVersion}>
-					<code class="cmd mono" tabindex="0" aria-label="Installation command; scroll horizontally to read the full command"><span class="pr" aria-hidden="true">$ </span>go get github.com/odvcencio/gotreesitter@{gtsVersion}</code>
+				<div class="install" data-gosx-copy-scope="" aria-label={"Install gotreesitter " + gtsVersion}>
+					<pre class="cmd mono" tabindex="0" aria-label="Installation command; scroll horizontally to read the full command"><code>go get github.com/odvcencio/gotreesitter@{gtsVersion}</code></pre>
+					<button type="button" class="copy-btn install-copy" data-gosx-copy-button="" data-gosx-copy-label="Copy" aria-label="Copy the install command">Copy</button>
+					<span class="sr-only" data-gosx-copy-status="" role="status" aria-live="polite"></span>
 				</div>
 			</div>
 		</section>

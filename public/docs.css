@@ -53,8 +53,8 @@ a{color:var(--blue);text-decoration:none;font-weight:600}a:hover{color:var(--vio
 .heromark .s1{color:var(--blue)}.heromark .s2{color:var(--green)}.heromark .s3{color:var(--violet)}
 .herotag{font-size:clamp(16px,1.9vw,20px);max-width:46ch;color:#2a2620;margin:0 0 22px;line-height:1.45}
 .install{display:flex;align-items:stretch;gap:0;max-width:440px;min-width:0;border:3px solid var(--ink);box-shadow:var(--sh2);border-radius:2px;background:var(--ink)}
-.install .cmd{display:block;flex:1;min-width:0;background:#17140f;color:#ece7db;font:500 14px 'JetBrains Mono',monospace;padding:13px 14px;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-gutter:stable;white-space:pre}
-.install .cmd .pr{color:var(--green)}
+.install .cmd{display:block;margin:0;flex:1;min-width:0;background:#17140f;color:#ece7db;font:500 14px 'JetBrains Mono',monospace;padding:13px 14px;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-gutter:stable;white-space:pre}
+.install .cmd::before{content:"$ ";color:var(--green)}
 .pillrow{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
 .pill{display:flex;align-items:center;gap:8px;font:600 13px 'JetBrains Mono',monospace;background:var(--card);border:2px solid var(--ink);border-radius:2px;padding:7px 11px;box-shadow:var(--shs)}
 .pill b{font-size:15px}
@@ -65,6 +65,13 @@ a{color:var(--blue);text-decoration:none;font-weight:600}a:hover{color:var(--vio
 .cdot{width:11px;height:11px;border-radius:50%;border:1.5px solid #000}
 .cdot.r{background:var(--red)}.cdot.y{background:var(--yellow)}.cdot.g{background:var(--green)}
 .cfile{margin-left:6px;font:600 12px 'JetBrains Mono',monospace;color:#a89f8d}
+.copy-btn{display:none;margin-left:auto;font:700 10px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:var(--ink);background:var(--paper);border:2px solid var(--ink);border-radius:2px;padding:3px 8px;cursor:pointer;box-shadow:var(--shs)}
+.copy-btn:hover{background:var(--yellow)}
+.copy-btn:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+.copy-btn:disabled{cursor:progress;opacity:.7}
+html[data-gosx-copy-ready="true"] .copy-btn{display:inline-flex}
+.clang + .copy-btn{margin-left:8px}
+.install .install-copy{align-self:center;margin:0 10px}
 .clang{margin-left:auto;font:700 11px 'JetBrains Mono',monospace;color:#17140f;background:var(--cyan);padding:3px 8px;border-radius:2px;text-transform:uppercase;letter-spacing:.5px}
 .codebody{margin:0;padding:16px 18px;font:400 13.5px/1.7 'JetBrains Mono',monospace;color:#e3ddce;overflow-x:auto;white-space:pre}
 .code .tk-kw{color:#c79bff}.code .tk-fn{color:#7aacff}.code .tk-str{color:#5fdc9a}.code .tk-num{color:#ffb066}.code .tk-ty{color:#ffd23f}.code .tk-cm{color:#847c6d;font-style:italic}.code .tk-op{color:#ff86bb}.code .tk-pn{color:#cfc9ba}.code .tk-id{color:#ece7db}

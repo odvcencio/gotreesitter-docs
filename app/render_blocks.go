@@ -144,12 +144,12 @@ func renderCodeBlock(n *mdpp.Node, src []byte) gosx.Node {
 	var body gosx.Node
 	switch {
 	case isPlain:
-		body = elWith("pre", gosx.Attrs(gosx.Attr("class", "codebody")), gosx.Text(literal))
+		body = elWith("pre", gosx.Attrs(gosx.Attr("class", "codebody")), elWith("code", nil, gosx.Text(literal)))
 	default:
 		if highlighted, ok := highlightSource(lang, literal); ok {
-			body = elWith("pre", gosx.Attrs(gosx.Attr("class", "codebody")), gosx.RawHTML(highlighted))
+			body = elWith("pre", gosx.Attrs(gosx.Attr("class", "codebody")), elWith("code", nil, gosx.RawHTML(highlighted)))
 		} else {
-			body = elWith("pre", gosx.Attrs(gosx.Attr("class", "codebody")), gosx.Text(literal))
+			body = elWith("pre", gosx.Attrs(gosx.Attr("class", "codebody")), elWith("code", nil, gosx.Text(literal)))
 		}
 	}
 
@@ -167,8 +167,16 @@ func renderCodeBlock(n *mdpp.Node, src []byte) gosx.Node {
 	if !isShell && !isPlain {
 		head = append(head, elWith("span", gosx.Attrs(gosx.Attr("class", "clang")), gosx.Text(lang)))
 	}
+	head = append(head,
+		elWith("button", gosx.Attrs(
+			gosx.Attr("type", "button"), gosx.Attr("class", "copy-btn"),
+			gosx.Attr("data-gosx-copy-button", ""), gosx.Attr("data-gosx-copy-label", "Copy"),
+			gosx.Attr("aria-label", "Copy "+cfile+" to the clipboard"),
+		), gosx.Text("Copy")),
+		elWith("span", gosx.Attrs(gosx.Attr("class", "sr-only"), gosx.Attr("data-gosx-copy-status", ""), gosx.Attr("role", "status"), gosx.Attr("aria-live", "polite"))),
+	)
 
-	return elWith("div", gosx.Attrs(gosx.Attr("class", codeClass)),
+	return elWith("div", gosx.Attrs(gosx.Attr("class", codeClass), gosx.Attr("data-gosx-copy-scope", "")),
 		elWith("div", gosx.Attrs(gosx.Attr("class", "codehead")), head...),
 		body,
 	)

@@ -167,3 +167,13 @@ func TestPlaygroundShareLinkRendering(t *testing.T) {
 		t.Error("the plain playground shows the share button and no notice")
 	}
 }
+
+func TestDocsPagesOptIntoTheLiteBootstrapForCopyButtons(t *testing.T) {
+	body := get(t, testHandler(t), "/docs/getting-started").Body.String()
+	if !strings.Contains(body, `data-gosx-bootstrap-mode="lite"`) {
+		t.Fatal("document does not opt into the lite bootstrap; copy buttons would never activate")
+	}
+	if !strings.Contains(body, `data-gosx-copy-button=""`) {
+		t.Fatal("getting-started renders no copy button")
+	}
+}
