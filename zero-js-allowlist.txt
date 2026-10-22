@@ -1,0 +1,6 @@
+# path	rule	reason	removed-by
+main.go	script-element	Cloudflare Web Analytics beacon; third-party tag kept by owner decision 2 (2026-10-22)	third-party
+cmd/playground-wasm/main_js.go	syscall-js-dom	hand-written DOM for the playground engine	S4-round-3 (wasm.ServeCalls + engine.Call)
+cmd/authoring-wasm/main_js.go	syscall-js-dom	hand-written DOM for the authoring engine	S4-round-3
+cmd/authoring-worker-wasm/main_js.go	syscall-js-dom	hand-written postMessage worker protocol	S4-round-3
+cmd/build-authoring-wasm/main.go	js-in-go-string	generated Web Worker bootstrap (importScripts + WebAssembly.instantiate)	S4-round-3

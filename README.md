@@ -5,8 +5,8 @@ The documentation and browser playground for
 [GoSX](https://github.com/odvcencio/gosx). Pages render on the server, the language catalog uses a
 GoSX-authored island, and `/playground` runs gotreesitter in a standard-Go WebAssembly engine owned
 by a GoSX surface. The engine indexes all 206 languages and fetches content-hashed grammar blobs
-on demand. Every internal route uses managed navigation. The repository contains no
-application-authored JavaScript.
+on demand. Every internal route uses managed navigation. The repository's application code is Go and
+GoSX; the zero-authored-JS gate (below) enforces that.
 
 Live site: [gotreesitter.m31labs.dev](https://gotreesitter.m31labs.dev/)
 
@@ -92,6 +92,24 @@ The canonical deployment manifests and Harbor image promotion live in the privat
 infrastructure repository. This source repository intentionally carries no registry credentials,
 cluster secrets, or duplicate Kubernetes manifests; deployment automation consumes the complete
 verified `dist/` artifact described above.
+
+## Zero-authored-JS gate
+
+`go run ./cmd/zero-js-gate` (run by `scripts/verify-production.sh`) scans tracked and untracked,
+not-ignored files under `app/`, `public/`, `main.go` and `cmd/*-wasm/` and fails on:
+
+1. script files (`.js .mjs .cjs .ts .jsx .tsx`, except `*.test.*` and `*_test.*`): `authored-script-file`;
+2. `<script>` in `.gsx` unless its type is `application/json` or `application/ld+json`: `script-tag`;
+3. in `.gsx` and in Go string literals: `<script`, `javascript:` URLs and inline handlers with quoted
+   values such as `onclick="..."` (`script-tag`, `javascript-url`, `inline-handler`); in Go code,
+   `El("script", ...)` (`script-element`) and JavaScript kept in a string, such as `importScripts(`,
+   `new Worker(` or `WebAssembly.instantiate(` (`js-in-go-string`);
+4. `import "syscall/js"` in Go, which means hand-written DOM access outside GoSX engine APIs
+   (`syscall-js-dom`).
+
+`zero-js-allowlist.txt` lists the exceptions: path, rule, reason and the work that removes each one.
+An entry that no longer matches a violation fails the gate (`stale-allowlist-entry`), so the list
+only shrinks. Binding expressions such as `onClick={handler}` are GoSX bindings and pass.
 
 ## Playground privacy boundary
 

@@ -47,16 +47,9 @@ if grep -rhoE 'gotreesitter@v[0-9]+\.[0-9]+\.[0-9]+' content/docs --exclude='rel
   fail "a content page pins an install command to a version other than $gts_version"
 fi
 
-# Application behavior must be authored in Go/GoSX. Ignore generated files
-# through the repository's normal ignore rules. Reject tracked or new source.
-authored_scripts="$(git ls-files --cached --others --exclude-standard -- '*.js' '*.jsx' '*.ts' '*.tsx')" ||
-  fail "cannot inspect application source files with Git"
-if [[ -n "$authored_scripts" ]]; then
-  fail "application-authored JavaScript remains in the repository"
-fi
-if grep -R -n --include='*.gsx' '<script' app; then
-  fail "a .gsx component contains a script escape hatch"
-fi
+# Zero-authored-JS gate: rules and scope in cmd/zero-js-gate; exceptions in
+# zero-js-allowlist.txt (each names its removal).
+go run ./cmd/zero-js-gate || fail "zero-authored-JS gate failed"
 
 rm -rf build dist
 go run ./cmd/build-playground-wasm
