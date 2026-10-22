@@ -42,6 +42,7 @@ gosx_cli_version="$(gosx version 2>&1)"
 [[ "${gosx_cli_version##* }" == "$gosx_version" ]] || fail "gosx CLI does not match go.mod $gosx_version"
 grep -Fq "GoSX ${gosx_version#v}" README.md || fail "README GoSX requirement does not match go.mod"
 grep -Fq "m31labs.dev/gosx/cmd/gosx@$gosx_version" README.md || fail "README GoSX install command does not match go.mod"
+grep -Fq "gotreesitter **$gts_version**" README.md || fail "README gotreesitter version does not match go.mod"
 
 # Application behavior must be authored in Go/GoSX. Ignore generated files
 # through the repository's normal ignore rules. Reject tracked or new source.

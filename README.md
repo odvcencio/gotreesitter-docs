@@ -10,9 +10,9 @@ application-authored JavaScript.
 
 Live site: [gotreesitter.m31labs.dev](https://gotreesitter.m31labs.dev/)
 
-The site documents gotreesitter **v0.55.1**, released on 2026-09-26.
+The site documents gotreesitter **v0.56.0**, released on 2026-10-13.
 The site links its displayed parser version to the pinned module build.
-The release catalog includes the v0.55.0 and v0.55.1 fixes and their measurement limits. The
+The release catalog includes the v0.56.0 release and its linked evidence. The
 server-rendered [/changelog](https://gotreesitter.m31labs.dev/changelog) route
 turns the source changelog into a searchable release archive with tag, code,
 pull request, issue, commit, and exact source-line evidence.
@@ -28,7 +28,7 @@ the supplied paper-and-ink visual system, and a live GLR benchmark island.
 Requirements:
 
 - Go 1.26
-- GoSX 0.57.1 (`go install m31labs.dev/gosx/cmd/gosx@v0.57.1`)
+- GoSX 0.57.18 (`go install m31labs.dev/gosx/cmd/gosx@v0.57.18`)
 - TinyGo 0.41.1 for the production GoSX runtime
 - Chrome or Chromium for the browser privacy/navigation gate
 
