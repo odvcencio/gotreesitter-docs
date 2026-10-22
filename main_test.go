@@ -168,13 +168,12 @@ func TestPlaygroundShareLinkRendering(t *testing.T) {
 	}
 }
 
-func TestDocsPagesOptIntoTheLiteBootstrapForCopyButtons(t *testing.T) {
+func TestDocsPagesDoNotLoadTheLiteBootstrap(t *testing.T) {
+	// The copy buttons need GoSX's lite bootstrap (about 151 KB decoded), which
+	// the docs JS budget cannot carry until GoSX ships a standalone copy chunk.
 	body := get(t, testHandler(t), "/docs/getting-started").Body.String()
-	if !strings.Contains(body, `data-gosx-bootstrap-mode="lite"`) {
-		t.Fatal("document does not opt into the lite bootstrap; copy buttons would never activate")
-	}
-	if !strings.Contains(body, `data-gosx-copy-button=""`) {
-		t.Fatal("getting-started renders no copy button")
+	if strings.Contains(body, "bootstrap-lite") || strings.Contains(body, `data-gosx-copy-button`) {
+		t.Fatal("docs pages must not load the lite bootstrap or render copy buttons")
 	}
 }
 

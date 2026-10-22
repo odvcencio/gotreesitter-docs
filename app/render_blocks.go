@@ -167,16 +167,8 @@ func renderCodeBlock(n *mdpp.Node, src []byte) gosx.Node {
 	if !isShell && !isPlain {
 		head = append(head, elWith("span", gosx.Attrs(gosx.Attr("class", "clang")), gosx.Text(lang)))
 	}
-	head = append(head,
-		elWith("button", gosx.Attrs(
-			gosx.Attr("type", "button"), gosx.Attr("class", "copy-btn"),
-			gosx.Attr("data-gosx-copy-button", ""), gosx.Attr("data-gosx-copy-label", "Copy"),
-			gosx.Attr("aria-label", "Copy "+cfile+" to the clipboard"),
-		), gosx.Text("Copy")),
-		elWith("span", gosx.Attrs(gosx.Attr("class", "sr-only"), gosx.Attr("data-gosx-copy-status", ""), gosx.Attr("role", "status"), gosx.Attr("aria-live", "polite"))),
-	)
 
-	return elWith("div", gosx.Attrs(gosx.Attr("class", codeClass), gosx.Attr("data-gosx-copy-scope", "")),
+	return elWith("div", gosx.Attrs(gosx.Attr("class", codeClass)),
 		elWith("div", gosx.Attrs(gosx.Attr("class", "codehead")), head...),
 		body,
 	)
