@@ -3,6 +3,7 @@ package changelog
 import (
 	"errors"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -10,6 +11,23 @@ import (
 	"m31labs.dev/gosx"
 	"m31labs.dev/gosx/route"
 )
+
+// filteredViews renders the releases a /changelog URL's filters select, the way
+// a release page does, so entry-level behavior stays testable.
+func filteredViews(t *testing.T, target string) []map[string]any {
+	t.Helper()
+	values := httptest.NewRequest("GET", target, nil).URL.Query()
+	filtered := catalog.Filter(releasecatalog.Filter{
+		Query:    values.Get("q"),
+		Category: values.Get("category"),
+		Status:   normalizeStatus(values.Get("status")),
+	})
+	views, _, err := buildReleaseViews(filtered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return views
+}
 
 func TestLoadChangelogReturnsCatalogError(t *testing.T) {
 	originalErr := catalogErr
@@ -28,14 +46,10 @@ func TestLoadChangelogReturnsCatalogError(t *testing.T) {
 }
 
 func TestChangelogReleaseReportUsesPinnedUpstreamLink(t *testing.T) {
-	ctx := &route.RouteContext{Request: httptest.NewRequest("GET", "/changelog?q=dated+exception", nil)}
-	loaded, err := loadChangelog(ctx, route.FilePage{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	views := filteredViews(t, "/changelog?q=dated+exception")
 	want := repositoryURL + "/blob/" + releasecatalog.SourceCommit + "/docs/releasing.md#v0520-only-tag-creation-exception"
 	found := false
-	for _, release := range loaded.(map[string]any)["releases"].([]map[string]any) {
+	for _, release := range views {
 		for _, section := range release["sections"].([]map[string]any) {
 			for _, entry := range section["entries"].([]map[string]any) {
 				html := gosx.RenderHTML(entry["content"].(gosx.Node))
@@ -52,19 +66,7 @@ func TestChangelogReleaseReportUsesPinnedUpstreamLink(t *testing.T) {
 }
 
 func TestLoadChangelogSeparatesReleasedRecoveryFix(t *testing.T) {
-	ctx := &route.RouteContext{
-		Request: httptest.NewRequest(
-			"GET",
-			"/changelog?q=deferred+parent+links&status=released",
-			nil,
-		),
-	}
-	loaded, err := loadChangelog(ctx, route.FilePage{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	data := loaded.(map[string]any)
-	releases := data["releases"].([]map[string]any)
+	releases := filteredViews(t, "/changelog?q=deferred+parent+links&status=released")
 	if len(releases) == 0 || releases[0]["version"] != "v0.47.1" {
 		t.Fatalf("first result = %#v, want v0.47.1", releases)
 	}
@@ -76,19 +78,7 @@ func TestLoadChangelogSeparatesReleasedRecoveryFix(t *testing.T) {
 }
 
 func TestLoadChangelogShowsRetirementCampaignInV048(t *testing.T) {
-	ctx := &route.RouteContext{
-		Request: httptest.NewRequest(
-			"GET",
-			"/changelog?q=expected+Hurl+and+INI+root+types&category=Fixed&status=released",
-			nil,
-		),
-	}
-	loaded, err := loadChangelog(ctx, route.FilePage{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	data := loaded.(map[string]any)
-	releases := data["releases"].([]map[string]any)
+	releases := filteredViews(t, "/changelog?q=expected+Hurl+and+INI+root+types&category=Fixed&status=released")
 	if len(releases) != 1 || releases[0]["version"] != "v0.48.0" {
 		t.Fatalf("results = %#v, want v0.48.0 only", releases)
 	}
@@ -109,24 +99,44 @@ func TestLoadChangelogDoesNotInventUnreleasedEntries(t *testing.T) {
 	if data["hasResults"] != false {
 		t.Fatalf("hasResults = %#v, want false", data["hasResults"])
 	}
-	if releases := data["releases"].([]map[string]any); len(releases) != 0 {
-		t.Fatalf("unreleased results = %#v, want none", releases)
+	if groups := data["groups"].([]map[string]any); len(groups) != 0 {
+		t.Fatalf("unreleased results = %#v, want none", groups)
 	}
 }
 
-func TestBuildVersionLinksSkipsEmptyReleases(t *testing.T) {
-	links := buildVersionLinks()
-	for _, link := range links {
-		if link["version"] == "Unreleased" {
-			t.Fatalf("version links contain empty Unreleased: %#v", links)
+func TestIndexGroupsReleasesByMinorVersionAndKeepsAnchors(t *testing.T) {
+	groups := buildIndexGroups(catalog.Releases, "")
+	if len(groups) < 10 {
+		t.Fatalf("got %d series, want one per minor version", len(groups))
+	}
+	for _, group := range groups {
+		if group["label"] == "Unreleased" {
+			t.Fatalf("empty Unreleased must not be listed: %#v", group)
 		}
 	}
-	// Derive the expected anchor from the catalog rather than pinning a
-	// version, so cutting a release does not fail this test for the wrong
-	// reason. The invariant under test is ordering: newest released first.
-	wantHref := "#release-" + strings.NewReplacer(".", "-").Replace(releasecatalog.LatestReleasedVersion)
-	if len(links) == 0 || links[0]["href"] != wantHref {
-		t.Fatalf("first version link = %#v, want %s", links, wantHref)
+	first := groups[0]
+	wantLabel := minorKey(releaseByTag(t, releasecatalog.LatestReleasedVersion))
+	if first["label"] != wantLabel || first["href"] != "/changelog/"+wantLabel {
+		t.Fatalf("first series = %#v, want %s", first, wantLabel)
+	}
+	row := first["rows"].([]map[string]any)[0]
+	wantID := "release-" + strings.NewReplacer(".", "-").Replace(releasecatalog.LatestReleasedVersion)
+	if row["id"] != wantID || row["altID"] != releasecatalog.LatestReleasedVersion {
+		t.Fatalf("row anchors = %v / %v, want %s / %s", row["id"], row["altID"], wantID, releasecatalog.LatestReleasedVersion)
+	}
+	if row["href"] != "/changelog/"+wantLabel+"#"+wantID || row["summary"] == "" {
+		t.Fatalf("row = %#v", row)
+	}
+}
+
+func TestMinorKey(t *testing.T) {
+	for tag, want := range map[string]string{"v0.55.1": "v0.55", "v0.9.0": "v0.9", "v0.56.0": "v0.56"} {
+		if got := minorKey(releasecatalog.Release{Tag: tag, Status: releasecatalog.StatusReleased}); got != want {
+			t.Errorf("minorKey(%s) = %s, want %s", tag, got, want)
+		}
+	}
+	if got := minorKey(releasecatalog.Release{Status: releasecatalog.StatusUnreleased}); got != "unreleased" {
+		t.Errorf("unreleased key = %s", got)
 	}
 }
 
@@ -261,16 +271,21 @@ func TestChangelogMetadataUsesInspectedSocialCard(t *testing.T) {
 }
 
 func TestChangelogPageUsesNativeAccessibleControls(t *testing.T) {
-	source, err := pageSource.ReadFile("page.gsx")
+	index, err := pageSource.ReadFile("page.gsx")
 	if err != nil {
 		t.Fatal(err)
 	}
-	page := string(source)
+	release, err := os.ReadFile("__series/page.gsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := string(index) + string(release)
 	for _, required := range []string{
 		`<details`,
 		`<summary`,
 		`aria-live="polite"`,
 		`aria-label="Adjacent versions"`,
+		`aria-label="Adjacent series"`,
 		`release.status`,
 		`entry.sourceURL`,
 	} {
@@ -326,4 +341,43 @@ func TestReleasePerformanceTableIsRendered(t *testing.T) {
 		return
 	}
 	t.Fatal("missing performance section")
+}
+
+func TestChangelogHeroDescribesTheLatestRelease(t *testing.T) {
+	catalog, err := releasecatalog.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, _ := releaseNarrative(releaseByTag(t, releasecatalog.LatestReleasedVersion))
+	if want == "" {
+		t.Fatal("latest release has no narrative title")
+	}
+	if got := latestSummary(catalog); got != want {
+		t.Fatalf("latestSummary = %q, want %q", got, want)
+	}
+	source, err := os.ReadFile("page.gsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(source), "Version 0.54.0") {
+		t.Fatal("page.gsx hard-codes the 0.54.0 hero blurb")
+	}
+}
+
+func TestAdjacentLinksNeverPointAtEmptyReleases(t *testing.T) {
+	for _, tag := range []string{releasecatalog.LatestReleasedVersion, "v0.48.0"} {
+		views, _, err := buildReleaseViews([]releasecatalog.Release{releaseByTag(t, tag)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, key := range []string{"previous", "next"} {
+			link := views[0][key].(map[string]any)
+			if href, _ := link["href"].(string); strings.Contains(href, "unreleased") {
+				t.Errorf("%s %s link points at the empty Unreleased section: %s", tag, key, href)
+			}
+		}
+	}
+	if views, _, _ := buildReleaseViews([]releasecatalog.Release{releaseByTag(t, releasecatalog.LatestReleasedVersion)}); views[0]["hasNext"] != false {
+		t.Error("the newest release with entries has no newer neighbor")
+	}
 }

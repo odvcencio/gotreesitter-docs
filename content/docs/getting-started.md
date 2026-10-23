@@ -11,15 +11,15 @@ syntax tree. You can try a grammar before installing anything.
 
 ## Requirements
 
-You need Go 1.22.0 or newer for the v0.55.1 module. You can confirm the minimum in its
-[go.mod](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/go.mod).
+You need Go 1.22.0 or newer for the v0.56.0 module. You can confirm the minimum in its
+[go.mod](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/go.mod).
 
 ## Install
 
-Add v0.55.1 to your module:
+Add v0.56.0 to your module:
 
 ```sh
-go get github.com/odvcencio/gotreesitter@v0.55.1
+go get github.com/odvcencio/gotreesitter@v0.56.0
 ```
 
 You get the parser and all 206 built-in grammars in the same module.

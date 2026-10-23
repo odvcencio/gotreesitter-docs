@@ -98,10 +98,8 @@ func loadChangelog(ctx *route.RouteContext, _ route.FilePage) (any, error) {
 		Category: category,
 		Status:   status,
 	})
-	releases, resultCount, err := buildReleaseViews(filtered)
-	if err != nil {
-		return nil, err
-	}
+	groups := buildIndexGroups(filtered, queryString(query, category, status))
+	resultCount := catalogEntryCount(filtered)
 
 	totalEntries := catalogEntryCount(catalog.Releases)
 	currentEntries := 0
@@ -118,14 +116,14 @@ func loadChangelog(ctx *route.RouteContext, _ route.FilePage) (any, error) {
 		"totalEntries":     totalEntries,
 		"currentEntries":   currentEntries,
 		"latestVersion":    catalog.Source.LatestReleased,
+		"latestSummary":    latestSummary(catalog),
 		"earliestVersion":  catalog.Releases[len(catalog.Releases)-1].Tag,
 		"earliestDate":     catalog.Releases[len(catalog.Releases)-1].Date,
 		"sourceURL":        catalog.Source.URL,
 		"sourceCommit":     catalog.Source.Commit[:12],
 		"sourceSHA256":     catalog.Source.SHA256,
-		"releases":         releases,
-		"hasResults":       len(releases) > 0,
-		"versionLinks":     buildVersionLinks(),
+		"groups":           groups,
+		"hasResults":       len(groups) > 0,
 		"campaignTrail":    campaignTrail(),
 		"latestReleaseURL": repositoryURL + "/releases/tag/" + catalog.Source.LatestReleased,
 	}, nil
@@ -188,6 +186,8 @@ func buildReleaseViews(releases []releasecatalog.Release) ([]map[string]any, int
 			})
 		}
 
+		prevIndex := neighborWithEntries(fullIndex, 1)
+		nextIndex := neighborWithEntries(fullIndex, -1)
 		narrativeTitle, narrativeBody := releaseNarrative(release)
 		trail := historicalTrail(release)
 		views = append(views, map[string]any{
@@ -207,10 +207,10 @@ func buildReleaseViews(releases []releasecatalog.Release) ([]map[string]any, int
 			"evidenceURL":     releaseEvidenceURL(release),
 			"codeURL":         releaseCodeURL(release, fullIndex),
 			"sourceURL":       sourceLineURL(release.SourceLine, release.SourcePath),
-			"previous":        adjacentVersion(fullIndex + 1),
-			"next":            adjacentVersion(fullIndex - 1),
-			"hasPrevious":     fullIndex+1 < len(catalog.Releases),
-			"hasNext":         fullIndex > 0,
+			"previous":        adjacentVersion(prevIndex),
+			"next":            adjacentVersion(nextIndex),
+			"hasPrevious":     prevIndex >= 0,
+			"hasNext":         nextIndex >= 0,
 			"historicalTrail": trail,
 			"hasTrail":        len(trail) > 0,
 		})
@@ -315,21 +315,6 @@ func catalogReleaseIndex(version string) int {
 	return -1
 }
 
-func buildVersionLinks() []map[string]any {
-	links := make([]map[string]any, 0, len(catalog.Releases))
-	for _, release := range catalog.Releases {
-		if releaseEntryCount(release) == 0 {
-			continue
-		}
-		links = append(links, map[string]any{
-			"href":    "#" + versionAnchor(release),
-			"version": displayVersion(release),
-			"status":  string(release.Status),
-		})
-	}
-	return links
-}
-
 func versionAnchor(release releasecatalog.Release) string {
 	return "release-" + slug(displayVersion(release))
 }
@@ -405,13 +390,29 @@ func releaseCodeURL(release releasecatalog.Release, index int) string {
 	return repositoryURL + "/releases/tag/" + release.Tag
 }
 
+// neighborWithEntries finds the nearest release in direction step (+1 older,
+// -1 newer) that has entries, so adjacent links never point at a page that
+// does not exist (the empty Unreleased section has none). It returns -1 when
+// there is no such release.
+func neighborWithEntries(index, step int) int {
+	if index < 0 {
+		return -1
+	}
+	for i := index + step; i >= 0 && i < len(catalog.Releases); i += step {
+		if releaseEntryCount(catalog.Releases[i]) > 0 {
+			return i
+		}
+	}
+	return -1
+}
+
 func adjacentVersion(index int) map[string]any {
 	if index < 0 || index >= len(catalog.Releases) {
 		return map[string]any{}
 	}
 	release := catalog.Releases[index]
 	return map[string]any{
-		"href":    "#" + versionAnchor(release),
+		"href":    minorHref(minorKey(release)) + "#" + versionAnchor(release),
 		"version": displayVersion(release),
 	}
 }
@@ -496,6 +497,9 @@ func releaseImpactClass(release releasecatalog.Release) string {
 
 func releaseNarrative(release releasecatalog.Release) (string, string) {
 	switch displayVersion(release) {
+	case "v0.56.0":
+		return "Opt-in declaration facts and certified incremental reuse.",
+			"This release adds opt-in declaration, signature and call-argument facts for Go, Python, JavaScript, TypeScript and TSX through NewFactProgramWithOptions (#1435). It extends certified incremental subtree reuse to Go, Java, JavaScript, TypeScript, Python, Rust, C and C++ (#1402, #1413, #1421) and bounds external-scanner checkpoint memory (#1410). It preserves YAML syntax errors and recovered nodes (#1400) and keeps an earlier TSX generic call intact when a typed function follows it (#1443). The linked entries state the measured scope."
 	case "v0.55.1":
 		return "Restore Python speed and correct large C parses.",
 			"This patch restores Python parsing speed on files without unpacking. It fixes false C errors beyond the string-call limit. It also reduces Scala alias work and extends the Dart reuse guard. Transient-error incremental trees remain unresolved. The linked notes state the measured results and their limits."
@@ -628,4 +632,16 @@ func trailLink(label, description, href string) map[string]any {
 		"description": description,
 		"href":        href,
 	}
+}
+
+// latestSummary is the narrative title of the newest immutable release, so
+// the hero never describes an older tag than the one it names.
+func latestSummary(catalog releasecatalog.Catalog) string {
+	for _, release := range catalog.Releases {
+		if release.Status == releasecatalog.StatusReleased {
+			title, _ := releaseNarrative(release)
+			return title
+		}
+	}
+	return ""
 }

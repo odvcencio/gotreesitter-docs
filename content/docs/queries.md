@@ -164,7 +164,7 @@ match missing nodes. Use `Node.IsMissing()` for direct tree inspection.
 
 **Supertypes.** A supertype pattern requires the corresponding hidden supertype.
 `supertype/subtype` also constrains the subtype. Grammar metadata affects these checks;
-the [dated parity boards](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/docs/c-parity-boards.md)
+the [dated parity boards](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/docs/c-parity-boards.md)
 record known map and query differences. Do not assume all supertype queries match C.
 
 The pattern language is upstream tree-sitter's, and upstream's query docs are the canonical spec
@@ -210,8 +210,8 @@ keeps its original range. Use capture accessors when you consume an offset captu
 
 `#select-adjacent!` filters captures by adjacency. `#strip!` removes a regular-expression
 match from returned text. See the
-[tagged capture API](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/query.go)
-and [offset implementation](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/query_offset.go).
+[tagged capture API](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/query.go)
+and [offset implementation](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/query_offset.go).
 
 ## Running a query
 

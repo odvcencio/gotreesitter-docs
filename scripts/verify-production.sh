@@ -42,17 +42,14 @@ gosx_cli_version="$(gosx version 2>&1)"
 [[ "${gosx_cli_version##* }" == "$gosx_version" ]] || fail "gosx CLI does not match go.mod $gosx_version"
 grep -Fq "GoSX ${gosx_version#v}" README.md || fail "README GoSX requirement does not match go.mod"
 grep -Fq "m31labs.dev/gosx/cmd/gosx@$gosx_version" README.md || fail "README GoSX install command does not match go.mod"
+grep -Fq "gotreesitter **$gts_version**" README.md || fail "README gotreesitter version does not match go.mod"
+if grep -rhoE 'gotreesitter@v[0-9]+\.[0-9]+\.[0-9]+' content/docs --exclude='release-*.md' | grep -v "gotreesitter@$gts_version" | grep -q .; then
+  fail "a content page pins an install command to a version other than $gts_version"
+fi
 
-# Application behavior must be authored in Go/GoSX. Ignore generated files
-# through the repository's normal ignore rules. Reject tracked or new source.
-authored_scripts="$(git ls-files --cached --others --exclude-standard -- '*.js' '*.jsx' '*.ts' '*.tsx')" ||
-  fail "cannot inspect application source files with Git"
-if [[ -n "$authored_scripts" ]]; then
-  fail "application-authored JavaScript remains in the repository"
-fi
-if grep -R -n --include='*.gsx' '<script' app; then
-  fail "a .gsx component contains a script escape hatch"
-fi
+# Zero-authored-JS gate: rules and scope in cmd/zero-js-gate; exceptions in
+# zero-js-allowlist.txt (each names its removal).
+go run ./cmd/zero-js-gate || fail "zero-authored-JS gate failed"
 
 rm -rf build dist
 go run ./cmd/build-playground-wasm
@@ -105,7 +102,7 @@ done
 curl --silent --fail "$base/healthz" | grep -q '"ok":true'
 
 routes=("/" "/playground" "/authoring")
-routes+=("/changelog")
+routes+=("/changelog" "/changelog/v0.56")
 for source in content/docs/*.md; do
   routes+=("/docs/$(basename "$source" .md)")
 done
@@ -170,11 +167,18 @@ curl --silent --show-error --fail --output "$page_body" "$base/changelog"
 grep -q 'History you can interrogate' "$page_body" || fail "changelog hero missing from /changelog"
 grep -Fq "$gts_version" "$page_body" || fail "$gts_version missing from /changelog"
 grep -q 'href="/changelog" aria-current="page"' "$page_body" || fail "active changelog navigation state is missing"
+# Single-page changelog links must still land: the index keeps each release
+# anchor and links on to the series page.
+grep -Fq 'id="release-v0-55-1"' "$page_body" || fail "changelog index lost the release-v0-55-1 anchor"
+grep -Fq 'id="v0.55.1"' "$page_body" || fail "changelog index lost the v0.55.1 anchor"
+grep -Fq 'href="/changelog/v0.55#release-v0-55-1"' "$page_body" || fail "changelog index does not link v0.55.1 to its series page"
+changelog_series_html="$(curl --silent --show-error --fail "$base/changelog/v0.55")"
+grep -Fq 'id="release-v0-55-1"' <<<"$changelog_series_html" || fail "/changelog/v0.55 does not carry the release-v0-55-1 anchor"
 
 languages_html="$(curl --silent --show-error --fail "$base/docs/languages")"
-lang_search_url="$(grep -oE '/_app/islands/LangSearch\.json\?v=[0-9a-f]{12}' <<<"$languages_html" | head -n 1)"
-[[ -n "$lang_search_url" ]] || fail "cannot find content-versioned LangSearch island URL"
-curl --silent --show-error --fail "$base$lang_search_url" | grep -q 'LangSearch'
+grep -Fq 'name="q"' <<<"$languages_html" || fail "languages filter form is missing"
+curl --silent --show-error --fail "$base/docs/languages?q=script" | grep -q 'class="lname">typescript<' ||
+  fail "server-side language filter does not return typescript for q=script"
 
 # The server delivers a GoSX surface and immutable engine asset. It has no
 # mutation endpoint, form submission, or route that can receive editor text.

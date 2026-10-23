@@ -2,19 +2,19 @@
 
 The documentation and browser playground for
 [`github.com/odvcencio/gotreesitter`](https://github.com/odvcencio/gotreesitter), built with
-[GoSX](https://github.com/odvcencio/gosx). Pages render on the server, the language catalog uses a
-GoSX-authored island, and `/playground` runs gotreesitter in a standard-Go WebAssembly engine owned
+[GoSX](https://github.com/odvcencio/gosx). Pages render on the server, the language catalog filters through a
+server-side GET form, and `/playground` runs gotreesitter in a standard-Go WebAssembly engine owned
 by a GoSX surface. The engine indexes all 206 languages and fetches content-hashed grammar blobs
-on demand. Every internal route uses managed navigation. The repository contains no
-application-authored JavaScript.
+on demand. Every internal route uses managed navigation. The repository's application code is Go and
+GoSX; the zero-authored-JS gate (below) enforces that.
 
 Live site: [gotreesitter.m31labs.dev](https://gotreesitter.m31labs.dev/)
 
-The site documents gotreesitter **v0.55.1**, released on 2026-09-26.
+The site documents gotreesitter **v0.56.0**, released on 2026-10-13.
 The site links its displayed parser version to the pinned module build.
-The release catalog includes the v0.55.0 and v0.55.1 fixes and their measurement limits. The
+The release catalog includes the v0.56.0 release and its linked evidence. The
 server-rendered [/changelog](https://gotreesitter.m31labs.dev/changelog) route
-turns the source changelog into a searchable release archive with tag, code,
+turns the source changelog into a searchable release index, with one page per minor version (`/changelog/v0.56`) and tag, code,
 pull request, issue, commit, and exact source-line evidence.
 
 ## GopherCon slide deck
@@ -28,7 +28,7 @@ the supplied paper-and-ink visual system, and a live GLR benchmark island.
 Requirements:
 
 - Go 1.26
-- GoSX 0.57.1 (`go install m31labs.dev/gosx/cmd/gosx@v0.57.1`)
+- GoSX 0.57.18 (`GOTOOLCHAIN=go1.26.0 go install m31labs.dev/gosx/cmd/gosx@v0.57.18`; `gosx size` only measures with a CLI built by Go 1.26.0)
 - TinyGo 0.41.1 for the production GoSX runtime
 - Chrome or Chromium for the browser privacy/navigation gate
 
@@ -51,8 +51,13 @@ overrides. It builds the playground, all 206 lazy grammar assets, and the author
 It validates every `.gsx` source and runs the Go tests. It creates a clean `gosx build --prod`
 artifact, runs `gosx export`, reports runtime size, boots `dist/run.sh`, and requests every route.
 It checks every internal link and validates the authoring asset surface. Its Chrome check proves
-that playground source never enters a request. It also proves that internal navigation does not
+that playground source never enters a request, except in a share link you choose to copy and open, which carries it in the URL. It also proves that internal navigation does not
 request a new document. The `gosx` binary on `PATH` must exactly match the version in `go.mod`.
+
+The `lighthouse` CI job downloads the `dist/` artifact that the `verify` job built, serves it with
+`dist/run.sh`, and measures `/`, three docs pages, the `/changelog` index and two release pages (`/changelog/v0.56`, and `/changelog/v0.53`, the largest) with Lighthouse CI
+(`lighthouserc.json`): the mobile preset, the median of three cold runs per page, failing below
+performance 95 or accessibility 100.
 
 Run the browser performance budgets when Chrome is available:
 
@@ -93,6 +98,24 @@ infrastructure repository. This source repository intentionally carries no regis
 cluster secrets, or duplicate Kubernetes manifests; deployment automation consumes the complete
 verified `dist/` artifact described above.
 
+## Zero-authored-JS gate
+
+`go run ./cmd/zero-js-gate` (run by `scripts/verify-production.sh`) scans tracked and untracked,
+not-ignored files under `app/`, `public/`, `main.go` and `cmd/*-wasm/` and fails on:
+
+1. script files (`.js .mjs .cjs .ts .jsx .tsx`, except `*.test.*` and `*_test.*`): `authored-script-file`;
+2. `<script>` in `.gsx` unless its type is `application/json` or `application/ld+json`: `script-tag`;
+3. in `.gsx` and in Go string literals: `<script`, `javascript:` URLs and inline handlers with quoted
+   values such as `onclick="..."` (`script-tag`, `javascript-url`, `inline-handler`); in Go code,
+   `El("script", ...)` (`script-element`) and JavaScript kept in a string, such as `importScripts(`,
+   `new Worker(` or `WebAssembly.instantiate(` (`js-in-go-string`);
+4. `import "syscall/js"` in Go, which means hand-written DOM access outside GoSX engine APIs
+   (`syscall-js-dom`).
+
+`zero-js-allowlist.txt` lists the exceptions: path, rule, reason and the work that removes each one.
+An entry that no longer matches a violation fails the gate (`stale-allowlist-entry`), so the list
+only shrinks. Binding expressions such as `onClick={handler}` are GoSX bindings and pass.
+
 ## Playground privacy boundary
 
 Parsing and query execution happen inside the browser in `public/playground/runtime.wasm`, a
@@ -103,6 +126,9 @@ mutation endpoint. Source is capped at 64 KiB in the engine and is rendered back
 never HTML. The production browser gate verifies all 206 languages, proves a second grammar is
 fetched on demand, and fails if editor interaction emits a non-GET request, leaks its private marker
 into a URL, or causes a full document navigation.
+The one exception is a share link: `Copy share link` puts the compressed grammar, source and query in a
+URL (`/playground?lang=&s=&q=`, see `internal/playgroundshare`), so opening that link sends them to the
+server. Creating the link makes no request.
 
 ## License
 

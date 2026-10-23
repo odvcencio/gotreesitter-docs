@@ -17,14 +17,14 @@ tests compare Go trees with a pinned C runtime.
 
 The runtime reads tree-sitter parse tables. ts2go extracts tables from upstream parser.c files,
 and grammars ships 206 generated grammar blobs. Those grammar blobs come from their upstream
-grammar repositories. The v0.55.1
-[README](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/README.md) describes the current
+grammar repositories. The v0.56.0
+[README](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/README.md) describes the current
 runtime and registry.
 
 ## What you can build
 
-- **Parse with built-in grammars.** The v0.55.1 registry contains 206 grammars. Its
-  [language guide](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/docs/languages.md)
+- **Parse with built-in grammars.** The v0.56.0 registry contains 206 grammars. Its
+  [language guide](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/docs/languages.md)
   describes scanner coverage and the limits of smoke tests.
 - **Check trees against C.** The project has structural, query, highlighting, recovery, and
   real-corpus comparisons. Each board has its own tested inputs and date.
@@ -34,7 +34,7 @@ runtime and registry.
 - **Use queries and editor features.** The runtime includes query execution, syntax highlighting,
   code navigation, injections, and UTF-16 positions.
 
-Version v0.55.1 uses production GLR parsing by default. Set
+Version v0.56.0 uses production GLR parsing by default. Set
 GTS_ADMISSION_CANDIDATE=1 to try compact parsing; the language allowlist is empty.
 
 ## Measured control input
@@ -54,9 +54,13 @@ and [PR #1355](https://github.com/odvcencio/gotreesitter/pull/1355) give the met
 | No-edit reparse | 8.318 ns/op | 0 |
 
 The allocation counts are from the v0.55.1
-[CHANGELOG measurement scope](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/CHANGELOG.md#measurement-scope).
+[CHANGELOG measurement scope](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/CHANGELOG.md#measurement-scope).
 The workload is a generated 500-function Go file that never forks. Treat it as a control, not
 typical code.
+
+Upstream has published no receipt for the v0.56.0 tag as of 2026-10-22; the v0.56.0 tree's
+[BENCH.md](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/BENCH.md) still carries the
+2026-09-27 measurement.
 
 ## Parity has a measured scope
 

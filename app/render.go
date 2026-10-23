@@ -86,15 +86,14 @@ func withEmailProtection(node gosx.Node) gosx.Node {
 // RenderDesignDocWithLangIsland is RenderDesignDoc for content/docs/languages.md
 // specifically: it renders exactly like RenderDesignDoc, except the
 // ```langlist fenced block (previously always renderLangGrid's static
-// output) is replaced in place by island(names) — the live 206-language
-// search filter island. Everything else in the
-// document — prose before and after the block, headings, tables — renders
-// through the same unchanged renderBlocks pipeline every other doc uses.
+// output) is replaced in place by island(names), the 206-language search
+// filter (a server-side GET form). Everything else in the
+// document renders through the same unchanged renderBlocks pipeline every
+// other doc uses.
 //
-// page.server.go passes docsapp.BuildLangGridIsland (closed over the
-// current request's ctx.Runtime()) as island, so the returned node is
-// already a real, hydration-wired GoSX island — not a second copy of the
-// static grid.
+// page.server.go passes docsapp.BuildLangSearch, closed over the current
+// request's ?q= value. The name keeps "Island" from when this was a GoSX
+// island; the function ships no script now.
 func RenderDesignDocWithLangIsland(island func(names []string) gosx.Node) content.RendererFunc {
 	return content.RendererFunc(func(doc content.Document) (gosx.Node, error) {
 		return renderDesignDoc(doc, island)

@@ -2,12 +2,12 @@
 title: v0.55 Releases
 description: What changed in gotreesitter v0.55.0 and v0.55.1, with pull requests, measurement scope, and known gaps.
 nav_group: Project
-order: 3
+order: 4
 ---
 
 This page summarizes gotreesitter v0.55.0 (2026-09-24) and v0.55.1 (2026-09-26).
-The tagged [CHANGELOG](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/CHANGELOG.md)
-is the source for release entries and their linked evidence.
+The tagged [CHANGELOG](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/CHANGELOG.md)
+is the source for release entries and their linked evidence. The current documentation site uses v0.56.0.
 
 ## v0.55.1 — 2026-09-26
 
@@ -115,5 +115,5 @@ above its sub-second target, Scala's regression remains unresolved, blank HTTP c
 a locked-C regression, Django tree differences remain, CSV comma inputs still differ from locked C,
 and the PHP compact recovery winner remains open.
 
-See the tagged [v0.55.0 and v0.55.1 CHANGELOG entries](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/CHANGELOG.md)
+See the tagged [v0.55.0 and v0.55.1 CHANGELOG entries](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/CHANGELOG.md)
 for original results and links to their evidence.

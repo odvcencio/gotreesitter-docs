@@ -84,7 +84,7 @@ func DocsNavLink(props any) Node {
 			<li class="navitem on">
 				<a href={props.Href} class="nav-anchor" aria-current="page" data-gosx-link="true">
 					<span class={"ndot " + props.Color} aria-hidden="true"></span>
-					{props.Label}
+					<span class="nav-label">{props.Label}</span>
 				</a>
 			</li>
 		</If>
@@ -92,7 +92,7 @@ func DocsNavLink(props any) Node {
 			<li class="navitem">
 				<a href={props.Href} class="nav-anchor" data-gosx-link="true">
 					<span class={"ndot " + props.Color} aria-hidden="true"></span>
-					{props.Label}
+					<span class="nav-label">{props.Label}</span>
 				</a>
 			</li>
 		</If>

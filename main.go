@@ -1,23 +1,18 @@
 package main
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 
-	"github.com/andybalholm/brotli"
 	docsapp "github.com/odvcencio/gotreesitter-docs/app"
 	_ "github.com/odvcencio/gotreesitter-docs/modules"
 	"m31labs.dev/gosx"
-	runtimehost "m31labs.dev/gosx/client/runtime/host"
 	"m31labs.dev/gosx/env"
-	islandprogram "m31labs.dev/gosx/island/program"
 	"m31labs.dev/gosx/route"
 	"m31labs.dev/gosx/server"
 )
@@ -28,13 +23,22 @@ func main() {
 	if err := env.LoadDir(root, ""); err != nil {
 		log.Fatal(err)
 	}
+	app, err := newApp(root)
+	if err != nil {
+		log.Fatal(err)
+	}
+	port := getenv("PORT", "8080")
+	log.Printf("gotreesitter-docs at http://localhost:%s", port)
+	log.Fatal(app.ListenAndServe(":" + port))
+}
+
+// newApp wires the router, middleware and mounts for root. Tests call it and
+// serve app.Build() through httptest; main listens on it.
+func newApp(root string) (*server.App, error) {
 	docsapp.BindPublicAssetURL(func(path string) string {
 		return versionedPublicAssetURL(root, path)
 	})
-	port := getenv("PORT", "8080")
-
 	router := route.NewRouter()
-	router.SetNavigationHead(deferredNavigationHead)
 	router.SetLayout(func(ctx *route.RouteContext, body gosx.Node) gosx.Node {
 		ctx.AddHead(
 			server.Font(server.FontProps{
@@ -82,12 +86,12 @@ func main() {
 	})
 
 	if err := router.AddDir(filepath.Join(root, "app"), route.FileRoutesOptions{}); err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	app := server.New()
+	app.EnableNavigation()
 	app.Use(playgroundWASMCompression(root))
-	app.Mount(navigationRuntimeAssetURL(), navigationRuntimeAssetHandler())
 	router.SetRevalidator(app.Revalidator())
 	app.EnableISR()
 	app.SetPublicDir(filepath.Join(root, "public"))
@@ -101,12 +105,6 @@ func main() {
 	if info, err := os.Stat(filepath.Join(root, "dist", "build.json")); err == nil && !info.IsDir() {
 		app.SetRuntimeRoot(filepath.Join(root, "dist"))
 	}
-	mountIslandProgram(
-		app,
-		docsapp.LangSearchProgramPath,
-		docsapp.LangSearchProgram(),
-		docsapp.LangSearchProgramContentVersion(),
-	)
 	app.Redirect("GET /docs", "/docs/introduction", http.StatusTemporaryRedirect)
 	app.API("GET /healthz", func(ctx *server.Context) (any, error) {
 		ctx.NoStore()
@@ -118,85 +116,10 @@ func main() {
 	})
 	rootHandler, err := router.BuildChecked()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	app.Mount("/", rootHandler)
-
-	log.Printf("gotreesitter-docs at http://localhost:%s", port)
-	log.Fatal(app.ListenAndServe(":" + port))
-}
-
-// deferredNavigationHead references GoSX's own managed-navigation runtime as
-// a deferred, cacheable module asset so its source does not sit inline in every
-// server-rendered page.
-func deferredNavigationHead(nonce string) gosx.Node {
-	attrs := []any{
-		gosx.BoolAttr("defer"),
-		gosx.Attr("data-gosx-navigation", "true"),
-		gosx.Attr("fetchpriority", "low"),
-		gosx.Attr("src", navigationRuntimeAssetURL()),
-	}
-	if nonce != "" {
-		attrs = append(attrs, gosx.Attr("nonce", nonce))
-	}
-	return gosx.El("script", gosx.Attrs(attrs...))
-}
-
-func navigationRuntimeAssetURL() string {
-	sum := sha256.Sum256([]byte(runtimehost.NavigationRuntime))
-	return fmt.Sprintf("/_app/runtime/navigation.%x.js", sum[:6])
-}
-
-func navigationRuntimeAssetHandler() http.Handler {
-	source := []byte(runtimehost.NavigationRuntime)
-	var compressed bytes.Buffer
-	writer := brotli.NewWriterLevel(&compressed, brotli.BestCompression)
-	if _, err := writer.Write(source); err != nil {
-		panic(fmt.Errorf("compress GoSX navigation runtime: %w", err))
-	}
-	if err := writer.Close(); err != nil {
-		panic(fmt.Errorf("finish GoSX navigation runtime compression: %w", err))
-	}
-	br := compressed.Bytes()
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet && r.Method != http.MethodHead {
-			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-			return
-		}
-		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		w.Header().Add("Vary", "Accept-Encoding")
-		payload := source
-		if acceptsBrotli(r.Header.Get("Accept-Encoding")) {
-			w.Header().Set("Content-Encoding", "br")
-			payload = br
-		}
-		w.Header().Set("Content-Length", fmt.Sprint(len(payload)))
-		if r.Method == http.MethodGet {
-			_, _ = w.Write(payload)
-		}
-	})
-}
-
-// mountIslandProgram serves a compiled island program's opcode JSON at
-// path, matching the pattern GoSX's own examples use (examples/counter,
-// examples/hotswap): the client bootstrap fetches this once (prefetched via
-// island.Renderer.PreloadHints) and interprets it in the shared WASM VM.
-// app/lang_island.go's SetProgramAsset call points at this path.
-func mountIslandProgram(app *server.App, path string, prog *islandprogram.Program, contentVersion string) {
-	data, err := islandprogram.EncodeJSON(prog)
-	if err != nil {
-		log.Fatalf("gotreesitter-docs: encode island program %s: %v", path, err)
-	}
-	app.Mount(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if contentVersion != "" && r.URL.Query().Get("v") == contentVersion {
-			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		} else {
-			w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
-		}
-		_, _ = w.Write(data)
-	}))
+	return app, nil
 }
 
 func getenv(key, fallback string) string {

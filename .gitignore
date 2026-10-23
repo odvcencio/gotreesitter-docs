@@ -1,4 +1,5 @@
 dist/
+lighthouse-results/
 build/
 node_modules/
 *.log

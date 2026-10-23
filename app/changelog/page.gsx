@@ -22,7 +22,7 @@ func Page() Node {
 			<aside class="change-latest" aria-label="Latest release">
 				<span class="change-latest-kicker">latest immutable release</span>
 				<strong>{data.latestVersion}</strong>
-				<p>Version 0.54.0 makes compact parsing opt-in and fixes incremental reuse and error shapes.</p>
+				<p>{data.latestSummary}</p>
 				<a href={data.latestReleaseURL} target="_blank" rel="noopener noreferrer">Read the release notes ↗</a>
 			</aside>
 		</header>
@@ -53,7 +53,7 @@ func Page() Node {
 					<h2 id="campaign-thread-title">From recovery repair to parser ownership.</h2>
 				</div>
 				<p>
-					The v0.54.0 tag records the release scope. The source snapshot preserves each release and its evidence.
+					The {data.latestVersion} tag records the release scope. The source snapshot preserves each release and its evidence.
 				</p>
 			</div>
 			<ol class="change-thread-list">
@@ -86,15 +86,6 @@ func Page() Node {
 			</div>
 		</section>
 
-		<details class="change-version-index">
-			<summary>Jump to any version</summary>
-			<nav aria-label="Changelog versions">
-				<Each as="version" of={data.versionLinks}>
-					<a class={"change-version-link " + version.status} href={version.href}>{version.version}</a>
-				</Each>
-			</nav>
-		</details>
-
 		<If when={data.hasResults == false}>
 			<div class="change-empty" role="status">
 				<span aria-hidden="true">∅</span>
@@ -104,108 +95,26 @@ func Page() Node {
 			</div>
 		</If>
 
-		<div class="change-release-list">
-			<Each as="release" of={data.releases}>
-				<details
-					class={"change-release " + release.status}
-					id={release.id}
-					open={release.open}
-				>
-					<summary class="change-release-summary">
-						<span class="change-release-marker" aria-hidden="true"></span>
-						<span class="change-release-identity">
-							<strong>{release.version}</strong>
-							<span>{release.date}</span>
-						</span>
-						<span class={"change-release-status " + release.status}>{release.statusLabel}</span>
-						<span class={"change-impact " + release.impactClass}>{release.impact}</span>
-						<span class="change-count">{release.entryCount} changes</span>
-						<span class="change-chevron" aria-hidden="true">↓</span>
-					</summary>
-					<div class="change-release-body">
-						<If when={release.hasNarrative}>
-							<div class="change-narrative">
-								<span class="change-kicker">release narrative</span>
-								<h3>{release.narrativeTitle}</h3>
-								<p>{release.narrativeBody}</p>
-							</div>
-						</If>
-
-						<div class="change-evidence-links" aria-label="Release evidence">
-							<a href={release.evidenceURL} target="_blank" rel="noopener noreferrer">Release evidence ↗</a>
-							<a href={release.codeURL} target="_blank" rel="noopener noreferrer">Code changes ↗</a>
-							<a href={release.sourceURL} target="_blank" rel="noopener noreferrer">Changelog source ↗</a>
-						</div>
-
-						<If when={release.hasTrail}>
-							<div class="change-related">
-								<span class="change-related-title">Related trail</span>
-								<div>
-									<Each as="trail" of={release.historicalTrail}>
-										<a href={trail.href} target="_blank" rel="noopener noreferrer">
-											<strong>{trail.label}</strong>
-											<span>{trail.description}</span>
-										</a>
-									</Each>
-								</div>
-							</div>
-						</If>
-
-						<div class="change-sections">
-							<Each as="section" of={release.sections}>
-								<section class="change-section" id={section.id}>
-									<header class="change-section-head">
-										<span class={"change-section-dot " + section.color} aria-hidden="true"></span>
-										<div>
-											<h3>{section.name}</h3>
-											<span>{section.impact}</span>
-										</div>
-										<a href={section.sourceURL} target="_blank" rel="noopener noreferrer">source ↗</a>
-										<span class="change-section-count">{section.entryCount}</span>
-									</header>
-									<If when={section.hasIntroduction}>
-										<div class="change-entry-copy">{section.introduction}</div>
-									</If>
-									<ol class="change-entry-list">
-										<Each as="entry" of={section.entries}>
-											<li class="change-entry">
-												<div class="change-entry-copy">{entry.content}</div>
-												<div class="change-entry-evidence">
-													<a
-														class="change-source-link"
-														href={entry.sourceURL}
-														target="_blank"
-														rel="noopener noreferrer"
-													>{entry.sourceLabel} ↗</a>
-													<If when={entry.hasRefs}>
-														<span class="change-entry-refs">
-															<Each as="reference" of={entry.references}>
-																<a
-																	href={reference.href}
-																	target="_blank"
-																	rel="noopener noreferrer"
-																>{reference.label}</a>
-															</Each>
-														</span>
-													</If>
-												</div>
-											</li>
-										</Each>
-									</ol>
-								</section>
-							</Each>
-						</div>
-
-						<nav class="change-adjacent" aria-label="Adjacent versions">
-							<If when={release.hasPrevious}>
-								<a href={release.previous.href}>← Older: {release.previous.version}</a>
-							</If>
-							<If when={release.hasNext}>
-								<a href={release.next.href}>Newer: {release.next.version} →</a>
-							</If>
-						</nav>
-					</div>
-				</details>
+		<div class="change-index">
+			<Each as="group" of={data.groups}>
+				<section class="change-group" id={group.id} aria-labelledby={group.id + "-title"}>
+					<h2 class="change-group-title" id={group.id + "-title"}>
+						<a href={group.href} data-gosx-link="true">{group.label}</a>
+						<span class="change-group-count">{group.releaseCount}</span>
+					</h2>
+					<ol class="change-index-list">
+						<Each as="row" of={group.rows}>
+							<li class="change-index-row" id={row.id}>
+								<span class="change-anchor" id={row.altID}></span>
+								<a class="change-index-version" href={row.href} data-gosx-link="true">{row.version}</a>
+								<span class="change-index-date">{row.date}</span>
+								<span class={"change-impact " + row.impactClass}>{row.impact}</span>
+								<span class="change-index-summary">{row.summary}</span>
+								<span class="change-count">{row.entryCount} changes</span>
+							</li>
+						</Each>
+					</ol>
+				</section>
 			</Each>
 		</div>
 

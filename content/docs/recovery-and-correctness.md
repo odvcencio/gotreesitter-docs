@@ -129,11 +129,11 @@ documents that gap rather than hiding it.
 
 ## Published parity evidence
 
-The v0.55.1 [curated gate ratchet](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/cgo_harness/parity_gate_ratchet_test.go)
+The v0.56.0 [curated gate ratchet](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/cgo_harness/parity_gate_ratchet_test.go)
 requires at least 206 structural languages, zero known-degraded structural entries, and zero
 parity skips. Its highlight floor is 200. These are test thresholds, not a result for all inputs.
 
-The [C parity boards](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/docs/c-parity-boards.md)
+The [C parity boards](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/docs/c-parity-boards.md)
 publish separate, dated results. The figures below are the board's recorded results, not a new
 sweep of the v0.55.1 tag:
 

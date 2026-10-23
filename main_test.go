@@ -1,21 +1,17 @@
 package main
 
 import (
-	"bytes"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
-	"github.com/andybalholm/brotli"
-	docsapp "github.com/odvcencio/gotreesitter-docs/app"
-	"m31labs.dev/gosx"
+	"github.com/odvcencio/gotreesitter-docs/internal/playgroundshare"
 	runtimehost "m31labs.dev/gosx/client/runtime/host"
-	islandprogram "m31labs.dev/gosx/island/program"
-	"m31labs.dev/gosx/server"
 )
 
 func TestVersionedPublicAssetURL(t *testing.T) {
@@ -39,73 +35,209 @@ func TestMissingPublicAssetUsesFrameworkURL(t *testing.T) {
 	}
 }
 
-func TestDeferredNavigationHeadUsesCacheableAssetAndKeepsNonce(t *testing.T) {
-	got := gosx.RenderHTML(deferredNavigationHead("test-nonce"))
-	for _, want := range []string{
-		"defer",
-		`data-gosx-navigation="true"`,
-		`fetchpriority="low"`,
-		`src="` + navigationRuntimeAssetURL() + `"`,
-		`nonce="test-nonce"`,
-	} {
-		if !strings.Contains(got, want) {
-			t.Fatalf("deferred navigation head does not contain %q", want)
+func testHandler(t *testing.T) http.Handler {
+	t.Helper()
+	_, thisFile, _, _ := runtime.Caller(0)
+	app, err := newApp(filepath.Dir(thisFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return app.Build()
+}
+
+func get(t *testing.T, handler http.Handler, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+	return rec
+}
+
+func TestPlaygroundServesWithAndWithoutTrailingSlash(t *testing.T) {
+	handler := testHandler(t)
+	for _, path := range []string{"/playground", "/playground/"} {
+		rec := get(t, handler, path)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET %s = %d, want 200", path, rec.Code)
+		}
+		if !strings.Contains(rec.Body.String(), `data-gosx-engine="GotreesitterPlayground"`) {
+			t.Fatalf("GET %s did not render the playground surface", path)
 		}
 	}
-	if strings.Contains(got, runtimehost.NavigationRuntime) {
-		t.Fatal("navigation runtime is still embedded in the document head")
+}
+
+func TestPagesLoadTheNavigationRuntimeFromGoSXHashedAsset(t *testing.T) {
+	handler := testHandler(t)
+	body := get(t, handler, "/docs/introduction").Body.String()
+	match := regexp.MustCompile(`<script[^>]*data-gosx-navigation="true"[^>]*src="([^"]+)"`).FindStringSubmatch(body)
+	if match == nil {
+		t.Fatal("no navigation runtime script tag on /docs/introduction")
+	}
+	if match[1] != runtimehost.NavigationRuntimePath {
+		t.Fatalf("navigation src = %q, want %q", match[1], runtimehost.NavigationRuntimePath)
+	}
+	if strings.Contains(body, "/_app/runtime/navigation.") {
+		t.Fatal("the legacy re-served runtime URL is still rendered")
+	}
+	asset := get(t, handler, match[1])
+	if asset.Code != http.StatusOK {
+		t.Fatalf("GET %s = %d", match[1], asset.Code)
+	}
+	if ct := asset.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/javascript") {
+		t.Fatalf("content-type = %q", ct)
+	}
+	if cc := asset.Header().Get("Cache-Control"); !strings.Contains(cc, "immutable") {
+		t.Fatalf("cache-control = %q, want immutable", cc)
+	}
+	if asset.Body.String() != runtimehost.NavigationRuntime {
+		t.Fatal("served runtime differs from the embedded GoSX runtime")
 	}
 }
 
-func TestNavigationRuntimeAssetSupportsBrotliAndImmutableCaching(t *testing.T) {
-	app := server.New()
-	app.Mount(navigationRuntimeAssetURL(), navigationRuntimeAssetHandler())
-	request := httptest.NewRequest(http.MethodGet, navigationRuntimeAssetURL(), nil)
-	request.Header.Set("Accept-Encoding", "gzip, br")
-	response := httptest.NewRecorder()
-	app.Build().ServeHTTP(response, request)
-	if response.Code != http.StatusOK {
-		t.Fatalf("navigation runtime returned %d: %s", response.Code, response.Body.String())
+func TestPlaygroundDeepLinkRendersTheNamedSample(t *testing.T) {
+	handler := testHandler(t)
+	body := get(t, handler, "/playground?lang=python&sample=add").Body.String()
+	for _, want := range []string{`data-sample="add"`, "def add(left, right)"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("deep link lacks %q", want)
+		}
 	}
-	if response.Header().Get("Content-Encoding") != "br" {
-		t.Fatalf("navigation runtime encoding = %q", response.Header().Get("Content-Encoding"))
-	}
-	if response.Header().Get("Cache-Control") != "public, max-age=31536000, immutable" {
-		t.Fatalf("navigation runtime cache policy = %q", response.Header().Get("Cache-Control"))
-	}
-	decoded, err := io.ReadAll(brotli.NewReader(bytes.NewReader(response.Body.Bytes())))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(decoded, []byte(runtimehost.NavigationRuntime)) {
-		t.Fatal("navigation runtime response differs from GoSX's embedded runtime")
+	if body := get(t, handler, "/playground?lang=python&sample=nope").Body.String(); !strings.Contains(body, `data-sample="greet"`) {
+		t.Error("unknown sample name must resolve to greet")
 	}
 }
 
-func TestLangSearchIslandIsServedOutsideGoSXRuntimePaths(t *testing.T) {
-	if strings.HasPrefix(docsapp.LangSearchProgramPath, "/gosx/") {
-		t.Fatalf("LangSearch program path collides with GoSX runtime paths: %q", docsapp.LangSearchProgramPath)
-	}
-	program := docsapp.LangSearchProgram()
-	want, err := islandprogram.EncodeJSON(program)
+func TestPlaygroundShareLinkRendering(t *testing.T) {
+	handler := testHandler(t)
+	// "func shared_marker_only() {}" encoded the way the browser does.
+	values, err := playgroundshare.Encode(playgroundshare.Share{Language: "go", Source: "package main\nfunc shared_marker_only() {}\n"})
 	if err != nil {
 		t.Fatal(err)
 	}
+	body := get(t, handler, "/playground?"+values.Encode()).Body.String()
+	if !strings.Contains(body, "shared_marker_only") || !strings.Contains(body, `data-shared="true"`) {
+		t.Errorf("a valid share link must open its source with data-shared=true")
+	}
+	if strings.Contains(body, "pg-share-note") {
+		t.Error("a valid share link must not show the error notice")
+	}
+	rec := get(t, handler, "/playground?lang=go&s=1.%25%25%25")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("a broken share link must still open the playground, got %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "This share link could not be opened") || !strings.Contains(rec.Body.String(), `data-shared="false"`) {
+		t.Error("a broken share link must show the notice and data-shared=false")
+	}
+	plain := get(t, handler, "/playground").Body.String()
+	if strings.Contains(plain, "pg-share-note") || !strings.Contains(plain, `id="pg-share"`) {
+		t.Error("the plain playground shows the share button and no notice")
+	}
+}
 
-	app := server.New()
-	app.SetRuntimeRoot(t.TempDir())
-	mountIslandProgram(app, docsapp.LangSearchProgramPath, program, docsapp.LangSearchProgramContentVersion())
-	response := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, docsapp.LangSearchProgramURL(), nil)
-	app.Build().ServeHTTP(response, request)
+func TestDocsPagesDoNotLoadTheLiteBootstrap(t *testing.T) {
+	// The copy buttons need GoSX's lite bootstrap (about 151 KB decoded), which
+	// the docs JS budget cannot carry until GoSX ships a standalone copy chunk.
+	body := get(t, testHandler(t), "/docs/getting-started").Body.String()
+	if strings.Contains(body, "bootstrap-lite") || strings.Contains(body, `data-gosx-copy-button`) {
+		t.Fatal("docs pages must not load the lite bootstrap or render copy buttons")
+	}
+}
 
-	if response.Code != http.StatusOK {
-		t.Fatalf("LangSearch program returned %d: %s", response.Code, response.Body.String())
+func TestNotFoundPagesLeadToSearchAndThePlayground(t *testing.T) {
+	handler := testHandler(t)
+	for _, path := range []string{"/this-page-does-not-exist", "/docs/this-doc-does-not-exist"} {
+		rec := get(t, handler, path)
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("GET %s = %d, want 404", path, rec.Code)
+		}
+		body := rec.Body.String()
+		for _, want := range []string{`action="/changelog"`, `name="q"`, `href="/playground?lang=go&amp;sample=add"`, `href="/docs/getting-started"`} {
+			if !strings.Contains(body, want) {
+				t.Errorf("GET %s lacks %q", path, want)
+			}
+		}
 	}
-	if got := response.Header().Get("Content-Type"); got != "application/json" {
-		t.Fatalf("LangSearch content type = %q", got)
+}
+
+func TestLanguagesFilterRunsOnTheServer(t *testing.T) {
+	handler := testHandler(t)
+	all := get(t, handler, "/docs/languages").Body.String()
+	if !strings.Contains(all, `name="q"`) || strings.Contains(all, "LangSearch") {
+		t.Fatal("languages page must render the GET filter form and no island")
 	}
-	if !bytes.Equal(response.Body.Bytes(), want) {
-		t.Fatalf("LangSearch program response is not the JSON program payload")
+	filtered := get(t, handler, "/docs/languages?q=script").Body.String()
+	if !strings.Contains(filtered, "lname\">typescript<") || strings.Contains(filtered, "lname\">python<") {
+		t.Fatal("?q=script must keep typescript and drop python")
 	}
+	if !strings.Contains(filtered, `value="script"`) {
+		t.Fatal("the filter box must keep the query")
+	}
+	if none := get(t, handler, "/docs/languages?q=zzzz").Body.String(); !strings.Contains(none, "No language matches") {
+		t.Fatal("an empty result must say so")
+	}
+}
+
+func TestChangelogIsAnIndexWithPerSeriesPages(t *testing.T) {
+	handler := testHandler(t)
+	index := get(t, handler, "/changelog")
+	if index.Code != http.StatusOK {
+		t.Fatalf("GET /changelog = %d", index.Code)
+	}
+	body := index.Body.String()
+	// Old single-page anchors still land on the index row, which links on.
+	for _, want := range []string{
+		`id="release-v0-55-1"`, `id="v0.55.1"`,
+		`href="/changelog/v0.55#release-v0-55-1"`, `href="/changelog/v0.56"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("index lacks %q", want)
+		}
+	}
+	if strings.Contains(body, `class="change-release `) {
+		t.Error("the index must not render release bodies")
+	}
+	if n := strings.Count(body, "<"); n > 6000 {
+		t.Errorf("index has %d tags; keep it small enough for the mobile budget", n)
+	}
+
+	series := get(t, handler, "/changelog/v0.55")
+	if series.Code != http.StatusOK {
+		t.Fatalf("GET /changelog/v0.55 = %d", series.Code)
+	}
+	page := series.Body.String()
+	for _, want := range []string{`id="release-v0-55-1"`, `id="release-v0-55-0"`, `href="/changelog"`, `canonical`, "/changelog/v0.55"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("series page lacks %q", want)
+		}
+	}
+	if strings.Contains(page, `id="release-v0-56-0"`) {
+		t.Error("v0.55 page must not contain the v0.56.0 release")
+	}
+	if rec := get(t, handler, "/changelog/v9.9"); rec.Code != http.StatusNotFound {
+		t.Errorf("unknown series = %d, want 404", rec.Code)
+	}
+	if rec := get(t, handler, "/changelog/v0.56?q=nothing-matches-this-zzzz"); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "No entry in this series matches") {
+		t.Errorf("empty filtered series should say so, got %d", rec.Code)
+	}
+}
+
+func TestChangelogInternalLinksResolve(t *testing.T) {
+	handler := testHandler(t)
+	link := regexp.MustCompile(`href="(/changelog[^"#]*)`)
+	seen := map[string]bool{}
+	var check func(page string, follow bool)
+	check = func(page string, follow bool) {
+		for _, m := range link.FindAllStringSubmatch(get(t, handler, page).Body.String(), -1) {
+			target := strings.ReplaceAll(m[1], "&amp;", "&")
+			if seen[target] {
+				continue
+			}
+			seen[target] = true
+			if rec := get(t, handler, target); rec.Code != http.StatusOK {
+				t.Errorf("%s links to %s = %d", page, target, rec.Code)
+			}
+		}
+	}
+	check("/changelog", true)
+	check("/changelog/v0.56", false)
+	check("/changelog/v0.48", false)
 }

@@ -163,7 +163,78 @@ Use trees built with the same `Language` value as the program. A nil program, in
 or language mismatch clears the destination but retains its capacity. A nil destination does
 nothing. Copy result slices before the next extraction if you need to retain them.
 Use a separate destination for each concurrent extraction. Assign `gts.FactSet{}` to release
-retained storage. See the [source contract](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/fact_program.go).
+retained storage. See the [source contract](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/fact_program.go).
+
+## Declaration facts in v0.56.0
+
+Version v0.56.0 adds opt-in declaration, signature and call-argument facts for Go, Python,
+JavaScript, TypeScript and TSX ([#1435](https://github.com/odvcencio/gotreesitter/issues/1435)).
+You build the program with `NewFactProgramWithOptions(lang, kinds, opts...)`, select
+`FactDeclarations`, `FactSignatures` or `FactCallArguments`, and attach the grammar-owned rules
+that go with each kind. `grammars.DeclarationRules(entry)`, `grammars.SignatureRules(entry)` and
+`grammars.CallArgumentRules(entry)` return those rules for a registry entry, and
+`WithDeclarationRules`, `WithSignatureRules` and `WithCallArgumentRules` attach them. Results
+arrive in `FactSet.Declarations`, `FactSet.Signatures` and `FactSet.CallArguments`.
+
+`NewFactProgram` and `FactAll` keep their earlier results; `FactAll` does not include the new
+kinds. Function literals and function types have no signature facts. A grammar without rules
+produces no facts of that kind. See the
+[v0.56.0 changelog](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/CHANGELOG.md) for the
+per-language scope.
+
+```go title=main.go
+package main
+
+import (
+	"fmt"
+
+	gts "github.com/odvcencio/gotreesitter"
+	"github.com/odvcencio/gotreesitter/grammars"
+)
+
+func main() {
+	src := []byte("package main\n\ntype Point struct{ X, Y int }\n\nfunc Add(a, b int) int { return a + b }\n")
+
+	entry := grammars.DetectLanguage("main.go")
+	lang := entry.Language()
+
+	program, err := gts.NewFactProgramWithOptions(lang,
+		gts.FactDeclarations|gts.FactSignatures,
+		gts.WithDeclarationRules(grammars.DeclarationRules(*entry)),
+		gts.WithSignatureRules(grammars.SignatureRules(*entry)),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	tree, err := gts.NewParser(lang).Parse(src)
+	if err != nil {
+		panic(err)
+	}
+	defer tree.Release()
+
+	var facts gts.FactSet
+	program.ExtractInto(tree, &facts)
+
+	fmt.Println("declarations:", len(facts.Declarations))
+	for _, d := range facts.Declarations {
+		fmt.Printf("  %s %s\n", d.Kind, d.Name)
+	}
+	fmt.Println("signatures:", len(facts.Signatures))
+	for _, s := range facts.Signatures {
+		fmt.Printf("  %s\n", s.Name)
+	}
+}
+```
+
+```text
+declarations: 3
+  type Point
+  field X
+  field Y
+signatures: 1
+  Add
+```
 
 ## Compile-checked example
 

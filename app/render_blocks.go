@@ -144,12 +144,12 @@ func renderCodeBlock(n *mdpp.Node, src []byte) gosx.Node {
 	var body gosx.Node
 	switch {
 	case isPlain:
-		body = elWith("pre", gosx.Attrs(gosx.Attr("class", "codebody")), gosx.Text(literal))
+		body = elWith("pre", gosx.Attrs(gosx.Attr("class", "codebody")), elWith("code", nil, gosx.Text(literal)))
 	default:
 		if highlighted, ok := highlightSource(lang, literal); ok {
-			body = elWith("pre", gosx.Attrs(gosx.Attr("class", "codebody")), gosx.RawHTML(highlighted))
+			body = elWith("pre", gosx.Attrs(gosx.Attr("class", "codebody")), elWith("code", nil, gosx.RawHTML(highlighted)))
 		} else {
-			body = elWith("pre", gosx.Attrs(gosx.Attr("class", "codebody")), gosx.Text(literal))
+			body = elWith("pre", gosx.Attrs(gosx.Attr("class", "codebody")), elWith("code", nil, gosx.Text(literal)))
 		}
 	}
 

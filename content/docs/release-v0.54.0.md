@@ -2,10 +2,10 @@
 title: "v0.54.0 release (history)"
 description: Release scope, API additions, and behavior changes shipped on 2026-09-23.
 nav_group: Project
-order: 3
+order: 5
 ---
 
-History: gotreesitter v0.54.0 was released on 2026-09-23. The current documentation site uses v0.55.1.
+History: gotreesitter v0.54.0 was released on 2026-09-23. The current documentation site uses v0.56.0.
 The [release commit](https://github.com/odvcencio/gotreesitter/commit/90a9c277a928aca1f100f170c57b869c4686f068),
 [tagged changelog](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/CHANGELOG.md),
 and [roadmap](https://github.com/odvcencio/gotreesitter/blob/v0.54.0/docs/roadmap.md)

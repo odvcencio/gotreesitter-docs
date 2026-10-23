@@ -2,6 +2,7 @@ package docs
 
 import (
 	"fmt"
+	"github.com/odvcencio/gotreesitter-docs/internal/playgroundsamples"
 	"go/parser"
 	"go/token"
 	"os"
@@ -158,7 +159,8 @@ func readDocumentationExamples(t *testing.T) []docExample {
 	}
 	for _, spec := range landingParseSpecs {
 		if spec.Name == "go" {
-			example := docExample{page: "home", index: 1, info: "Go parse sample", code: spec.Source}
+			sample, _ := playgroundsamples.Named(playgroundsamples.SampleAdd, spec.Name)
+			example := docExample{page: "home", index: 1, info: "Go parse sample", code: sample.Source}
 			out = append(out, example)
 			break
 		}

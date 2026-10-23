@@ -65,26 +65,15 @@ func LoadFetchedLanguage(name string, blob []byte) (*gts.Language, error) {
 		grammarruntime.RegisterCatalog(readFetchedGrammarBlob, canonicalFetchedGrammarName)
 	})
 
-	language, err := gts.LoadLanguage(blob)
+	// Use gotreesitter's own blob decoder so the language gets the same repairs,
+	// reserved words, scanner and lex-state attachments as the embedded loader.
+	// A raw gts.LoadLanguage skips them, and v0.56.0 no longer hides the
+	// resulting YAML ERROR nodes behind result normalization.
+	language, err := grammars.DecodeAndCertifyLanguageBlob(strings.TrimSuffix(name, ".bin"), blob)
 	if err != nil {
 		return nil, err
 	}
-	language.Name = strings.TrimSuffix(name, ".bin")
-	if scanner := grammars.LookupExternalScanner(language.Name); scanner != nil {
-		if bound, ok := scanner.(languageBoundExternalScanner); ok {
-			language.ExternalScanner = bound.ExternalScannerForLanguage(language)
-		} else {
-			language.ExternalScanner = scanner
-		}
-	}
-	if states := grammars.LookupExternalLexStates(language.Name); len(states) > 0 {
-		language.ExternalLexStates = states
-	}
 	return language, nil
-}
-
-type languageBoundExternalScanner interface {
-	ExternalScannerForLanguage(*gts.Language) gts.ExternalScanner
 }
 
 func readFetchedGrammarBlob(name string) ([]byte, func(), error) {

@@ -68,7 +68,7 @@ Use native `details` expansion without animation.
 
 ### Shipped patterns
 
-The landing page leads with six real parses from gotreesitter v0.55.1:
+The landing page leads with six real parses from the pinned gotreesitter release (v0.56.0 on 2026-10-22; the page reads the version from the build):
 Go, Python, Rust, TypeScript, JSON, and HTML. The server parses each example
 once at startup, caches its named-node tree and UTF-8 byte ranges, then
 renders the source next to that tree. Native radio tabs switch examples.
@@ -77,9 +77,10 @@ its tree row without application JavaScript.
 
 The playground links follow the parse panel and open a language-specific
 starter sample. The playground server accepts only canonical names from its
-grammar index. Source and query contents stay in the page and never enter the
-URL. The source editor, tree-sitter query editor, and GoSX keyboard input each
+grammar index. Source and query contents stay in the page; they enter a URL only when a visitor copies a share link. The source editor, tree-sitter query editor, and GoSX keyboard input each
 have an accessible name.
+
+Since 2026-10-22 the shell, headings, lead and body text use the --text-* and --space-* tokens; code bodies keep 13.5 px JetBrains Mono. Sidebar labels wrap with overflow-wrap:anywhere and the dot aligns to the first line.
 
 Space Grotesk and JetBrains Mono are self-hosted as Latin WOFF2 files in
 `public/fonts/`; their SIL Open Font License files sit beside the fonts.

@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"strconv"
@@ -15,9 +16,13 @@ import (
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
+	"github.com/odvcencio/gotreesitter-docs/internal/playgroundshare"
 )
 
-const privateMarker = "private_browser_only_marker"
+const (
+	privateMarker = "private_browser_only_marker"
+	sharedMarker  = "shared_marker_only"
+)
 
 var sampledLanguages = []string{
 	"go", "python", "javascript", "typescript", "tsx", "rust", "c", "cpp", "java", "c_sharp",
@@ -242,6 +247,123 @@ func main() {
 	fmt.Println("?lang=rust server-rendered Rust without putting source in a request")
 
 	if err := chromedp.Run(ctx,
+		chromedp.Navigate(base+"/playground?lang=python&sample=add"),
+		chromedp.WaitVisible("#pg-source", chromedp.ByQuery),
+	); err != nil {
+		fatal(err)
+	}
+	if err := waitForText(ctx, "#pg-status", "Parsed locally"); err != nil {
+		fatal(err)
+	}
+	var addInitial struct {
+		Language string `json:"language"`
+		Source   string `json:"source"`
+		Sample   string `json:"sample"`
+	}
+	if err := chromedp.Run(ctx, chromedp.Evaluate(`(() => ({
+		language: document.querySelector("#pg-language")?.value || "",
+		source: document.querySelector("#pg-source")?.value || "",
+		sample: document.querySelector("#pg-root")?.getAttribute("data-sample") || ""
+	}))()`, &addInitial)); err != nil {
+		fatal(fmt.Errorf("read server-rendered add sample: %w", err))
+	}
+	if addInitial.Language != "python" || addInitial.Sample != "add" || !strings.Contains(addInitial.Source, "def add(left, right)") {
+		fatal(fmt.Errorf("?lang=python&sample=add did not open the add sample: language=%q sample=%q source=%q", addInitial.Language, addInitial.Sample, addInitial.Source))
+	}
+	// The page must open at the top with focus outside the results: a focus call
+	// during the automatic first parse scrolls the title and editors out of view.
+	var loadState struct {
+		ScrollY       float64 `json:"scrollY"`
+		FocusInResult bool    `json:"focusInResults"`
+		Active        string  `json:"active"`
+	}
+	if err := chromedp.Run(ctx, chromedp.Evaluate(`(() => {
+		const active = document.activeElement;
+		return {
+			scrollY: window.scrollY,
+			focusInResults: Boolean(active && active.closest && active.closest("#pg-root .pg-results, #pg-tree, #pg-captures")),
+			active: active ? active.tagName + (active.id ? "#" + active.id : "") : ""
+		};
+	})()`, &loadState)); err != nil {
+		fatal(fmt.Errorf("read load scroll and focus: %w", err))
+	}
+	if loadState.ScrollY != 0 || loadState.FocusInResult {
+		fatal(fmt.Errorf("playground loaded scrolled or with focus in the results: scrollY=%v focus=%q inResults=%v", loadState.ScrollY, loadState.Active, loadState.FocusInResult))
+	}
+	fmt.Println("playground opens at the top with no focus in the results")
+	mu.Lock()
+	requests = nil
+	mu.Unlock()
+	fmt.Println("?lang=python&sample=add opened the named sample")
+
+	// Share links: opening one puts the (compressed) source in the document URL
+	// by design. The marker is DEFLATE-compressed there, so it must not appear in
+	// any request URL or body; copying a link must not send anything at all.
+	shareValues, err := playgroundshare.Encode(playgroundshare.Share{Language: "go", Source: "package main\nfunc " + sharedMarker + "() {}\n"})
+	if err != nil {
+		fatal(err)
+	}
+	mu.Lock()
+	requests = nil
+	mu.Unlock()
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(base+"/playground?"+shareValues.Encode()),
+		chromedp.WaitVisible("#pg-source", chromedp.ByQuery),
+	); err != nil {
+		fatal(err)
+	}
+	if err := waitForText(ctx, "#pg-status", "Parsed locally"); err != nil {
+		fatal(err)
+	}
+	var shareOpened struct {
+		Language string `json:"language"`
+		Source   string `json:"source"`
+	}
+	if err := chromedp.Run(ctx, chromedp.Evaluate(`(() => ({
+		language: document.querySelector("#pg-language")?.value || "",
+		source: document.querySelector("#pg-source")?.value || ""
+	}))()`, &shareOpened)); err != nil {
+		fatal(fmt.Errorf("read opened share link: %w", err))
+	}
+	if shareOpened.Language != "go" || !strings.Contains(shareOpened.Source, sharedMarker) {
+		fatal(fmt.Errorf("share link did not open its source: language=%q source=%q", shareOpened.Language, shareOpened.Source))
+	}
+	if err := chromedp.Run(ctx,
+		chromedp.Evaluate(`navigator.clipboard.writeText = t => { window.__gtsShared = t; return Promise.resolve(); }`, nil),
+		chromedp.Click("#pg-share", chromedp.ByQuery),
+	); err != nil {
+		fatal(err)
+	}
+	if err := waitForText(ctx, "#pg-share-status", "Link copied"); err != nil {
+		fatal(err)
+	}
+	var copied string
+	if err := chromedp.Run(ctx, chromedp.Evaluate(`window.__gtsShared || ""`, &copied)); err != nil {
+		fatal(err)
+	}
+	copiedURL, err := url.Parse(copied)
+	if err != nil || copiedURL.Path != "/playground" {
+		fatal(fmt.Errorf("copied share link is not a playground URL: %q (%v)", copied, err))
+	}
+	decoded, ok, err := playgroundshare.Decode(copiedURL.Query())
+	if err != nil || !ok || decoded.Language != "go" || decoded.Source != shareOpened.Source {
+		fatal(fmt.Errorf("copied share link does not round-trip the editor: %+v ok=%v err=%v", decoded, ok, err))
+	}
+	mu.Lock()
+	shareRequests := append([]requestRecord(nil), requests...)
+	requests = nil
+	mu.Unlock()
+	for _, request := range shareRequests {
+		if request.method != "GET" && !isCloudflareBeacon(request) {
+			fatal(fmt.Errorf("share link flow emitted %s %s", request.method, request.url))
+		}
+		if carriesAny(request, sharedMarker) {
+			fatal(fmt.Errorf("share marker appeared in plain text in request %s", request.url))
+		}
+	}
+	fmt.Println("share link opened its source and the copied link round-trips the editor")
+
+	if err := chromedp.Run(ctx,
 		chromedp.Navigate(base+"/playground"),
 		chromedp.WaitVisible("#pg-source", chromedp.ByQuery),
 	); err != nil {
@@ -251,19 +373,17 @@ func main() {
 		fatal(err)
 	}
 	var playgroundInputNames struct {
-		Source   string `json:"source"`
-		Query    string `json:"query"`
-		Keyboard string `json:"keyboard"`
+		Source string `json:"source"`
+		Query  string `json:"query"`
 	}
 	if err := chromedp.Run(ctx, chromedp.Evaluate(`(() => ({
 		source: document.querySelector("#pg-source")?.getAttribute("aria-label") || "",
-		query: document.querySelector("#pg-query")?.getAttribute("aria-label") || "",
-		keyboard: document.querySelector('#pg-root [contenteditable="true"]')?.getAttribute("aria-label") || ""
+		query: document.querySelector("#pg-query")?.getAttribute("aria-label") || ""
 	}))()`, &playgroundInputNames)); err != nil {
 		fatal(fmt.Errorf("read playground input names: %w", err))
 	}
-	if playgroundInputNames.Source != "Source code" || playgroundInputNames.Query != "Tree-sitter query" || playgroundInputNames.Keyboard != "Playground keyboard input" {
-		fatal(fmt.Errorf("playground input names are incomplete: source=%q query=%q keyboard=%q", playgroundInputNames.Source, playgroundInputNames.Query, playgroundInputNames.Keyboard))
+	if playgroundInputNames.Source != "Source code" || playgroundInputNames.Query != "Tree-sitter query" {
+		fatal(fmt.Errorf("playground input names are incomplete: source=%q query=%q", playgroundInputNames.Source, playgroundInputNames.Query))
 	}
 	var grammarOptions []*cdp.Node
 	if err := chromedp.Run(ctx, chromedp.Nodes("#pg-language option", &grammarOptions, chromedp.ByQueryAll)); err != nil {

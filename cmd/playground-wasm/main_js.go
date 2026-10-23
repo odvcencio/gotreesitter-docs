@@ -13,6 +13,7 @@ import (
 
 	gts "github.com/odvcencio/gotreesitter"
 	"github.com/odvcencio/gotreesitter-docs/internal/playgroundengine"
+	"github.com/odvcencio/gotreesitter-docs/internal/playgroundshare"
 	enginewasm "m31labs.dev/gosx/engine/wasm"
 )
 
@@ -35,10 +36,8 @@ type grammarAsset struct {
 }
 
 type playgroundHandle struct {
-	mount                     js.Value
-	listeners                 []browserListener
-	keyboardInputObserver     js.Value
-	keyboardInputObserverFunc js.Func
+	mount     js.Value
+	listeners []browserListener
 
 	stateMu  sync.Mutex
 	timer    *time.Timer
@@ -157,6 +156,17 @@ func mountPlayground(ctx enginewasm.Context) (enginewasm.Handle, error) {
 	languageEl.Call("addEventListener", "change", languageFn)
 	h.listeners = append(h.listeners, browserListener{target: languageEl, event: "change", fn: languageFn})
 
+	// Copy share link: encodes grammar, source and query into the URL and puts
+	// it on the clipboard. Creating the link sends nothing to the server.
+	if shareButton := h.find("#pg-share"); shareButton.Truthy() {
+		shareFn := js.FuncOf(func(js.Value, []js.Value) any {
+			go h.copyShareLink()
+			return nil
+		})
+		shareButton.Call("addEventListener", "click", shareFn)
+		h.listeners = append(h.listeners, browserListener{target: shareButton, event: "click", fn: shareFn})
+	}
+
 	// Selecting a syntax tree row selects the source it covers. The listener is
 	// delegated to #pg-tree because render() rebuilds every row on each parse,
 	// so per-row listeners would leak and would have to be rebound constantly.
@@ -202,41 +212,8 @@ func mountPlayground(ctx enginewasm.Context) (enginewasm.Handle, error) {
 	}
 
 	h.mount.Get("dataset").Set("privacyBoundary", "browser-only")
-	h.nameKeyboardInput()
 	go h.bootstrap(props.GrammarIndexURL)
 	return h, nil
-}
-
-// GoSX adds a transparent contenteditable to engine mounts that accept text
-// input. It receives keyboard and IME events for the playground surface, so
-// observe the mount and name the textbox when the host installs it.
-func (h *playgroundHandle) nameKeyboardInput() {
-	constructor := js.Global().Get("MutationObserver")
-	if constructor.Type() != js.TypeFunction {
-		return
-	}
-	h.keyboardInputObserverFunc = js.FuncOf(func(js.Value, []js.Value) any {
-		h.stateMu.Lock()
-		disposed := h.disposed
-		h.stateMu.Unlock()
-		if disposed {
-			return nil
-		}
-		input := h.mount.Call("querySelector", `[contenteditable="true"]`)
-		if input.Truthy() && !input.Call("hasAttribute", "aria-label").Bool() {
-			input.Call("setAttribute", "aria-label", "Playground keyboard input")
-		}
-		if input.Truthy() {
-			h.keyboardInputObserver.Call("disconnect")
-		}
-		return nil
-	})
-	h.keyboardInputObserver = constructor.New(h.keyboardInputObserverFunc)
-	h.keyboardInputObserver.Call("observe", h.mount, js.ValueOf(map[string]any{
-		"childList": true,
-		"subtree":   true,
-	}))
-	h.keyboardInputObserverFunc.Invoke()
 }
 
 func (h *playgroundHandle) Dispose() {
@@ -248,12 +225,6 @@ func (h *playgroundHandle) Dispose() {
 		h.timer = nil
 	}
 	h.stateMu.Unlock()
-	if h.keyboardInputObserver.Truthy() {
-		h.keyboardInputObserver.Call("disconnect")
-	}
-	if h.keyboardInputObserverFunc.Value.Type() == js.TypeFunction {
-		h.keyboardInputObserverFunc.Release()
-	}
 	for _, listener := range h.listeners {
 		listener.target.Call("removeEventListener", listener.event, listener.fn)
 		listener.fn.Release()
@@ -298,6 +269,9 @@ func (h *playgroundHandle) bootstrap(indexURL string) {
 		selectBox.Call("appendChild", option)
 	}
 	selectBox.Set("disabled", false)
+	if shareButton := h.find("#pg-share"); shareButton.Truthy() {
+		shareButton.Set("disabled", false)
+	}
 	h.mount.Get("dataset").Set("grammarCount", fmt.Sprint(len(assets)))
 	if seq, ok := h.beginRun(); ok {
 		h.runAsync(seq)
@@ -656,6 +630,32 @@ func textNode(value string) js.Value {
 	return js.Global().Get("document").Call("createTextNode", value)
 }
 
+// copyShareLink writes a /playground?lang=&s=&q= link to the clipboard. The
+// encoding and its limits live in internal/playgroundshare.
+func (h *playgroundHandle) copyShareLink() {
+	values, err := playgroundshare.Encode(playgroundshare.Share{
+		Language: h.find("#pg-language").Get("value").String(),
+		Source:   h.find("#pg-source").Get("value").String(),
+		Query:    h.find("#pg-query").Get("value").String(),
+	})
+	if err != nil {
+		h.text("#pg-share-status", "Too large to share as a link (limit about 7,000 encoded characters). Copy the source instead.")
+		return
+	}
+	location := js.Global().Get("location")
+	link := location.Get("origin").String() + "/playground?" + values.Encode()
+	clipboard := js.Global().Get("navigator").Get("clipboard")
+	if !clipboard.Truthy() {
+		h.text("#pg-share-status", "Clipboard unavailable; copy this link: "+link)
+		return
+	}
+	if _, err := await(clipboard.Call("writeText", link)); err != nil {
+		h.text("#pg-share-status", "Copy failed; copy this link: "+link)
+		return
+	}
+	h.text("#pg-share-status", fmt.Sprintf("Link copied (%d characters).", len(link)))
+}
+
 // swapSample replaces the editors with the starter sample for language, but
 // only while they still hold the sample this playground put there. Once the
 // visitor edits either editor the text is theirs, and changing grammar leaves
@@ -668,6 +668,11 @@ func (h *playgroundHandle) swapSample(language string) {
 	sourceEl := h.find("#pg-source")
 	queryEl := h.find("#pg-query")
 	if !sourceEl.Truthy() || !queryEl.Truthy() {
+		return
+	}
+	// A visitor who opened a share link keeps the shared source when they
+	// switch grammar: they came to inspect that exact text.
+	if sourceEl.Get("dataset").Get("shared").String() == "true" {
 		return
 	}
 

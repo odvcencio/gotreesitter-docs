@@ -147,7 +147,7 @@ See [Authoring Languages](/docs/authoring-languages) for encoding and limit cont
 `grammars.DecodeAndCertifyLanguageBlob(name, data)` is also exported in v0.54.0.
 It uses the built-in loader's repair and certification path, then attaches the registered
 scanner and external lex states. This does not certify arbitrary grammar data as C-equivalent.
-See [the implementation](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/grammars/runtime/embedded_loader.go).
+See [the implementation](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/grammars/runtime/embedded_loader.go).
 
 ## Why `Type`, `SExpr`, and field lookups take a `*Language`
 
@@ -190,7 +190,7 @@ recovery-election count. Certification is specific to the grammar and tested inp
 
 ## The full catalog
 
-The [v0.55.1 language guide](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/docs/languages.md)
+The [v0.56.0 language guide](https://github.com/odvcencio/gotreesitter/blob/v0.56.0/docs/languages.md)
 reports 206 registry grammars, 119 external scanners, and seven hand-written token-source
 implementations. A token-source implementation is not the same as a non-nil factory on every
 registry entry. Build tags can change the registry. Inspect `AllLanguages` for your build.

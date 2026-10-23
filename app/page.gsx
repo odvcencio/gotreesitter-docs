@@ -4,13 +4,13 @@ func Page() Node {
 	return <section class="page home-page">
 		<section class="home-hero" aria-labelledby="home-title">
 			<div class="home-intro">
-				<p class="eyebrow">gotreesitter · Go · v0.55.1</p>
+				<p class="eyebrow">gotreesitter · Go · {gtsVersion}</p>
 				<h1 class="home-title" id="home-title">Read the code. Follow the tree.</h1>
 				<p class="home-lede">
 					gotreesitter parses Tree-sitter grammars in Go. Choose a language, point at a token, and follow it to the named node and its byte range.
 				</p>
 				<p class="home-facts">
-					Released 2026-09-26 · 206 grammars · 119 Go external scanners · 7 token sources · no CGo in the runtime · MIT
+					Released {gtsReleaseDate} · {registry.grammars} grammars · {registry.scanners} Go external scanners · {registry.tokenSources} token sources · no CGo in the runtime · MIT
 				</p>
 			</div>
 			<div class="home-parse-heading">
@@ -20,8 +20,8 @@ func Page() Node {
 			{parserDemo()}
 			<div class="home-install">
 				<span class="install-label">Add the current release</span>
-				<div class="install" aria-label="Install gotreesitter v0.55.1">
-					<code class="cmd mono" tabindex="0" aria-label="Installation command; scroll horizontally to read the full command"><span class="pr" aria-hidden="true">$ </span>go get github.com/odvcencio/gotreesitter@v0.55.1</code>
+				<div class="install" aria-label={"Install gotreesitter " + gtsVersion}>
+					<pre class="cmd mono" tabindex="0" aria-label="Installation command; scroll horizontally to read the full command"><code>go get github.com/odvcencio/gotreesitter@{gtsVersion}</code></pre>
 				</div>
 			</div>
 		</section>
@@ -29,16 +29,16 @@ func Page() Node {
 		<section class="playground-band" aria-labelledby="playground-band-title">
 			<div class="playground-band-copy">
 				<span class="section-kicker">Try a parse in your browser</span>
-				<h2 id="playground-band-title">206 languages, parsed in your browser; your code never leaves the tab.</h2>
-				<p>Open the GoSX playground with a starter sample. Parsing runs in WebAssembly on your device.</p>
+				<h2 id="playground-band-title">206 languages, parsed in your browser.</h2>
+				<p>Open the GoSX playground with a starter sample. Parsing runs in WebAssembly on your device, and editor text is sent nowhere unless you copy a share link.</p>
 			</div>
 			<nav class="playground-language-links" aria-label="Open a playground sample">
-				<a href="/playground?lang=go" data-gosx-link="true">Go <span aria-hidden="true">↗</span></a>
-				<a href="/playground?lang=python" data-gosx-link="true">Python <span aria-hidden="true">↗</span></a>
-				<a href="/playground?lang=rust" data-gosx-link="true">Rust <span aria-hidden="true">↗</span></a>
-				<a href="/playground?lang=typescript" data-gosx-link="true">TypeScript <span aria-hidden="true">↗</span></a>
-				<a href="/playground?lang=json" data-gosx-link="true">JSON <span aria-hidden="true">↗</span></a>
-				<a href="/playground?lang=html" data-gosx-link="true">HTML <span aria-hidden="true">↗</span></a>
+				<a href="/playground?lang=go&amp;sample=add" data-gosx-link="true">Go <span aria-hidden="true">↗</span></a>
+				<a href="/playground?lang=python&amp;sample=add" data-gosx-link="true">Python <span aria-hidden="true">↗</span></a>
+				<a href="/playground?lang=rust&amp;sample=add" data-gosx-link="true">Rust <span aria-hidden="true">↗</span></a>
+				<a href="/playground?lang=typescript&amp;sample=add" data-gosx-link="true">TypeScript <span aria-hidden="true">↗</span></a>
+				<a href="/playground?lang=json&amp;sample=add" data-gosx-link="true">JSON <span aria-hidden="true">↗</span></a>
+				<a href="/playground?lang=html&amp;sample=add" data-gosx-link="true">HTML <span aria-hidden="true">↗</span></a>
 			</nav>
 		</section>
 
@@ -101,7 +101,7 @@ func Page() Node {
 		</section>
 
 		<footer class="home-footer">
-			<span>gotreesitter · v0.55.1 · MIT</span>
+			<span>gotreesitter · {gtsVersion} · MIT</span>
 			<a href="/docs/performance" data-gosx-link="true">Performance evidence <span aria-hidden="true">→</span></a>
 			<a href="/docs/contributing#contributors" data-gosx-link="true">Contributors <span aria-hidden="true">→</span></a>
 		</footer>
