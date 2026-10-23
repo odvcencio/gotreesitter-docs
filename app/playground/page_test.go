@@ -145,3 +145,18 @@ func TestResolvePlaygroundStateIgnoresUnknownShareLanguages(t *testing.T) {
 		t.Fatalf("language = %q, want go", state.Language)
 	}
 }
+
+func TestSharedEmptyQueryRendersAnEmptyQueryEditor(t *testing.T) {
+	values, err := playgroundshare.Encode(playgroundshare.Share{Language: "go", Source: "package main\n", Query: ""})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := resolvePlaygroundState("go", "add", values)
+	if !state.Shared || state.Query != "" {
+		t.Fatalf("shared empty query = %q (shared=%v), want empty", state.Query, state.Shared)
+	}
+	// Without a share payload the sample's starter query still applies.
+	if plain := resolvePlaygroundState("go", "add", url.Values{}); plain.Query == "" {
+		t.Fatal("a link without a share keeps the starter query")
+	}
+}

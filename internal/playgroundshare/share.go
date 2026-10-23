@@ -68,15 +68,13 @@ func encodeUnchecked(s Share) (url.Values, error) {
 	if err != nil {
 		return nil, err
 	}
-	values := url.Values{ParamLang: {s.Language}, ParamSource: {source}}
-	if s.Query != "" {
-		query, err := pack(s.Query)
-		if err != nil {
-			return nil, err
-		}
-		values.Set(ParamQuery, query)
+	// The query is always encoded, even when empty, so a link made after the
+	// visitor cleared the query reopens with an empty query, not the starter.
+	query, err := pack(s.Query)
+	if err != nil {
+		return nil, err
 	}
-	return values, nil
+	return url.Values{ParamLang: {s.Language}, ParamSource: {source}, ParamQuery: {query}}, nil
 }
 
 func pack(text string) (string, error) {

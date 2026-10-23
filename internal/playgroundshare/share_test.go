@@ -55,3 +55,18 @@ func TestDecodeRejectsMalformedAndBombPayloads(t *testing.T) {
 		t.Fatalf("bomb err = %v, want ErrTooLarge", err)
 	}
 }
+
+func TestRoundTripKeepsAnEmptyQuery(t *testing.T) {
+	in := Share{Language: "go", Source: "package main\n", Query: ""}
+	values, err := Encode(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !values.Has(ParamQuery) {
+		t.Fatalf("an empty query must still be encoded: %v", values)
+	}
+	out, ok, err := Decode(values)
+	if err != nil || !ok || out != in {
+		t.Fatalf("decode = %+v, %v, %v", out, ok, err)
+	}
+}

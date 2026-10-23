@@ -74,9 +74,8 @@ func resolvePlaygroundState(lang, sampleName string, values url.Values) playgrou
 	case shared:
 		state.Shared = true
 		state.Source = share.Source
-		if share.Query != "" {
-			state.Query = share.Query
-		}
+		// A share carries its query even when it is empty.
+		state.Query = share.Query
 	}
 	return state
 }
