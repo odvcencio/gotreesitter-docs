@@ -15,21 +15,11 @@
 // initializers write (`.index = ..., .length = ...`), so the alias is a
 // faithful, zero-risk bridge, not a workaround for any real shape mismatch.
 //
-// Known residual gap this shim does NOT paper over (left visible
-// deliberately): grammargen.EmitC also branches its `ts_lex_modes` array's
-// element type on the grammar's own LanguageVersion — `TSLexMode` (the
-// older, 2-field struct) for ABI < 15, `TSLexerMode` (the newer, 3-field
-// struct this header's `TSLanguage.lex_modes` field is actually typed with)
-// for ABI >= 15. For an ABI-14-shaped grammar (e.g. this page's "calc" seed)
-// that produces a real `-Wincompatible-pointer-types` WARNING assigning
-// `.lex_modes = ts_lex_modes` — a genuine, pre-existing mismatch between
-// grammargen's own emitted element type and this header's field type for
-// low-ABI grammars, not something introduced by gotreesitter-docs. It is a
-// warning under C's default (non -Werror) rules, not a hard error, so it
-// does not fail cmd/verify-authoring-browser's syntax-only check — but it is
-// real and worth flagging upstream. Confirmed absent for ABI-15 grammars
-// (e.g. "json"): those compile clean, zero warnings, with only this one
-// shim applied.
+// In gotreesitter v0.57.0, EmitC keeps the two-field TSLexMode table for
+// ABI < 15 and initializes TSLanguage.lex_modes through const void *. The
+// runtime reads that table with the ABI-14 stride. ABI-15 output uses the
+// three-field TSLexerMode table. This resolves the older initializer warning
+// without changing either table layout.
 #ifndef GOTREESITTER_DOCS_VERIFY_AUTHORING_COMPAT_SHIM_H_
 #define GOTREESITTER_DOCS_VERIFY_AUTHORING_COMPAT_SHIM_H_
 

@@ -10,9 +10,9 @@ application-authored JavaScript.
 
 Live site: [gotreesitter.m31labs.dev](https://gotreesitter.m31labs.dev/)
 
-The site documents gotreesitter **v0.55.1**, released on 2026-09-26.
+The site documents gotreesitter **v0.57.0**, released on 2026-11-07.
 The site links its displayed parser version to the pinned module build.
-The release catalog includes the v0.55.0 and v0.55.1 fixes and their measurement limits. The
+The release catalog includes v0.56.0 and v0.57.0, their upgrade notes and their measurement limits. The
 server-rendered [/changelog](https://gotreesitter.m31labs.dev/changelog) route
 turns the source changelog into a searchable release archive with tag, code,
 pull request, issue, commit, and exact source-line evidence.
@@ -60,10 +60,10 @@ Run the browser performance budgets when Chrome is available:
 RUN_BROWSER_PERF=1 ./scripts/verify-production.sh
 ```
 
-The playground has a 320 KiB decoded-JavaScript limit for the pinned GoSX engine, Go shim,
+The playground has a 420 KiB decoded-JavaScript limit for the pinned GoSX engine, Go shim,
 navigation, and analytics. The earlier 160 KiB limit was below the required framework payload.
-The 5,200 KiB network limit is unchanged.
-The build writes a Brotli variant of the parser WASM, and the server negotiates that variant
+The 5,000 KiB network limit is unchanged.
+The build writes a Brotli quality 11 variant of the parser WASM, and the server negotiates that variant
 without changing the decoded bytes or the versioned URL.
 
 The public CI workflow installs the exact GoSX and TinyGo versions declared by this repository,

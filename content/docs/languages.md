@@ -69,7 +69,7 @@ for _, e := range entries {
 | `HighlightQuery` | `string` | The tree-sitter `highlights.scm` text, for syntax-highlighting integrations. |
 | `InheritHighlights` | `string` | Parent language whose highlight query gets prepended to this one's (child overrides win). Unset on every built-in; meant for an extension language composing with an existing grammar. |
 | `TagsQuery` | `string` | A `tags.scm` query for symbol extraction, when explicitly authored. No built-in ships one explicitly — call `grammars.ResolveTagsQuery(entry)` instead of reading the field directly; it infers a query from the grammar's symbols and caches the result. |
-| `TokenSourceFactory` | `func(src []byte, lang *gotreesitter.Language) gotreesitter.TokenSource` | Non-nil only for languages with a hand-written Go token source instead of the DFA lexer (default build: `authzed`, `c`, `cpp`, `go`, `java`, `json`, `lua`). Pass its result to `Parser.ParseWithTokenSource`. |
+| `TokenSourceFactory` | `func(src []byte, lang *gotreesitter.Language) gotreesitter.TokenSource` | Non-nil only for languages with a hand-written Go token source instead of the DFA lexer (default build: `authzed`, `c`, `cpp`, `java`). Pass its result to `Parser.ParseWithTokenSource`. |
 | `Quality` | `ParseQuality` | Reserved for a `full` / `partial` / `none` classification. Every registered entry has it unset (`""`) today — nothing populates it yet, despite the field's doc comment. For a real classification, call `grammars.AuditParseSupport()` instead. |
 
 `AuditParseSupport() []ParseSupport` answers *how* a language will actually parse — DFA lexer,
@@ -144,10 +144,11 @@ New blobs carry a version header. `lang.BlobInfo()` reports it after loading.
 The loader still accepts legacy blobs and limits decompressed data to 64 MiB by default.
 See [Authoring Languages](/docs/authoring-languages) for encoding and limit controls.
 
-`grammars.DecodeAndCertifyLanguageBlob(name, data)` is also exported in v0.54.0.
+Import `github.com/odvcencio/gotreesitter/grammars/runtime` as `grammarruntime`
+and call `grammarruntime.DecodeAndCertifyLanguageBlob(name, data)`.
 It uses the built-in loader's repair and certification path, then attaches the registered
 scanner and external lex states. This does not certify arbitrary grammar data as C-equivalent.
-See [the implementation](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/grammars/runtime/embedded_loader.go).
+See [the implementation](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/grammars/runtime/embedded_loader.go).
 
 ## Why `Type`, `SExpr`, and field lookups take a `*Language`
 
@@ -190,10 +191,10 @@ recovery-election count. Certification is specific to the grammar and tested inp
 
 ## The full catalog
 
-The [v0.55.1 language guide](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/docs/languages.md)
-reports 206 registry grammars, 119 external scanners, and seven hand-written token-source
-implementations. A token-source implementation is not the same as a non-nil factory on every
-registry entry. Build tags can change the registry. Inspect `AllLanguages` for your build.
+The [v0.57.0 language guide](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/docs/languages.md)
+reports 206 registry grammars and 119 external scanners. The default registry has four
+hand-written token-source factories: `authzed`, `c`, `cpp`, and `java`. Build tags can change
+the registry. Inspect `AllLanguages` for your build.
 
 The default catalog is listed below.
 

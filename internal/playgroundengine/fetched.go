@@ -65,26 +65,9 @@ func LoadFetchedLanguage(name string, blob []byte) (*gts.Language, error) {
 		grammarruntime.RegisterCatalog(readFetchedGrammarBlob, canonicalFetchedGrammarName)
 	})
 
-	language, err := gts.LoadLanguage(blob)
-	if err != nil {
-		return nil, err
-	}
-	language.Name = strings.TrimSuffix(name, ".bin")
-	if scanner := grammars.LookupExternalScanner(language.Name); scanner != nil {
-		if bound, ok := scanner.(languageBoundExternalScanner); ok {
-			language.ExternalScanner = bound.ExternalScannerForLanguage(language)
-		} else {
-			language.ExternalScanner = scanner
-		}
-	}
-	if states := grammars.LookupExternalLexStates(language.Name); len(states) > 0 {
-		language.ExternalLexStates = states
-	}
-	return language, nil
-}
-
-type languageBoundExternalScanner interface {
-	ExternalScannerForLanguage(*gts.Language) gts.ExternalScanner
+	// Apply the runtime decoder's table repairs and scanner attachments instead
+	// of replacing state tables already supplied by the fetched blob.
+	return grammarruntime.DecodeAndCertifyLanguageBlob(strings.TrimSuffix(name, ".bin"), blob)
 }
 
 func readFetchedGrammarBlob(name string) ([]byte, func(), error) {

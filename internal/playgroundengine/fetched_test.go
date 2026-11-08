@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"reflect"
 	"testing"
 
 	"github.com/odvcencio/gotreesitter/grammars"
@@ -26,6 +27,46 @@ func TestVerifyFetchedGrammarBlob(t *testing.T) {
 	}
 	if err := VerifyFetchedGrammarBlob(url, len(data)+1, data); err == nil {
 		t.Fatal("fetched grammar with an unexpected byte count was accepted")
+	}
+}
+
+func TestFetchedYAMLBlobMatchesRuntimeDecoder(t *testing.T) {
+	const childEnv = "PLAYGROUNDENGINE_FETCHED_YAML_TEST_CHILD"
+	if os.Getenv(childEnv) != "1" {
+		cmd := exec.Command(os.Args[0], "-test.run=^TestFetchedYAMLBlobMatchesRuntimeDecoder$")
+		cmd.Env = append(os.Environ(), childEnv+"=1")
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("fetched YAML parser subprocess failed: %v\n%s", err, output)
+		}
+		return
+	}
+
+	const source = "name: gotreesitter\nlanguages: 28\n"
+	blob := append([]byte(nil), grammars.BlobByName("yaml")...)
+	if len(blob) == 0 {
+		t.Fatal("YAML grammar blob is unavailable for the simulated fetch")
+	}
+	fetched, err := LoadFetchedLanguage("yaml", blob)
+	if err != nil {
+		t.Fatalf("load fetched YAML grammar: %v", err)
+	}
+	got := ParseLanguage(source, "", "yaml", fetched, true)
+
+	// Build the control after the fetched parse so cached registry state cannot
+	// make a first-use loading bug disappear.
+	decoded, err := grammarruntime.DecodeAndCertifyLanguageBlob("yaml", blob)
+	if err != nil {
+		t.Fatalf("load YAML through the runtime decoder: %v", err)
+	}
+	want := ParseLanguage(source, "", "yaml", decoded, true)
+	if want.ParseError != "" || want.HasErrors || len(want.TreeRows) == 0 {
+		t.Fatalf("runtime-decoded YAML control is not clean: %+v", want)
+	}
+	if got.ParseError != "" || got.HasErrors {
+		t.Fatalf("fetched YAML differs from the clean runtime-decoded control: %+v", got)
+	}
+	if !reflect.DeepEqual(got.TreeRows, want.TreeRows) {
+		t.Fatalf("fetched YAML tree differs from the runtime decoder:\ngot  %+v\nwant %+v", got.TreeRows, want.TreeRows)
 	}
 }
 
