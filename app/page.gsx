@@ -10,7 +10,7 @@ func Page() Node {
 					gotreesitter parses Tree-sitter grammars in Go. Choose a language, point at a token, and follow it to the named node and its byte range.
 				</p>
 				<p class="home-facts">
-					Released 2026-09-26 · 206 grammars · 119 Go external scanners · 7 token sources · no CGo in the runtime · MIT
+					Released 2026-11-07 · 206 grammars · 119 Go external scanners · 4 default token sources · no CGo in the runtime · MIT
 				</p>
 			</div>
 			<div class="home-parse-heading">
