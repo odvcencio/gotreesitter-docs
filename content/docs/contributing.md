@@ -21,20 +21,16 @@ the `replace` directives here instead of drifting if you have an ambient Go work
 
 ## Running the tests
 
-The fast local loop mirrors the start of CI's `build` job:
+Choose the package and test pattern that cover your change. For an engine or compiler
+regression, replace `TestName` below with the actual test name and run it in Docker:
 
 ```sh
-go build ./...
-go vet ./...
-go test ./... -run '^$' -count=1   # compiles every test binary; runs nothing
+bash cgo_harness/docker/run_parity_in_docker.sh -- \
+  "cd /workspace && GOWORK=off go test ./grammargen -run '^TestName$' -count=1"
 ```
 
-For anything beyond that, narrow with `-run`: `go test . -run '^TestName$' -count=1 -v`. Do
-**not** run `go test ./...` or `go test ./... -race` broadly on your own machine — the
-repository testing guide and `AGENTS.md` describe the required isolation, since a wide host-side sweep
-can exhaust memory on a dev machine. Use CI, or the Docker runners below, for anything wider than
-a focused package run. `go run ./cmd/parity_report` gives a quick smoke-correctness status across
-all 206 grammars.
+Use CI or the Docker runners for broader correctness and race coverage. Keep each diagnostic
+run to one language or grammar, and check correctness before performance.
 
 ## The oracle: C parity harness
 
@@ -50,15 +46,6 @@ time in an isolated container rather than a broad sweep:
 
 ```sh
 bash cgo_harness/docker/run_single_grammar_parity.sh typescript
-```
-
-The direct form still targets CI/lab use, not routine host sweeps:
-
-```sh
-cd cgo_harness
-go test . -tags treesitter_c_parity \
-  -run '^TestParityFreshParse$|^TestParityHasNoErrors$|^TestParityIssue3Repros$' \
-  -count=1 -v
 ```
 
 `GTS_PARITY_MODE=smoke|top50|exhaustive` scales the corpus — `smoke` is the small, CI-sized
@@ -80,18 +67,20 @@ bash cgo_harness/docker/run_grammargen_focus_targets.sh --mode cgo --langs types
 `<=2x`, `>2x`, or `cliff>10x` — so a single pathological file cannot hide behind a healthy average:
 
 ```sh
-cd cgo_harness
-GOWORK=off GTS_PARITY_ALLOW_HOST=1 GTS_PERF_SCAN=1 \
-  GTS_PERF_SCAN_LANGS=go,python,bash \
-  go test -tags "treesitter_c_parity treesitter_c_perfscan" \
-  -run '^TestPerfScanSweep$' -v -count=1 -timeout 0 .
+GOMAXPROCS=1 bash cgo_harness/docker/run_parity_in_docker.sh \
+  --memory 4g --cpus 1 --gomemlimit 3GiB -- \
+  "cd /workspace/cgo_harness && GOWORK=off GTS_PERF_SCAN=1 GTS_PERF_SCAN_LANGS=go \
+    go test . -tags 'treesitter_c_parity treesitter_c_perfscan' \
+    -run '^TestPerfScanSweep$' -v -count=1 -timeout 20m"
 ```
 
 Results land in `perf_scan/out/<run>/scoreboard.{json,md}` — see [Performance](/docs/performance)
-for what the verdict buckets and budgets mean. Day-to-day micro-benchmarks live in the root
-package instead: `BenchmarkGoParseFullDFA`, `BenchmarkGoParseIncrementalSingleByteEditDFA`, and
-`BenchmarkGoParseIncrementalNoEditDFA` are the trio CI's perf gate tracks, run with stable
-settings (`GOMAXPROCS=1 -count=10 -benchtime=750ms -benchmem`).
+for what the verdict buckets and budgets mean. For before-and-after comparisons, use `scripts/run_randomized_benchmarks.sh`. It covers
+`BenchmarkGoParseFullDFA`, `BenchmarkGoParseIncrementalSingleByteEditDFA`, and
+`BenchmarkGoParseIncrementalNoEditDFA` with 20 shuffle seeds, one process per seed,
+`GOMAXPROCS=1`, `-count=1`, `-benchtime=750ms`, and `-benchmem`. Check deterministic work and
+reuse counters first, then compare timing with `benchstat`. Keep raw output outside version
+control.
 
 ## Adding or updating a grammar
 
@@ -101,7 +90,7 @@ To add one of the 206 grammars embedded in this repo:
 2. Refresh pinned refs: `go run ./cmd/grammar_updater -lock grammars/languages.lock -write -report grammars/grammar_updates.json`.
 3. Generate tables: `go run ./cmd/ts2go -manifest grammars/languages.manifest -outdir ./grammars -package grammars -compact=true`.
 4. Add smoke samples to `cmd/parity_report/main.go` and `grammars/parse_support_test.go`.
-5. Verify: `go run ./cmd/parity_report && go test ./grammars/...`.
+5. Verify the changed grammar with `bash cgo_harness/docker/run_single_grammar_parity.sh <grammar>` and a focused Docker regression.
 
 If the update touches `src/scanner.c` or the grammar's external-token list, treat it as scanner
 work and update the matching hand-written Go scanner before regenerating blobs — see
@@ -114,14 +103,14 @@ for a downstream consumer — see [Authoring Languages](/docs/authoring-language
 path there is `grammargen.ImportGrammarJSON` → `grammargen.GenerateLanguageAndBlob` →
 `grammars.Register`/`RegisterExtension`.
 
-## Gates in v0.55.1
+## Gates in v0.57.0
 
-The [v0.55.1 CI workflow](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/.github/workflows/ci.yml)
+The [v0.57.0 CI workflow](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/.github/workflows/ci.yml)
 selects compile, test, grammar, parity, and performance jobs according to its event and path
 rules. It also schedules a nightly exhaustive C-oracle parity run. Check the workflow for the
 current job graph rather than assuming every PR runs the same suites.
 
-Use the [v0.55.1 testing guide](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/docs/testing-guide.md)
+Use the [v0.57.0 testing guide](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/docs/testing-guide.md)
 for focused commands and safe local runners. It recommends one grammar per isolated container
 for broad parity work. The [v1 design](https://github.com/odvcencio/gotreesitter/blob/main/docs/v1-design.md)
 defines the planned engine graduation and v1 release gates.

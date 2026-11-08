@@ -17,25 +17,26 @@ tests compare Go trees with a pinned C runtime.
 
 The runtime reads tree-sitter parse tables. ts2go extracts tables from upstream parser.c files,
 and grammars ships 206 generated grammar blobs. Those grammar blobs come from their upstream
-grammar repositories. The v0.55.1
-[README](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/README.md) describes the current
+grammar repositories. The v0.57.0
+[README](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/README.md) describes the current
 runtime and registry.
 
 ## What you can build
 
-- **Parse with built-in grammars.** The v0.55.1 registry contains 206 grammars. Its
-  [language guide](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/docs/languages.md)
+- **Parse with built-in grammars.** The v0.57.0 registry contains 206 grammars. Its
+  [language guide](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/docs/languages.md)
   describes scanner coverage and the limits of smoke tests.
 - **Check trees against C.** The project has structural, query, highlighting, recovery, and
   real-corpus comparisons. Each board has its own tested inputs and date.
-- **Reuse unchanged syntax after edits.** The current quiet-host control measured full parsing,
+- **Reuse unchanged syntax after edits.** The dated v0.55.1 quiet-host control measured full parsing,
   a one-byte edit, and no-edit reuse on a generated Go file with 500 functions. That file never
   forks, so the result is a control, not typical source code.
 - **Use queries and editor features.** The runtime includes query execution, syntax highlighting,
   code navigation, injections, and UTF-16 positions.
 
-Version v0.55.1 uses production GLR parsing by default. Set
-GTS_ADMISSION_CANDIDATE=1 to try compact parsing; the language allowlist is empty.
+Version v0.57.0 keeps production GLR parsing as the default. Set
+`GTS_ADMISSION_CANDIDATE=1` to try compact parsing; the language allowlist is empty.
+See the [admission switch](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/admission_switch.go).
 
 ## Measured control input
 

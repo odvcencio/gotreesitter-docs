@@ -10,9 +10,9 @@ application-authored JavaScript.
 
 Live site: [gotreesitter.m31labs.dev](https://gotreesitter.m31labs.dev/)
 
-The site documents gotreesitter **v0.55.1**, released on 2026-09-26.
+The site documents gotreesitter **v0.57.0**, released on 2026-11-07.
 The site links its displayed parser version to the pinned module build.
-The release catalog includes the v0.55.0 and v0.55.1 fixes and their measurement limits. The
+The release catalog includes v0.56.0 and v0.57.0, their upgrade notes and their measurement limits. The
 server-rendered [/changelog](https://gotreesitter.m31labs.dev/changelog) route
 turns the source changelog into a searchable release archive with tag, code,
 pull request, issue, commit, and exact source-line evidence.

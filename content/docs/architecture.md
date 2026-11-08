@@ -57,11 +57,11 @@ not care which one produced a given grammar. That convergence is also the no-for
 `grammars.RegisterExtension` lets a consumer add or override a language from their own module
 without forking gotreesitter — see [Authoring Languages](/docs/authoring-languages).
 
-## Default route in v0.55.1
+## Default route in v0.57.0
 
 Production GLR parsing is the default. Compact parsing is opt-in through
-GTS_ADMISSION_CANDIDATE=1. The v0.55.1
-[admission switch](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/admission_switch.go)
+GTS_ADMISSION_CANDIDATE=1. The v0.57.0
+[admission switch](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/admission_switch.go)
 shows the default. See [The road to v1](/docs/v1) for the current graduation plan.
 
 ## Anatomy of a parse
@@ -90,8 +90,8 @@ loop:
 
 1. **Tokens.** A `TokenSource` (one method, `Next() Token`) feeds the loop. Most grammars use the
    generic DFA walker (`dfaTokenSource`, `parser_dfa_token_source.go`), which executes the lex
-   DFA table baked into the `Language` ahead of time. Seven hand-written Go `TokenSource` implementations also ship,
-   for example `grammars.AuthzedTokenSource`. Context-sensitive tokens, such as indentation or
+   DFA table baked into the `Language` ahead of time. Four default registry entries use hand-written Go token sources
+   (`authzed`, `c`, `cpp`, `java`), such as `grammars.AuthzedTokenSource`. Context-sensitive tokens, such as indentation or
    heredocs, can use an `ExternalScanner` (119 implementations) (`Create`/`Destroy`/`Serialize`/
    `Deserialize`/`Scan`) for individual context-sensitive tokens inside an otherwise DFA-driven
    grammar.

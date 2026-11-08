@@ -4,7 +4,7 @@ func Page() Node {
 	return <section class="page home-page">
 		<section class="home-hero" aria-labelledby="home-title">
 			<div class="home-intro">
-				<p class="eyebrow">gotreesitter · Go · v0.55.1</p>
+				<p class="eyebrow">gotreesitter · Go · v0.57.0</p>
 				<h1 class="home-title" id="home-title">Read the code. Follow the tree.</h1>
 				<p class="home-lede">
 					gotreesitter parses Tree-sitter grammars in Go. Choose a language, point at a token, and follow it to the named node and its byte range.
@@ -20,8 +20,8 @@ func Page() Node {
 			{parserDemo()}
 			<div class="home-install">
 				<span class="install-label">Add the current release</span>
-				<div class="install" aria-label="Install gotreesitter v0.55.1">
-					<code class="cmd mono" tabindex="0" aria-label="Installation command; scroll horizontally to read the full command"><span class="pr" aria-hidden="true">$ </span>go get github.com/odvcencio/gotreesitter@v0.55.1</code>
+				<div class="install" aria-label="Install gotreesitter v0.57.0">
+					<code class="cmd mono" tabindex="0" aria-label="Installation command; scroll horizontally to read the full command"><span class="pr" aria-hidden="true">$ </span>go get github.com/odvcencio/gotreesitter@v0.57.0</code>
 				</div>
 			</div>
 		</section>
@@ -53,7 +53,7 @@ func Page() Node {
 						<h3>Quiet-host Go control</h3>
 						<time datetime="2026-09-27">2026-09-27</time>
 					</div>
-					<p>20 seeds on gts-bench-1, a Xeon Platinum 8481C, Go 1.26.4, GOMAXPROCS=1. The generated 500-function Go file never forks.</p>
+					<p>Measured on v0.55.1: 20 seeds on gts-bench-1, a Xeon Platinum 8481C, Go 1.26.4, GOMAXPROCS=1. The generated 500-function Go file never forks.</p>
 					<dl class="receipt-measures">
 						<div><dt>Full parse</dt><dd>8,686,195 ns <span>· 8 allocs</span></dd></div>
 						<div><dt>Single-byte edit</dt><dd>177,281 ns <span>· 5 allocs</span></dd></div>
@@ -101,7 +101,7 @@ func Page() Node {
 		</section>
 
 		<footer class="home-footer">
-			<span>gotreesitter · v0.55.1 · MIT</span>
+			<span>gotreesitter · v0.57.0 · MIT</span>
 			<a href="/docs/performance" data-gosx-link="true">Performance evidence <span aria-hidden="true">→</span></a>
 			<a href="/docs/contributing#contributors" data-gosx-link="true">Contributors <span aria-hidden="true">→</span></a>
 		</footer>

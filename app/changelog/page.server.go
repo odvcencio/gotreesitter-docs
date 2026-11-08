@@ -496,6 +496,12 @@ func releaseImpactClass(release releasecatalog.Release) string {
 
 func releaseNarrative(release releasecatalog.Release) (string, string) {
 	switch displayVersion(release) {
+	case "v0.57.0":
+		return "Parse from the command line and upgrade editor integrations.",
+			"This release adds a pure-Go parser command and grammar-entry helpers. It corrects highlight priorities and inheritance, fixes Make, Kotlin, TypeScript and PowerShell parsing, and reduces measured scanner and allocation work. Review the upgrade notes for removed JSON token sources, scanner APIs and command changes. Production GLR parsing remains the default."
+	case "v0.56.0":
+		return "Reuse certified syntax and expand opt-in code facts.",
+			"This release extends certified incremental reuse and keeps fresh verification where history or recovery remains unproven. It adds opt-in declaration, signature and call-argument facts for Go, Python, JavaScript, TypeScript and TSX. It also bounds scanner checkpoint memory and corrects recovery and tree-error handling. The linked notes state each feature's scope and measurement limits."
 	case "v0.55.1":
 		return "Restore Python speed and correct large C parses.",
 			"This patch restores Python parsing speed on files without unpacking. It fixes false C errors beyond the string-call limit. It also reduces Scala alias work and extends the Dart reuse guard. Transient-error incremental trees remain unresolved. The linked notes state the measured results and their limits."
