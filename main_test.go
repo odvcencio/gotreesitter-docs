@@ -2,11 +2,14 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -17,6 +20,43 @@ import (
 	islandprogram "m31labs.dev/gosx/island/program"
 	"m31labs.dev/gosx/server"
 )
+
+func TestReadmePlaygroundBudgetsMatchConfig(t *testing.T) {
+	data, err := os.ReadFile("perf-budget.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var config struct {
+		Profiles map[string]struct{ Assertions []string }
+	}
+	if err := json.Unmarshal(data, &config); err != nil {
+		t.Fatal(err)
+	}
+	readme, err := os.ReadFile("README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for metric, label := range map[string]string{"js_total_kb": "decoded-JavaScript", "network_kb": "network"} {
+		var configured string
+		for _, assertion := range config.Profiles["playground"].Assertions {
+			if value, ok := strings.CutPrefix(assertion, metric+" <= "); ok {
+				configured = value
+			}
+		}
+		match := regexp.MustCompile(`([0-9,]+) KiB ` + label + ` limit`).FindSubmatch(readme)
+		if configured == "" || len(match) != 2 {
+			t.Fatalf("missing %s limit in configuration or README", metric)
+		}
+		want, err := strconv.Atoi(configured)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := strconv.Atoi(strings.ReplaceAll(string(match[1]), ",", ""))
+		if err != nil || got != want {
+			t.Errorf("README %s limit = %s; configured limit = %d", metric, match[1], want)
+		}
+	}
+}
 
 func TestVersionedPublicAssetURL(t *testing.T) {
 	root := t.TempDir()

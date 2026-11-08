@@ -138,7 +138,7 @@ func compressWASM(path string) error {
 	if err != nil {
 		return err
 	}
-	writer := brotli.NewWriterLevel(dst, 9)
+	writer := brotli.NewWriterLevel(dst, 11)
 	_, copyErr := io.Copy(writer, src)
 	encodeErr := writer.Close()
 	closeErr := dst.Close()

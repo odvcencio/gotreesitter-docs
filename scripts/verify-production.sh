@@ -67,6 +67,10 @@ go test ./...
 go vet ./...
 gosx export .
 gosx build --prod .
+# GoSX 0.57.1 disables VCS stamping in its server build. Rebuild the same
+# native target with real revision metadata for the deployment bundle.
+go build -trimpath -buildvcs=true -o dist/server/app .
+go version -m dist/server/app
 gosx size --json dist
 
 test -x dist/run.sh
