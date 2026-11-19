@@ -16,6 +16,9 @@ You need Go 1.22.0 or newer for the v0.57.0 module. You can confirm the minimum 
 
 ## Install
 
+These examples and the playground use the published module. If you are preparing for v0.58.0,
+see [Parser Engines and Upgrade Guide](/docs/parser-engines).
+
 Add v0.57.0 to your module:
 
 ```sh

@@ -1,6 +1,6 @@
 ---
 title: Incremental Parsing
-description: Re-parse only what changed after an edit, reusing unchanged subtrees instead of parsing the whole file again.
+description: Record an edit, reparse with the previous tree, and preserve tree ownership in a Go editor.
 nav_group: Using the Parser
 order: 4
 ---
@@ -9,19 +9,9 @@ After an edit, incremental parsing can reuse unchanged parts of the previous tre
 the edit on the old tree, then give that tree and the new source to the parser. The parser reuses
 subtrees where its safety checks allow and reparses the rest.
 
-Version v0.55.1 retains authenticated same-width edit reuse. It also fixes token-source
-resume for C and Java and applies the reuse-budget stop to plain `ParseIncremental`.
-Groovy incremental calls now use a fresh full parse. If the source length changes without a
-recorded `Tree.Edit`, the parser also uses a fresh parse. Always record edits; this fallback
-is not a replacement for the edit contract.
-
-The 2026-09-27 quiet-host control measured the exact v0.55.1 source, 92db945f: full parse
-took 8,686,195 ns/op with eight allocations; a single-byte edit took 177,281 ns/op with five
-allocations; no-edit reuse took 8.318 ns/op with zero allocations. The generated 500-function Go
-file never forks, so it is a control rather than typical editor input. The
-[Performance](/docs/performance) page records the host and method. See the
-[v0.55.1 release notes](https://github.com/odvcencio/gotreesitter/blob/v0.55.1/CHANGELOG.md#measurement-scope)
-for the allocation scope.
+The certified route uses a fresh parse when it cannot validate reuse, including
+some edits to malformed inputs. Current defaults and fallback conditions are in
+[Parser Engines and Upgrade Guide](/docs/parser-engines).
 
 This page assumes you have a tree from `Parser.Parse`.
 See [Syntax Trees and Nodes](/docs/syntax-trees-and-nodes) for tree ownership.
@@ -35,8 +25,10 @@ See [Syntax Trees and Nodes](/docs/syntax-trees-and-nodes) for tree ownership.
 ```go
 tree, err := parser.Parse(src)
 if err != nil {
+    tree.Release()
     log.Fatal(err)
 }
+defer tree.Release()
 
 // ... user edits src to produce newSrc ...
 
@@ -51,8 +43,10 @@ tree.Edit(gts.InputEdit{
 
 newTree, err := parser.ParseIncremental(newSrc, tree)
 if err != nil {
-	log.Fatal(err)
+    newTree.Release()
+    log.Fatal(err)
 }
+defer newTree.Release()
 fmt.Println(newTree.RootNode().HasError())
 ```
 
@@ -109,21 +103,26 @@ it does not record edit history — prefer `Tree.Edit` unless you are doing some
 var parseIncremental func(parser *gts.Parser, source []byte, oldTree *gts.Tree) (*gts.Tree, error)
 ```
 
-`ParseIncremental` walks the old tree's spine, identifies the region actually invalidated by the
-recorded edit(s), and reuses everything outside it by reference. Both leaf and non-leaf subtrees
-are eligible; pre-goto state tracking on interior nodes drives non-leaf reuse, so the parser can
-skip an entire unchanged subtree — a whole function body, say — without re-deriving its contents
-node by node. The parser re-lexes and re-parses only the invalidated span, then stitches the
-result back together with the reused subtrees around it.
+The parser uses the old tree and edit history to find reusable subtrees.
+Unchanged regions can still require work if source positions shift, a scanner's
+state needs to be rebuilt, or the parse reaches syntax that depends on the edit.
+A parse can also run fresh if the reuse checks decline. Keep the old source
+buffer immutable while any tree uses it.
 
 When the source is unchanged, no edit is pending, and included ranges still match,
 `ParseIncremental` can return the same tree with an additional retained handle.
 Release each returned handle, even when the old and new pointers are equal.
 The dated no-edit control result is on [Performance](/docs/performance).
 
-An incremental parse can update parent links on reused nodes. Do not read the old tree
-concurrently with the reparse. After `Tree.Edit`, do not apply the same edit through `Node.Edit`;
-that moves spans twice.
+Legacy reparses can update parent links on reused nodes. Read the returned tree
+after the reparse. Copy the old tree before editing if a reader needs an
+independent snapshot, and release the copy when that reader finishes.
+`Tree.Edit` already updates node spans, so apply each edit once.
+
+A complete parse can contain error nodes. Check `RootNode().HasError()` for
+syntax and `ParseStopReason()` for early stops. The strict incremental method
+returns an error on an early stop. Release a returned tree even when you also
+receive an error.
 
 UTF-16, custom token sources, and profiling all have incremental counterparts:
 `ParseIncrementalUTF16`, `ParseIncrementalWithTokenSource`, `ParseIncrementalProfiled` (returns an

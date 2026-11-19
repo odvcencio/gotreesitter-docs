@@ -62,7 +62,17 @@ without forking gotreesitter — see [Authoring Languages](/docs/authoring-langu
 Production GLR parsing is the default. Compact parsing is opt-in through
 GTS_ADMISSION_CANDIDATE=1. The v0.57.0
 [admission switch](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/admission_switch.go)
-shows the default. See [The road to v1](/docs/v1) for the current graduation plan.
+shows the released default.
+
+## Certified parsing on main
+
+The root parser can use `internal/ccore`, a pure-Go port of the C parser, for a
+certified request. It binds the shipped grammar tables and scanner to the core
+and exposes the result as the usual `Tree` and `Node` types. Grammar identity,
+parse options, and input determine what route can serve a request. See
+[engine selection](/docs/parser-engines) and [the roadmap](/docs/v1).
+
+The next sections describe the original GLR path.
 
 ## Anatomy of a parse
 

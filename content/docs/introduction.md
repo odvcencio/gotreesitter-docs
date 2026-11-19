@@ -37,6 +37,8 @@ runtime and registry.
 Version v0.57.0 keeps production GLR parsing as the default. Set
 `GTS_ADMISSION_CANDIDATE=1` to try compact parsing; the language allowlist is empty.
 See the [admission switch](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/admission_switch.go).
+The upcoming v0.58.0 adds certified defaults for languages including JSON, Python, Kotlin,
+CSS, and TOML. See [Parser Engines and Upgrade Guide](/docs/parser-engines).
 
 ## Measured control input
 

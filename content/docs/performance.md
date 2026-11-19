@@ -5,11 +5,40 @@ nav_group: Internals
 order: 2
 ---
 
-Version v0.55.1 uses production GLR parsing by default. Set
-GTS_ADMISSION_CANDIDATE=1 to try the compact candidate route. Its per-language
-allowlist is empty. Compact parser graduation remains in progress.
+## Certified core comparisons
+
+These runs measure the ordinary API with grammar-specific defaults on main
+ahead of v0.58.0. See [engine selection](/docs/parser-engines) for the
+certified grammar list, supported configurations, and upgrade steps.
+
+The ratio is gotreesitter time divided by pinned C time. A value below 1 means
+gotreesitter took less time. These paired runs use 20 explicitly shuffled seeds
+and compare the same input and operation. Fresh fixtures are about 2 KiB.
+
+| Grammar | Operation | Go / C time |
+| --- | --- | ---: |
+| JSON | Fresh parse, 2,026 bytes | 0.43× |
+| Python | Fresh parse, 2,045 bytes | 0.44× |
+| Kotlin | Fresh parse, 2,051 bytes | 0.38× |
+| Diff | Fresh parse, 1,935 bytes | 0.30× |
+| CSS | Reported identifier edit | 0.79× |
+| TOML | Reported identifier edit | 0.69× |
+
+[JSON, Python, and Diff runs](https://github.com/odvcencio/gotreesitter/releases/download/evidence/ccore-vs-c-fresh-f3e39124-2b4f6885.tar.gz),
+[Kotlin runs](https://github.com/odvcencio/gotreesitter/releases/download/evidence/kotlin-direct-go-c-7576cb43.tar.gz),
+[CSS runs](https://github.com/odvcencio/gotreesitter/releases/download/evidence/cognociente-css-go-c-timing-cb594f399.tar.gz),
+[TOML runs](https://github.com/odvcencio/gotreesitter/releases/download/evidence/cognociente-toml-go-c-timing-cb594f399.tar.gz).
+
+A replay of reported end-of-file edits for Diff and Make also checked visible
+trees and parent links. All cases in that replay matched C's visible output.
+Some unfinished inputs still produced syntax errors in both parsers.
+[Cognociente’s report](https://github.com/odvcencio/gotreesitter/issues/454#issuecomment-6878214215),
+[end-of-file replay](https://github.com/odvcencio/gotreesitter/releases/download/evidence/cognociente-diff-make-eof-ca30c275.tar.gz).
 
 ## v0.55.1 control on a quiet host
+
+That release uses the legacy engine by default. The historical switch
+`GTS_ADMISSION_CANDIDATE=1` opts into its separate compact route.
 
 Upstream measured the exact v0.55.1 source, commit
 [92db945f](https://github.com/odvcencio/gotreesitter/commit/92db945f28de67be51de8235c9cd4e25a900f648),
