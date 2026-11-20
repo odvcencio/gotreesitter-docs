@@ -14,21 +14,20 @@ No C toolchain or additional dependency is needed to use either engine.
 
 ## Which grammars use the certified core?
 
-At [main revision `90b40758`](https://github.com/odvcencio/gotreesitter/commit/90b4075849a1af943c1fcc95d05c8705d45901d4),
-29 grammars have default certificates ahead of v0.58.0.
+At [main revision `210a2b03`](https://github.com/odvcencio/gotreesitter/commit/210a2b036f8f37d4c5256b635840b89ef0f46ff2),
+33 grammars have default certificates ahead of v0.58.0.
 
 | | Certified grammar names |
 | --- | --- |
-| Programming | Clojure, Elixir, Erlang, Kotlin, Python, R, Ruby, Rust, Solidity, Zig |
-| Data, configuration, and styles | BibTeX, CSS, Desktop Entry, Devicetree, EBNF, Git Config, GraphQL, INI, JSON, SSH config, Textproto, TOML |
+| Programming | C, Clojure, Elixir, Erlang, Groovy, Kotlin, Objective-C, Python, R, Ruby, Rust, Solidity, Zig |
+| Data, configuration, and styles | BibTeX, CSS, Desktop Entry, Devicetree, EBNF, Git Config, GraphQL, INI, JSON, Protobuf, SSH config, Textproto, TOML |
 | Build and version control | Cap’n Proto, Diff, Dockerfile, Git Commit, Go Modules, Make, Todo.txt |
 
 The [current certificate list](https://github.com/odvcencio/gotreesitter/blob/main/testdata/ccore_certificates.json) records
 the exact grammar artifacts. A request also has to use a covered configuration
 and scanner. Included ranges, custom token sources, parse work limits,
 and some diagnostic hooks can select an existing route. Go, JavaScript,
-TypeScript, TSX, and Objective-C still use their existing routes in the
-snapshot above.
+TypeScript and TSX still use their existing routes in the snapshot above.
 
 ## Upgrade an editor integration
 
