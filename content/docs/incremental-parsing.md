@@ -120,7 +120,7 @@ independent snapshot, and release the copy when that reader finishes.
 `Tree.Edit` already updates node spans, so apply each edit once.
 
 A complete parse can contain error nodes. Check `RootNode().HasError()` for
-syntax and `ParseStopReason()` for early stops. The strict incremental method
+syntax and `ParseStopReason()` for early stops. `ParseIncrementalStrict`
 returns an error on an early stop. Release a returned tree even when you also
 receive an error.
 

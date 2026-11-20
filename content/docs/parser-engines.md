@@ -23,18 +23,22 @@ At [main revision `210a2b03`](https://github.com/odvcencio/gotreesitter/commit/2
 | Data, configuration, and styles | BibTeX, CSS, Desktop Entry, Devicetree, EBNF, Git Config, GraphQL, INI, JSON, Protobuf, SSH config, Textproto, TOML |
 | Build and version control | Cap’n Proto, Diff, Dockerfile, Git Commit, Go Modules, Make, Todo.txt |
 
-The [current certificate list](https://github.com/odvcencio/gotreesitter/blob/main/testdata/ccore_certificates.json) records
-the exact grammar artifacts. A request also has to use a covered configuration
-and scanner. Included ranges, custom token sources, parse work limits,
-and some diagnostic hooks can select an existing route. Go, JavaScript,
-TypeScript and TSX still use their existing routes in the snapshot above.
+The [certificate list at that revision](https://github.com/odvcencio/gotreesitter/blob/210a2b036f8f37d4c5256b635840b89ef0f46ff2/testdata/ccore_certificates.json)
+records the exact grammar artifacts. A request also has to use a covered
+configuration and scanner. A parse that sets included ranges, a custom token
+source, parse work limits or parse-observability hooks uses the existing
+engine. Grammars not in the list, such as Go, JavaScript, TypeScript and TSX
+at that revision, use their existing routes.
 
 ## Upgrade an editor integration
 
 1. Keep using the same `Parser` or registered grammar entry. For an A/B check,
    create a second parser with the same grammar and call
-   `SetAdmissionCandidateRoute(false)` on it. Set the route before the initial
-   parse so each comparison uses its own tree history.
+   `SetAdmissionCandidateRoute(false)` on it. The setting applies from that
+   parser's next parse; set it before the first parse so each comparison has
+   its own tree history. The process-wide default
+   (`SetAdmissionCandidateRouteDefault`, `GTS_ADMISSION_CANDIDATE`) does not
+   move certified grammars off the core.
 2. Pass the exact source for each parse. Record each edit with `Tree.Edit`
    before reparsing. Release each returned handle, including an unchanged
    result that uses the old pointer. [Incremental example](/docs/incremental-parsing)
