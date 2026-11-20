@@ -11,15 +11,18 @@ syntax tree. You can try a grammar before installing anything.
 
 ## Requirements
 
-You need Go 1.22.0 or newer for the v0.57.0 module. You can confirm the minimum in its
-[go.mod](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/go.mod).
+You need Go 1.22.0 or newer for the v0.58.0 module. You can confirm the minimum in its
+[go.mod](https://github.com/odvcencio/gotreesitter/blob/v0.58.0/go.mod).
 
 ## Install
 
-Add v0.57.0 to your module:
+These examples and the playground use the published module. To see which grammars use the
+certified core and how to compare routes, read [Parser Engines and Upgrade Guide](/docs/parser-engines).
+
+Add v0.58.0 to your module:
 
 ```sh
-go get github.com/odvcencio/gotreesitter@v0.57.0
+go get github.com/odvcencio/gotreesitter@v0.58.0
 ```
 
 You get the parser and all 206 built-in grammars in the same module.

@@ -57,12 +57,24 @@ not care which one produced a given grammar. That convergence is also the no-for
 `grammars.RegisterExtension` lets a consumer add or override a language from their own module
 without forking gotreesitter — see [Authoring Languages](/docs/authoring-languages).
 
-## Default route in v0.57.0
+## Default route in v0.58.0
 
-Production GLR parsing is the default. Compact parsing is opt-in through
-GTS_ADMISSION_CANDIDATE=1. The v0.57.0
-[admission switch](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/admission_switch.go)
-shows the default. See [The road to v1](/docs/v1) for the current graduation plan.
+A grammar whose blob is in the certificate list parses through the certified core
+by default; 34 grammars do in v0.58.0. Every other grammar uses production GLR
+parsing, and compact parsing stays opt-in through GTS_ADMISSION_CANDIDATE=1. The
+v0.58.0 [admission switch](https://github.com/odvcencio/gotreesitter/blob/v0.58.0/admission_switch.go)
+and [certificate list](https://github.com/odvcencio/gotreesitter/blob/v0.58.0/testdata/ccore_certificates.json)
+show the released defaults.
+
+## Certified parsing
+
+The root parser can use `internal/ccore`, a pure-Go port of the C parser, for a
+certified request. It binds the shipped grammar tables and scanner to the core
+and exposes the result as the usual `Tree` and `Node` types. Grammar identity,
+parse options, and input determine what route can serve a request. See
+[engine selection](/docs/parser-engines) and [the roadmap](/docs/v1).
+
+The next sections describe the original GLR path.
 
 ## Anatomy of a parse
 

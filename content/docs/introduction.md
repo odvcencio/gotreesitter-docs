@@ -17,14 +17,14 @@ tests compare Go trees with a pinned C runtime.
 
 The runtime reads tree-sitter parse tables. ts2go extracts tables from upstream parser.c files,
 and grammars ships 206 generated grammar blobs. Those grammar blobs come from their upstream
-grammar repositories. The v0.57.0
-[README](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/README.md) describes the current
+grammar repositories. The v0.58.0
+[README](https://github.com/odvcencio/gotreesitter/blob/v0.58.0/README.md) describes the current
 runtime and registry.
 
 ## What you can build
 
-- **Parse with built-in grammars.** The v0.57.0 registry contains 206 grammars. Its
-  [language guide](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/docs/languages.md)
+- **Parse with built-in grammars.** The v0.58.0 registry contains 206 grammars. Its
+  [language guide](https://github.com/odvcencio/gotreesitter/blob/v0.58.0/docs/languages.md)
   describes scanner coverage and the limits of smoke tests.
 - **Check trees against C.** The project has structural, query, highlighting, recovery, and
   real-corpus comparisons. Each board has its own tested inputs and date.
@@ -34,9 +34,9 @@ runtime and registry.
 - **Use queries and editor features.** The runtime includes query execution, syntax highlighting,
   code navigation, injections, and UTF-16 positions.
 
-Version v0.57.0 keeps production GLR parsing as the default. Set
-`GTS_ADMISSION_CANDIDATE=1` to try compact parsing; the language allowlist is empty.
-See the [admission switch](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/admission_switch.go).
+In v0.58.0, 34 grammars parse by default through the certified core, among them C,
+TypeScript, JSON, Python, Rust, Kotlin, CSS and TOML. The other grammars keep production GLR
+parsing. See [Parser Engines and Upgrade Guide](/docs/parser-engines).
 
 ## Measured control input
 

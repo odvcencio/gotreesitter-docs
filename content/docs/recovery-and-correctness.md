@@ -5,10 +5,14 @@ nav_group: Internals
 order: 1
 ---
 
-The published recovery board records agreement on 39 of 79 cases, measured on 2026-09-19.
-Results are specific to each test set: a match on one fixture does not establish parity for every
-input. This page explains how the project compares Go trees with the pinned C tree-sitter v0.25.1
-oracle and summarizes the published scope.
+The certified core in v0.58.0 has per-grammar tests against pinned C
+tree-sitter 0.27.1. Tests cover fresh and edited visible trees, recovery, and
+subtree reuse. [Engine selection](/docs/parser-engines) lists certified
+grammars and the qualification scope.
+
+The following recovery-board results are historical. They cover 39 of 79
+cases in the 2026-09-19 run against C tree-sitter v0.25.1. Each result applies
+to the specified inputs and parser revision.
 
 ## What error recovery is
 

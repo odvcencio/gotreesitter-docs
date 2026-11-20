@@ -22,7 +22,7 @@ func Page() Node {
 			<aside class="change-latest" aria-label="Latest release">
 				<span class="change-latest-kicker">latest immutable release</span>
 				<strong>{data.latestVersion}</strong>
-				<p>Version 0.54.0 makes compact parsing opt-in and fixes incremental reuse and error shapes.</p>
+				<p>The newest tagged release, with its upgrade notes and evidence.</p>
 				<a href={data.latestReleaseURL} target="_blank" rel="noopener noreferrer">Read the release notes ↗</a>
 			</aside>
 		</header>
