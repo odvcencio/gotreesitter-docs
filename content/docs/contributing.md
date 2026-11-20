@@ -103,14 +103,14 @@ for a downstream consumer — see [Authoring Languages](/docs/authoring-language
 path there is `grammargen.ImportGrammarJSON` → `grammargen.GenerateLanguageAndBlob` →
 `grammars.Register`/`RegisterExtension`.
 
-## Gates in v0.57.0
+## Gates in v0.58.0
 
-The [v0.57.0 CI workflow](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/.github/workflows/ci.yml)
+The [v0.58.0 CI workflow](https://github.com/odvcencio/gotreesitter/blob/v0.58.0/.github/workflows/ci.yml)
 selects compile, test, grammar, parity, and performance jobs according to its event and path
 rules. It also schedules a nightly exhaustive C-oracle parity run. Check the workflow for the
 current job graph rather than assuming every PR runs the same suites.
 
-Use the [v0.57.0 testing guide](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/docs/testing-guide.md)
+Use the [v0.58.0 contributing guide](https://github.com/odvcencio/gotreesitter/blob/v0.58.0/CONTRIBUTING.md)
 for focused commands and safe local runners. It recommends one grammar per isolated container
 for broad parity work. The [v1 design](https://github.com/odvcencio/gotreesitter/blob/main/docs/v1-design.md)
 defines the planned engine graduation and v1 release gates.

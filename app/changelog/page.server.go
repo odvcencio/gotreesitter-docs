@@ -496,6 +496,9 @@ func releaseImpactClass(release releasecatalog.Release) string {
 
 func releaseNarrative(release releasecatalog.Release) (string, string) {
 	switch displayVersion(release) {
+	case "v0.58.0":
+		return "Parse 34 grammars through the certified core.",
+			"This release serves 34 grammars, among them C, TypeScript, JSON, Python, Rust and Kotlin, through ccore, the C-faithful parser core, by default. Each passed a graduation gate against pinned C for trees and subtree reuse, and against the existing engine for time and memory. Trees for those grammars can differ from v0.57.0 where it differed from C; review the upgrade notes. Other grammars keep production GLR parsing, and one parser can opt out with SetAdmissionCandidateRoute(false). It also adds context-aware and strict LangEntry parsing and fixes a Norg scanner stop. The linked notes give the per-grammar evidence."
 	case "v0.57.0":
 		return "Parse from the command line and upgrade editor integrations.",
 			"This release adds a pure-Go parser command and grammar-entry helpers. It corrects highlight priorities and inheritance, fixes Make, Kotlin, TypeScript and PowerShell parsing, and reduces measured scanner and allocation work. Review the upgrade notes for removed JSON token sources, scanner APIs and command changes. Production GLR parsing remains the default."

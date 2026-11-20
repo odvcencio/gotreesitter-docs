@@ -148,7 +148,7 @@ Import `github.com/odvcencio/gotreesitter/grammars/runtime` as `grammarruntime`
 and call `grammarruntime.DecodeAndCertifyLanguageBlob(name, data)`.
 It uses the built-in loader's repair and certification path, then attaches the registered
 scanner and external lex states. This does not certify arbitrary grammar data as C-equivalent.
-See [the implementation](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/grammars/runtime/embedded_loader.go).
+See [the implementation](https://github.com/odvcencio/gotreesitter/blob/v0.58.0/grammars/runtime/embedded_loader.go).
 
 ## Why `Type`, `SExpr`, and field lookups take a `*Language`
 
@@ -191,7 +191,7 @@ recovery-election count. Certification is specific to the grammar and tested inp
 
 ## The full catalog
 
-The [v0.57.0 language guide](https://github.com/odvcencio/gotreesitter/blob/v0.57.0/docs/languages.md)
+The [v0.58.0 language guide](https://github.com/odvcencio/gotreesitter/blob/v0.58.0/docs/languages.md)
 reports 206 registry grammars and 119 external scanners. The default registry has four
 hand-written token-source factories: `authzed`, `c`, `cpp`, and `java`. Build tags can change
 the registry. Inspect `AllLanguages` for your build.

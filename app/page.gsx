@@ -4,13 +4,13 @@ func Page() Node {
 	return <section class="page home-page">
 		<section class="home-hero" aria-labelledby="home-title">
 			<div class="home-intro">
-				<p class="eyebrow">gotreesitter · Go · v0.57.0</p>
+				<p class="eyebrow">gotreesitter · Go · v0.58.0</p>
 				<h1 class="home-title" id="home-title">Read the code. Follow the tree.</h1>
 				<p class="home-lede">
 					gotreesitter parses Tree-sitter grammars in Go. Choose a language, point at a token, and follow it to the named node and its byte range.
 				</p>
 				<p class="home-facts">
-					Released 2026-11-07 · 206 grammars · 119 Go external scanners · 4 default token sources · no CGo in the runtime · MIT
+					Released 2026-11-20 · 206 grammars · 119 Go external scanners · 4 default token sources · no CGo in the runtime · MIT
 				</p>
 			</div>
 			<div class="home-parse-heading">
@@ -20,8 +20,8 @@ func Page() Node {
 			{parserDemo()}
 			<div class="home-install">
 				<span class="install-label">Add the current release</span>
-				<div class="install" aria-label="Install gotreesitter v0.57.0">
-					<code class="cmd mono" tabindex="0" aria-label="Installation command; scroll horizontally to read the full command"><span class="pr" aria-hidden="true">$ </span>go get github.com/odvcencio/gotreesitter@v0.57.0</code>
+				<div class="install" aria-label="Install gotreesitter v0.58.0">
+					<code class="cmd mono" tabindex="0" aria-label="Installation command; scroll horizontally to read the full command"><span class="pr" aria-hidden="true">$ </span>go get github.com/odvcencio/gotreesitter@v0.58.0</code>
 				</div>
 			</div>
 		</section>
@@ -45,7 +45,7 @@ func Page() Node {
 		<section class="home-receipts" aria-labelledby="receipts-title">
 			<div class="home-section-heading">
 				<h2 class="h2" id="receipts-title">Certified parsing in v0.58.0</h2>
-				<p>On main ahead of release. The playground uses the published v0.57.0 module.</p>
+				<p>34 grammars use the certified core by default. The playground uses the published v0.58.0 module.</p>
 			</div>
 			<div class="receipt-grid">
 				<article class="receipt-card">
@@ -92,7 +92,7 @@ func Page() Node {
 		</section>
 
 		<footer class="home-footer">
-			<span>gotreesitter · v0.57.0 · MIT</span>
+			<span>gotreesitter · v0.58.0 · MIT</span>
 			<a href="/docs/performance" data-gosx-link="true">Performance evidence <span aria-hidden="true">→</span></a>
 			<a href="/docs/contributing#contributors" data-gosx-link="true">Contributors <span aria-hidden="true">→</span></a>
 		</footer>

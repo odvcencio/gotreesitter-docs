@@ -5,7 +5,7 @@ nav_group: Internals
 order: 1
 ---
 
-The certified core on main has per-grammar tests against pinned C
+The certified core in v0.58.0 has per-grammar tests against pinned C
 tree-sitter 0.27.1. Tests cover fresh and edited visible trees, recovery, and
 subtree reuse. [Engine selection](/docs/parser-engines) lists certified
 grammars and the qualification scope.

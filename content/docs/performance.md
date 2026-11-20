@@ -7,8 +7,8 @@ order: 2
 
 ## Certified core comparisons
 
-These runs measure the ordinary API with grammar-specific defaults on main
-ahead of v0.58.0. See [engine selection](/docs/parser-engines) for the
+These runs measure the ordinary API with the certified defaults that v0.58.0
+ships, at the commits named in each linked run. See [engine selection](/docs/parser-engines) for the
 certified grammar list, supported configurations, and upgrade steps.
 
 The ratio is gotreesitter time divided by pinned C time. A value below 1 means
