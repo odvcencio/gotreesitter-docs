@@ -14,21 +14,21 @@ No C toolchain or additional dependency is needed to use either engine.
 
 ## Which grammars use the certified core?
 
-At [main revision `210a2b03`](https://github.com/odvcencio/gotreesitter/commit/210a2b036f8f37d4c5256b635840b89ef0f46ff2),
-33 grammars have default certificates ahead of v0.58.0.
+At [main revision `aaa85d2c`](https://github.com/odvcencio/gotreesitter/commit/aaa85d2c9f7816beb5fcb424622aaf15c2cba774),
+34 grammars have default certificates ahead of v0.58.0.
 
 | | Certified grammar names |
 | --- | --- |
-| Programming | C, Clojure, Elixir, Erlang, Groovy, Kotlin, Objective-C, Python, R, Ruby, Rust, Solidity, Zig |
+| Programming | C, Clojure, Elixir, Erlang, Groovy, Kotlin, Objective-C, Python, R, Ruby, Rust, Solidity, TypeScript, Zig |
 | Data, configuration, and styles | BibTeX, CSS, Desktop Entry, Devicetree, EBNF, Git Config, GraphQL, INI, JSON, Protobuf, SSH config, Textproto, TOML |
 | Build and version control | Cap’n Proto, Diff, Dockerfile, Git Commit, Go Modules, Make, Todo.txt |
 
-The [certificate list at that revision](https://github.com/odvcencio/gotreesitter/blob/210a2b036f8f37d4c5256b635840b89ef0f46ff2/testdata/ccore_certificates.json)
+The [certificate list at that revision](https://github.com/odvcencio/gotreesitter/blob/aaa85d2c9f7816beb5fcb424622aaf15c2cba774/testdata/ccore_certificates.json)
 records the exact grammar artifacts. A request also has to use a covered
 configuration and scanner. A parse that sets included ranges, a custom token
 source, parse work limits or parse-observability hooks uses the existing
-engine. Grammars not in the list, such as Go, JavaScript, TypeScript and TSX
-at that revision, use their existing routes.
+engine. Grammars not in the list, such as Go, JavaScript and TSX at that
+revision, use their existing routes.
 
 ## Upgrade an editor integration
 
